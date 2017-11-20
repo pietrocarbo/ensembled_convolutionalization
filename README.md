@@ -6,14 +6,13 @@ Download and install Python 3.5 from https://www.python.org/downloads/release/py
 
 Clone this github repository in a folder that will be called "repo_home"
 
-
 From a terminal run the commands
-pip install pipenv
-pip install virtualenv
-cd repo_home
-virtualenv env
-./env/Scripts/activate
-pip install -r requirements.txt
+* pip install pipenv
+* pip install virtualenv
+* cd repo_home
+* virtualenv env
+* ./env/Scripts/activate
+* pip install -r requirements.txt
 
 Move the folder dataset-ethz101food inside "repo_home"
 
