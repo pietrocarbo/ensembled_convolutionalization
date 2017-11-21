@@ -1,4 +1,6 @@
 .idea/
 env/
+models/
 dataset-ethz101food/
+dataset-animals4classes/
 tensorboard_logs/
