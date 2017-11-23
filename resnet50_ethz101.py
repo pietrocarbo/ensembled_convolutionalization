@@ -69,7 +69,7 @@ print('fine tune:', str(fine_tuning), ', epochs:', epochs)
 # fine tune the last layers of resnet-50
 if fine_tuning:
     model = ResNet50(weights='imagenet', include_top=False)
-    model.summary()
+    # model.summary()
 
     last_layer = model.output
     x = GlobalAveragePooling2D()(last_layer)
@@ -84,10 +84,11 @@ if fine_tuning:
 
     # this is the model we will train
     custom_resnet_model = Model(inputs=model.input, outputs=out)
-    custom_resnet_model.summary()
 
     for layer in custom_resnet_model.layers[:-6]:
         layer.trainable = False
+
+    print(custom_resnet_model.summary())
 
     for layer in custom_resnet_model.layers[-8:]:
         print('trainable {}'.format(layer.trainable))
