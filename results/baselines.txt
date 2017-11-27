@@ -29,6 +29,8 @@ VGG16
           accuracy: 0.4464%
 
 VGG19
+    optimizer
+      SDG
           time: 31 minuti
           loss: 4.5701
           acc 2.6786%
