@@ -27,3 +27,8 @@ VGG16
           time: 27'
           loss: 4.6150
           accuracy: 0.4464%
+
+VGG19
+          time: 31 minuti
+          loss: 4.5701
+          acc 2.6786%
