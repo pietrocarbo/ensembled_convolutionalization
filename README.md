@@ -29,3 +29,6 @@ Run the script `copy_splitdataset.py` to split the dataset in train/test folders
 
 ###### Comando per aggiornare Keras
 `pip install git+git://github.com/fchollet/keras.git --upgrade --no-deps`
+
+###### Flag per usare GPU su Theano backend
+os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=gpu,floatX=float32,lib.cnmem=0.7,dnn.enabled=True"
