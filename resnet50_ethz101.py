@@ -2,6 +2,12 @@ import argparse
 import os
 import time
 
+#Serve al mio mac <3
+from sys import platform
+if platform == "darwin":
+    import matplotlib as mpl
+    mpl.use('TkAgg')
+
 import matplotlib.pyplot as plt
 import tensorflow as tf
 from keras.applications.resnet50 import ResNet50
@@ -92,6 +98,8 @@ if fine_tuning:
 
     for layer in custom_resnet_model.layers[-8:]:
         print('trainable {}'.format(layer.trainable))
+
+    custom_resnet_model.summary()
 
     custom_resnet_model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 

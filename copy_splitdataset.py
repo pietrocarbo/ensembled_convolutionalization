@@ -18,3 +18,4 @@ def ensure_dir(pathdir):
         os.makedirs(pathdir)
 
 split_dataset('train')
+split_dataset('test')

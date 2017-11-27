@@ -1,0 +1,29 @@
+Xception v1
+  optimizer:
+    SDG
+        epochs: 50
+        lr: 1e-4
+        momentum: 0.9
+        time: 20'
+        loss: 4.6211
+        accuracy: 0.8929%
+    RMSProp
+        epochs: 50
+        time: 20'
+        loss: 2.9267
+        accuracy: 31.25%
+
+VGG16
+    optimizer:
+      SDG
+          epochs: 50
+          lr: 1e-4
+          momentum: 0.9
+          time: 27'
+          loss: 4.6157
+          accuracy: 1.7857%
+      RMSProp
+          epochs: 50
+          time: 27'
+          loss: 4.6150
+          accuracy: 0.4464%
