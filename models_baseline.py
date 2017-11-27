@@ -3,11 +3,10 @@ import time
 import tensorflow as tf
 import keras
 import numpy as np
+import matplotlib.pyplot as plt
 from keras.preprocessing.image import ImageDataGenerator
 from keras.layers import GlobalAveragePooling2D, Dense, Dropout, Flatten
-from keras.layers import Input
 from keras.models import Model
-from keras import Sequential
 from keras import optimizers
 
 def disable_randomization_effects():
@@ -49,7 +48,12 @@ num_classes = 101
 epochs = 50
 
 # base_model = keras.applications.xception.Xception(include_top=False, weights='imagenet', input_tensor=None, input_shape=(224, 224, 3), pooling=None, classes=num_classes)
-base_model = keras.applications.vgg16.VGG16(include_top=False, weights='imagenet', input_tensor=None, input_shape=(224, 224, 3), pooling=None, classes=num_classes)
+# base_model = keras.applications.vgg16.VGG16(include_top=False, weights='imagenet', input_tensor=None, input_shape=(224, 224, 3), pooling=None, classes=num_classes)
+# base_model = keras.applications.vgg19.VGG19(include_top=False, weights='imagenet', input_tensor=None, input_shape=(224, 224, 3), pooling=None, classes=num_classes)
+# base_model = keras.applications.inception_v3.InceptionV3(include_top=False, weights='imagenet', input_tensor=None, input_shape=(224, 224, 3), pooling=None, classes=num_classes)
+# base_model = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet', input_tensor=None, input_shape=(224, 224, 3), pooling=None, classes=num_classes)
+base_model = keras.applications.resnet50.ResNet50(input_shape=(224, 224, 3), include_top=False, weights='imagenet', input_tensor=None, pooling=None, classes=num_classes)
+# base_model = keras.applications.mobilenet.MobileNet(input_shape=(224, 224, 3), alpha=1.0, depth_multiplier=1, dropout=1e-3, include_top=False, weights='imagenet', input_tensor=None, pooling=None, classes=num_classes)
 
 last_layer = base_model.output
 x = GlobalAveragePooling2D()(last_layer)
@@ -78,4 +82,35 @@ print('[HISTORY]', hist.history)
 (loss, accuracy) = custom_model.evaluate_generator(validation_generator, 250 // 32)
 print("[EVAL] loss={:.4f}, accuracy: {:.4f}%".format(loss, accuracy * 100))
 
-custom_model.save(os.path.join(os.getcwd(), 'models', 'vgg16_baseline_rmsprop_' + str(epochs) + 'e_' + time.strftime("%Y-%m-%d_%H-%M-%S") + '.h5'))
+custom_model.save(os.path.join(os.getcwd(), 'models', 'mobilenet_baseline_rmsprop_' + str(epochs) + 'e_' + time.strftime("%Y-%m-%d_%H-%M-%S") + '.h5'))
+
+xc = range(epochs)
+train_acc = hist.history['acc']
+train_loss = hist.history['loss']
+val_acc = hist.history['val_acc']
+val_loss = hist.history['val_loss']
+
+plt.style.use(['classic'])
+
+fig = plt.figure('Loss and Accurancy')
+
+ax = fig.add_subplot(2, 1, 1)
+ax.plot(xc, train_loss)
+ax.plot(xc, val_loss)
+ax.set_xlabel('Epochs')
+ax.set_ylabel('Loss')
+ax.grid(True)
+ax.set_title('training vs validation loss')
+ax.legend(['training', 'validation'], loc=0)
+
+ax = fig.add_subplot(2, 1, 2)
+ax.plot(xc, train_acc)
+ax.plot(xc, val_acc)
+ax.set_xlabel('Epochs')
+ax.set_ylabel('Accuracy')
+ax.grid(True)
+ax.set_title('validation vs validation accurancy')
+ax.legend(['training', 'validation'], loc=0)
+
+fig.subplots_adjust(hspace=.5)
+plt.show()

@@ -31,6 +31,58 @@ VGG16
 VGG19
     optimizer
       SDG
-          time: 31 minuti
+          time: 31'
+          lr: 1e-4
+          momentum: 0.9
           loss: 4.5701
           acc 2.6786%
+      SDG
+          time: 31'
+          lr: 1e-2
+          momentum: 0.9
+          loss: 4.6
+          acc 1.3%
+      RMSProp
+          epochs: 50
+          time: 31'
+          loss: 4.5689
+          accuracy: 2.2321%
+InceptionV3
+    optimizer
+      RMSProp
+          epochs: 50
+          time: 12'
+          loss: 4.0715
+          accuracy: 6.6964%
+      SGD
+          time: 12'
+          lr: 1e-4
+          momentum: 0.9
+          loss: 4.6041
+          acc 1.7857%
+InceptionResNetV2
+    optimizer
+      RMSProp
+          epochs: 50
+          time: 21'
+          loss: 3.5886
+          accuracy: 12.9464%
+      SGD
+          time: 21'
+          lr: 1e-4
+          momentum: 0.9
+          loss: 4.5987
+          acc 0.8929%
+MobileNet
+    optimizer
+      RMSProp
+          epochs: 50
+          time: 7'
+          loss: 2.8069
+          accuracy: 33.9286%
+      SGD
+          time: 7'
+          lr: 1e-4
+          momentum: 0.9
+          loss: 4.5927
+          acc 1.7857%
