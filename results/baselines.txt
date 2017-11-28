@@ -60,6 +60,20 @@ InceptionV3
           momentum: 0.9
           loss: 4.6041
           acc 1.7857%
+ResNet50
+    optimizer
+      SGD
+          epochs: 50
+          lr: 1e-4
+          momentum: 0.9
+          time: 432' (CPU)
+          loss: 4.5735
+          accuracy: 1.3393%
+      RMSProp
+          epochs: 50
+          time: 16'
+          loss: 2.9021
+          acc 30.8036%
 InceptionResNetV2
     optimizer
       RMSProp
