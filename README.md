@@ -31,4 +31,6 @@ Run the script `copy_splitdataset.py` to split the dataset in train/test folders
 `pip install git+git://github.com/fchollet/keras.git --upgrade --no-deps`
 
 ###### Flag per usare GPU su Theano backend
+conda create -n env1 python python-dev numpy scipy mkl theano pygpu
+THEANO_FLAGS=device=cuda0 python <test_theanoGPU.py>
 os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=gpu,floatX=float32,lib.cnmem=0.7,dnn.enabled=True"
