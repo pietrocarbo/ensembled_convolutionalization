@@ -63,8 +63,6 @@ validation_generator = test_datagen.flow_from_directory(
         class_mode='categorical')
 
 num_classes = 101
-epochs1 = 100
-epochs2 = 50
 
 early_stopping = keras.callbacks.EarlyStopping(monitor='val_acc', min_delta=0, patience=10, verbose=1, mode='auto')
 reduce_lr_plateu = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=5, verbose=1, mode='auto', epsilon=0.0001, cooldown=0, min_lr=0)
