@@ -7,10 +7,8 @@ from keras.preprocessing.image import ImageDataGenerator
 from keras.layers import GlobalAveragePooling2D, Dense, Dropout, Flatten
 from keras.models import Model
 
-from sys import platform
-if platform == "darwin":
-    import matplotlib as mpl
-    mpl.use('TkAgg')
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 
@@ -68,10 +66,22 @@ validation_generator = test_datagen.flow_from_directory(
 
 num_classes = 101
 
-early_stopping = keras.callbacks.EarlyStopping(monitor='val_acc', min_delta=0, patience=50, verbose=1, mode='auto')
-reduce_lr_plateu = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=5, verbose=1, mode='auto', epsilon=0.0001, cooldown=0, min_lr=0)
-checkpoint_model = keras.callbacks.ModelCheckpoint(os.path.join(os.getcwd(), 'models', 'mobilenet_finetuned'), monitor='val_loss', verbose=0, save_best_only=True, save_weights_only=False, mode='auto', period=1)
-tensorboard_log = keras.callbacks.TensorBoard(log_dir=os.path.join(os.getcwd(), 'tensorboard_logs'), histogram_freq=1, batch_size=32, write_graph=True, write_grads=True, write_images=True, embeddings_freq=0, embeddings_layer_names=None, embeddings_metadata=None)
+
+def checkpointer(filename):
+    return keras.callbacks.ModelCheckpoint(os.path.join(os.getcwd(), 'models', filename), monitor='val_acc', verbose=0, save_best_only=True, save_weights_only=False, mode='auto', period=1)
+
+
+def early_stopper(monitor='val_acc', min_delta=0, patience=50):
+    return keras.callbacks.EarlyStopping(monitor=monitor, min_delta=min_delta, patience=patience, verbose=1, mode='auto')
+
+
+def lr_reducer(monitor='val_loss', factor=0.1, patience=5):
+    return keras.callbacks.ReduceLROnPlateau(monitor=monitor, factor=factor, patience=patience, verbose=1, mode='auto', epsilon=0.0001, cooldown=0, min_lr=0)
+
+
+def csv_logger(filename, separator=' ', append=True):
+    return keras.callbacks.CSVLogger(os.path.join(os.getcwd(), 'logs', filename), separator=separator, append=append)
+
 
 base_model = keras.applications.mobilenet.MobileNet(input_shape=(224, 224, 3), alpha=1.0, depth_multiplier=1, dropout=1e-3, include_top=False, weights='imagenet', input_tensor=None, pooling=None, classes=num_classes)
 
@@ -109,15 +119,16 @@ def train_top_n_layers(model, n, epochs, optimizer, callbacks=None):
 
 
 sgd = keras.optimizers.SGD(lr=1e-3, decay=1e-6, momentum=0.9, nesterov=True)
-
+logfile = 'mobilenet_finetuning_started-' + time.strftime("%Y-%m-%d_%H-%M-%S") + '.csv'
 histories = []
+
 train_time = time.time()
-histories.append(train_top_n_layers(custom_model, 6, 2000, 'rmsprop', [early_stopping]))
-histories.append(train_top_n_layers(custom_model, 18, 1, 'adam', [early_stopping, reduce_lr_plateu]))
-histories.append(train_top_n_layers(custom_model, 36, 1, sgd, [early_stopping, checkpoint_model]))
+histories.append(train_top_n_layers(custom_model, 6, 5, 'rmsprop', [early_stopper()]))
+histories.append(train_top_n_layers(custom_model, 18, 5, 'adam', [early_stopper(), lr_reducer(), csv_logger(logfile)]))
+histories.append(train_top_n_layers(custom_model, 36, 25, sgd, [early_stopper(), csv_logger(logfile), checkpointer('mobilenet_finetuned_{epoch:d}-{val_acc:.2f}.hdf5')]))
 print('Total training time {0:.2f} minutes'.format(-(train_time - time.time()) / 60))
 
-plt.style.use(['classic'])
+plt.style.use('seaborn-bright')
 fig = plt.figure('Validation Loss/Accurancy')
 
 training_steps = len(histories)
@@ -134,6 +145,7 @@ for i in range(training_steps):
     ax.set_title('Training step ' + str(i+1))
     ax.legend(['train_acc', 'val_acc'], loc=0)
 
+result_filename = os.path.join(os.getcwd(), 'results', 'mobilenet_finetuning_' + time.strftime("%Y-%m-%d_%H-%M-%S"))
 fig.subplots_adjust(hspace=.5)
-fig.savefig(os.path.join(os.getcwd(), 'results', 'mobilenet_finetuning_' + time.strftime("%Y-%m-%d_%H-%M-%S")))
+fig.savefig(result_filename)
 
