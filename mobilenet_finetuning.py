@@ -6,6 +6,7 @@ import numpy as np
 from keras.preprocessing.image import ImageDataGenerator
 from keras.layers import GlobalAveragePooling2D, Dense, Dropout, Flatten
 from keras.models import Model
+from keras.applications.mobilenet import preprocess_input
 
 import matplotlib
 matplotlib.use('Agg')
@@ -49,8 +50,13 @@ sess = tf.Session(config=config)
 #         horizontal_flip=True,
 #         fill_mode='nearest')
 
-train_datagen = ImageDataGenerator()
-test_datagen = ImageDataGenerator()
+train_datagen = ImageDataGenerator(
+    horizontal_flip=True,
+    preprocessing_function=preprocess_input)
+
+test_datagen = ImageDataGenerator(
+    horizontal_flip=True,
+    preprocessing_function=preprocess_input)
 
 train_generator = train_datagen.flow_from_directory(
         'dataset-ethz101food/train',
@@ -68,7 +74,7 @@ num_classes = 101
 
 
 def checkpointer(filename):
-    return keras.callbacks.ModelCheckpoint(os.path.join(os.getcwd(), 'models', filename), monitor='val_acc', verbose=0, save_best_only=True, save_weights_only=False, mode='auto', period=1)
+    return keras.callbacks.ModelCheckpoint(os.path.join(os.getcwd(), 'models', filename), monitor='val_acc', verbose=0, save_best_only=True, save_weights_only=True, mode='auto', period=1)
 
 
 def early_stopper(monitor='val_acc', min_delta=0, patience=50):
@@ -118,14 +124,32 @@ def train_top_n_layers(model, n, epochs, optimizer, callbacks=None):
     return history
 
 
+# optimizers
+rmsprop = 'rmsprop'
 sgd = keras.optimizers.SGD(lr=1e-3, decay=1e-6, momentum=0.9, nesterov=True)
-logfile = 'mobilenet_finetuning_started-' + time.strftime("%Y-%m-%d_%H-%M-%S") + '.csv'
+
+# callbacks to use
+stopper = early_stopper(patience=20)
+lr_reduce = lr_reducer()
+model_saver = checkpointer('mobilenet_finetuned_{val_acc:.2f}_{epoch:d}_' + time.strftime("%Y-%m-%d_%H-%M-%S") + '.hdf5')
+logger = csv_logger('mobilenet_finetuning_started_' + time.strftime("%Y-%m-%d_%H-%M-%S") + '.csv')
+
 histories = []
 
 train_time = time.time()
-histories.append(train_top_n_layers(custom_model, 6, 5, 'rmsprop', [early_stopper()]))
-histories.append(train_top_n_layers(custom_model, 18, 5, 'adam', [early_stopper(), lr_reducer(), csv_logger(logfile)]))
-histories.append(train_top_n_layers(custom_model, 36, 25, sgd, [early_stopper(), csv_logger(logfile), checkpointer('mobilenet_finetuned_{epoch:d}-{val_acc:.2f}.hdf5')]))
+histories.append(train_top_n_layers(custom_model, 6, 1, rmsprop, [stopper, logger]))
+histories.append(train_top_n_layers(custom_model, 18, 1, sgd, [stopper, lr_reduce, logger]))
+histories.append(train_top_n_layers(custom_model, 24, 1, sgd, [stopper, lr_reduce, logger]))
+histories.append(train_top_n_layers(custom_model, 30, 1, sgd, [stopper, lr_reduce, logger]))
+histories.append(train_top_n_layers(custom_model, 36, 1, sgd, [stopper, lr_reduce, logger]))
+histories.append(train_top_n_layers(custom_model, 42, 1, sgd, [stopper, lr_reduce, logger]))
+histories.append(train_top_n_layers(custom_model, 48, 1, sgd, [stopper, lr_reduce, logger]))
+histories.append(train_top_n_layers(custom_model, 54, 1, sgd, [stopper, lr_reduce, logger]))
+histories.append(train_top_n_layers(custom_model, 60, 1, sgd, [stopper, lr_reduce, logger]))
+histories.append(train_top_n_layers(custom_model, 66, 1, sgd, [stopper, lr_reduce, logger]))
+histories.append(train_top_n_layers(custom_model, 72, 1, sgd, [stopper, lr_reduce, logger]))
+histories.append(train_top_n_layers(custom_model, 78, 1, sgd, [stopper, lr_reduce, logger]))
+histories.append(train_top_n_layers(custom_model, 84, 1, sgd, [stopper, lr_reduce, logger, model_saver]))
 print('Total training time {0:.2f} minutes'.format(-(train_time - time.time()) / 60))
 
 plt.style.use('seaborn-bright')
