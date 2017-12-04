@@ -4,7 +4,7 @@ import tensorflow as tf
 import keras
 import numpy as np
 from keras.preprocessing.image import ImageDataGenerator
-from keras.layers import GlobalAveragePooling2D, Dense, Dropout, Flatten
+from keras.layers import GlobalAveragePooling2D, Dense, Dropout
 from keras.models import Model
 from keras.applications.mobilenet import preprocess_input
 
@@ -19,7 +19,7 @@ def disable_randomization_effects():
     os.environ['PYTHONHASHSEED'] = '0'
     np.random.seed(42)
     rn.seed(12345)
-    session_conf = tf.ConfigProto(intra_op_parallelism_threads=1, inter_op_parallelism_threads=1)
+    session_conf = tf.ConfigProto()  # intra_op_parallelism_threads=1, inter_op_parallelism_threads=1
     session_conf.gpu_options.allow_growth = True
     tf.set_random_seed(1234)
     sess = tf.Session(graph=tf.get_default_graph(), config=session_conf)
@@ -27,28 +27,6 @@ def disable_randomization_effects():
 
 
 disable_randomization_effects()
-
-config = tf.ConfigProto()
-config.gpu_options.allow_growth = True
-sess = tf.Session(config=config)
-
-# train_datagen = ImageDataGenerator(rotation_range=25,
-#         width_shift_range=0.2,
-#         height_shift_range=0.2,
-#         shear_range=0.2,
-#         zoom_range=0.2,
-#         rescale=1. / 255,
-#         horizontal_flip=True,
-#         fill_mode='nearest')
-#
-# test_datagen = ImageDataGenerator(rotation_range=25,
-#         width_shift_range=0.2,
-#         height_shift_range=0.2,
-#         shear_range=0.2,
-#         zoom_range=0.2,
-#         rescale=1. / 255,
-#         horizontal_flip=True,
-#         fill_mode='nearest')
 
 train_datagen = ImageDataGenerator(
     horizontal_flip=True,
@@ -104,7 +82,7 @@ custom_model = Model(inputs=base_model.input, outputs=out)
 print(custom_model.summary())
 
 
-def train_top_n_layers(model, n, epochs, optimizer, callbacks=None):
+def train_top_n_layers(model, n, epochs, optimizer, callbacks=None, eval_epoch_end=False):
     for i in range(len(model.layers)):
         if i < n:
             model.layers[i].trainable = False
@@ -119,17 +97,18 @@ def train_top_n_layers(model, n, epochs, optimizer, callbacks=None):
                                        callbacks=callbacks, use_multiprocessing=False)
     print('Training time {0:.2f} minutes'.format(-(start - time.time()) / 60))
 
-    (loss, accuracy) = model.evaluate_generator(validation_generator, 250 // 32)
-    print("[EVAL] loss={:.4f}, accuracy: {:.4f}%".format(loss, accuracy * 100))
+    if eval_epoch_end:
+        (loss, accuracy) = model.evaluate_generator(validation_generator, 250 // 32)
+        print("[EVAL] loss={:.4f}, accuracy: {:.4f}%".format(loss, accuracy * 100))
     return history
 
 
 # optimizers
 rmsprop = 'rmsprop'
-sgd = keras.optimizers.SGD(lr=1e-3, decay=1e-6, momentum=0.9, nesterov=True)
+sgd = keras.optimizers.SGD(lr=1e-2, decay=1e-6, momentum=0.9, nesterov=True)
 
 # callbacks to use
-stopper = early_stopper(patience=20)
+stopper = early_stopper(monitor='val_loss', patience=10)
 lr_reduce = lr_reducer()
 model_saver = checkpointer('mobilenet_finetuned_{val_acc:.2f}_{epoch:d}_' + time.strftime("%Y-%m-%d_%H-%M-%S") + '.hdf5')
 logger = csv_logger('mobilenet_finetuning_started_' + time.strftime("%Y-%m-%d_%H-%M-%S") + '.csv')
@@ -137,39 +116,57 @@ logger = csv_logger('mobilenet_finetuning_started_' + time.strftime("%Y-%m-%d_%H
 histories = []
 
 train_time = time.time()
-histories.append(train_top_n_layers(custom_model, 6, 1, rmsprop, [stopper, logger]))
-histories.append(train_top_n_layers(custom_model, 18, 1, sgd, [stopper, lr_reduce, logger]))
-histories.append(train_top_n_layers(custom_model, 24, 1, sgd, [stopper, lr_reduce, logger]))
-histories.append(train_top_n_layers(custom_model, 30, 1, sgd, [stopper, lr_reduce, logger]))
-histories.append(train_top_n_layers(custom_model, 36, 1, sgd, [stopper, lr_reduce, logger]))
-histories.append(train_top_n_layers(custom_model, 42, 1, sgd, [stopper, lr_reduce, logger]))
-histories.append(train_top_n_layers(custom_model, 48, 1, sgd, [stopper, lr_reduce, logger]))
-histories.append(train_top_n_layers(custom_model, 54, 1, sgd, [stopper, lr_reduce, logger]))
-histories.append(train_top_n_layers(custom_model, 60, 1, sgd, [stopper, lr_reduce, logger]))
-histories.append(train_top_n_layers(custom_model, 66, 1, sgd, [stopper, lr_reduce, logger]))
-histories.append(train_top_n_layers(custom_model, 72, 1, sgd, [stopper, lr_reduce, logger]))
-histories.append(train_top_n_layers(custom_model, 78, 1, sgd, [stopper, lr_reduce, logger]))
-histories.append(train_top_n_layers(custom_model, 84, 1, sgd, [stopper, lr_reduce, logger, model_saver]))
+histories.append(train_top_n_layers(custom_model, 6, 5000, 'adam', [stopper, logger]))
+histories.append(train_top_n_layers(custom_model, 18, 2000, sgd, [stopper, lr_reduce, logger]))
+histories.append(train_top_n_layers(custom_model, 24, 2000, sgd, [stopper, lr_reduce, logger]))
+histories.append(train_top_n_layers(custom_model, 30, 2000, sgd, [stopper, lr_reduce, logger]))
+histories.append(train_top_n_layers(custom_model, 36, 2000, sgd, [stopper, lr_reduce, logger]))
+histories.append(train_top_n_layers(custom_model, 42, 2000, sgd, [stopper, lr_reduce, logger]))
+histories.append(train_top_n_layers(custom_model, 48, 2000, sgd, [stopper, lr_reduce, logger]))
+histories.append(train_top_n_layers(custom_model, 54, 2000, sgd, [stopper, lr_reduce, logger]))
+histories.append(train_top_n_layers(custom_model, 60, 2000, sgd, [stopper, lr_reduce, logger]))
+histories.append(train_top_n_layers(custom_model, 66, 2000, sgd, [stopper, lr_reduce, logger]))
+histories.append(train_top_n_layers(custom_model, 72, 2000, sgd, [stopper, lr_reduce, logger]))
+histories.append(train_top_n_layers(custom_model, 78, 2000, sgd, [stopper, lr_reduce, logger]))
+histories.append(train_top_n_layers(custom_model, 84, 2000, sgd, [stopper, lr_reduce, logger, model_saver]))
 print('Total training time {0:.2f} minutes'.format(-(train_time - time.time()) / 60))
 
 plt.style.use('seaborn-bright')
-fig = plt.figure('Validation Loss/Accurancy')
 
+epochs_per_step = []
+val_acc = []
+val_loss = []
+train_loss = []
+train_acc = []
 training_steps = len(histories)
 for i in range(training_steps):
-    val_acc = histories[i].history['val_acc']
-    train_acc = histories[i].history['acc']
-    x = range(len(val_acc))
+    epochs_per_step.append(len(histories[i].history['val_acc']))
+    for j in range(len(histories[i].history['val_acc'])):
+        train_acc.append(histories[i].history['acc'][j])
+        train_loss.append(histories[i].history['loss'][j])
+        val_acc.append(histories[i].history['val_acc'][j])
+        val_loss.append(histories[i].history['val_loss'][j])
 
-    ax = fig.add_subplot(1, training_steps, i+1)
-    ax.plot(x, train_acc)
-    ax.plot(x, val_acc)
-    ax.set_xlabel('Epochs')
-    ax.grid(True)
-    ax.set_title('Training step ' + str(i+1))
-    ax.legend(['train_acc', 'val_acc'], loc=0)
+x = range(len(train_acc))
+plt.plot(x, train_acc)
+plt.plot(x, val_acc)
+plt.grid(True)
+plt.xlabel('Epochs')
+plt.ylabel('Accuracy')
+plt.legend(['train_acc', 'val_acc'], loc=0)
+result_filename = os.path.join(os.getcwd(), 'results', 'mobilenet_ft_acc' + time.strftime("%Y-%m-%d_%H-%M-%S"))
+plt.savefig(result_filename)
 
-result_filename = os.path.join(os.getcwd(), 'results', 'mobilenet_finetuning_' + time.strftime("%Y-%m-%d_%H-%M-%S"))
-fig.subplots_adjust(hspace=.5)
-fig.savefig(result_filename)
+plt.clf()
 
+x = range(len(train_loss))
+plt.plot(x, train_loss)
+plt.plot(x, val_loss)
+plt.grid(True)
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
+plt.legend(['train_loss', 'val_loss'], loc=0)
+result_filename = os.path.join(os.getcwd(), 'results', 'mobilenet_ft_loss' + time.strftime("%Y-%m-%d_%H-%M-%S"))
+plt.savefig(result_filename)
+
+plt.close()
