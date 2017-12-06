@@ -9,10 +9,10 @@ from keras.layers import GlobalAveragePooling2D, Dense, Dropout
 from keras.models import Model
 
 from lib.plot_utils import save_acc_loss_plots
-from lib.randomization import disable_randomization_effects
+from lib.randomization import lower_randomization_effects
 from lib.callbacks import checkpointer, early_stopper, lr_reducer, csv_logger
 
-disable_randomization_effects()
+lower_randomization_effects()
 
 from keras.applications.resnet50 import preprocess_input
 model_name = 'resnet50'
@@ -21,13 +21,21 @@ num_classes = 101
 base_model = keras.applications.resnet50.ResNet50(input_shape=(224, 224, 3), include_top=False, weights='imagenet', input_tensor=None, pooling=None, classes=num_classes)
 
 # 76% - 88 layers - base_model = keras.applications.mobilenet.MobileNet(input_shape=(224, 224, 3), alpha=1.0, depth_multiplier=1, dropout=1e-3, include_top=False, weights='imagenet', input_tensor=None, pooling=None, classes=num_classes)
-
 # base_model = keras.applications.xception.Xception(include_top=False, weights='imagenet', input_tensor=None, input_shape=(224, 224, 3), pooling=None, classes=num_classes)
 
 # base_model = keras.applications.vgg19.VGG19(include_top=False, weights='imagenet', input_tensor=None, input_shape=(224, 224, 3), pooling=None, classes=num_classes)
 # base_model = keras.applications.inception_v3.InceptionV3(include_top=False, weights='imagenet', input_tensor=None, input_shape=(224, 224, 3), pooling=None, classes=num_classes)
 # base_model = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet', input_tensor=None, input_shape=(224, 224, 3), pooling=None, classes=num_classes)
 
+# memory management
+# from keras import backend as K
+# if not cpu_parallelism:
+#     session_conf = tf.ConfigProto(intra_op_parallelism_threads=1, inter_op_parallelism_threads=1)
+# else:
+#     session_conf = tf.ConfigProto()
+# session_conf.gpu_options.allow_growth = True
+# sess = tf.Session(graph=tf.get_default_graph(), config=session_conf)
+# K.set_session(sess)
 
 batch_size = 32
 IMG_WIDTH = 224
@@ -117,10 +125,10 @@ model_saver = checkpointer(checkpoints_filename)
 logger = csv_logger(logfile)
 
 # training parameters
-train_steps = 1  # None to consider all the training set
-val_steps = 1  # None to consider all the validation set
-epochs_fc = 1  # 5000
-epochs_ft = 1  # 2000
+train_steps = None  # None to consider all the training set / 1 to test stuff
+val_steps = None  # None to consider all the validation set / 1 to test stuff
+epochs_fc = 5000  # 5000
+epochs_ft = 2000  # 2000
 ft_granularity = 12
 
 signal.signal(signal.SIGTERM, close_signals_handler)
