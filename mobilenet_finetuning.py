@@ -55,7 +55,7 @@ custom_model = Model(inputs=base_model.input, outputs=out)
 # print(custom_model.summary())
 
 
-def train_top_n_layers(model, n, epochs, optimizer, callbacks=None, eval_epoch_end=False):
+def train_top_n_layers(model, n, epochs, optimizer, callbacks=None, train_steps=None, val_steps=None, test_epoch_end=False):
     for i in range(len(model.layers)):
         if i < n:
             model.layers[i].trainable = False
@@ -65,15 +65,29 @@ def train_top_n_layers(model, n, epochs, optimizer, callbacks=None, eval_epoch_e
     custom_model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
 
     start = time.time()
-    history = model.fit_generator(train_generator, steps_per_epoch=75750 // batch_size, epochs=epochs, verbose=1,
-                                  validation_data=validation_generator, validation_steps=25250 // batch_size,
-                                  callbacks=callbacks, use_multiprocessing=False)
+    history = model.fit_generator(train_generator,
+                                  steps_per_epoch=train_steps or 75750 // batch_size,
+                                  epochs=epochs, verbose=1,
+                                  validation_data=validation_generator,
+                                  validation_steps=val_steps or 25250 // batch_size,
+                                  callbacks=callbacks,
+                                  use_multiprocessing=False)
     print('Training time {0:.2f} minutes'.format(-(start - time.time()) / 60))
 
-    if eval_epoch_end:
+    if test_epoch_end:
         (loss, accuracy) = model.evaluate_generator(validation_generator, 250 // 32)
         print("[EVAL] loss={:.4f}, accuracy: {:.4f}%".format(loss, accuracy * 100))
     return history
+
+
+def close_signals_handler(signum, frame):
+    sys.stdout.flush()
+    print('\n\nReceived KeyboardInterrupt (CTRL-C), preparing to exit')
+    save_acc_loss_plots(histories,
+                        os.path.join(os.getcwd(), 'results', plot_acc_file),
+                        os.path.join(os.getcwd(), 'results', plot_loss_file))
+    sys.exit(1)
+
 
 # filenames
 logfile = 'mobilenet_ft_' + time.strftime("%Y-%m-%d_%H-%M-%S") + '.csv'
@@ -91,36 +105,34 @@ lr_reduce = lr_reducer()
 model_saver = checkpointer(checkpoints_filename)
 logger = csv_logger(logfile)
 
+# training parameters
+train_steps = 1  # None to consider all the training set
+val_steps = 1  # None to consider all the validation set
 
-def close_signals_handler(signum, frame):
-    sys.stdout.flush()
-    print('\n\nReceived KeyboardInterrupt (CTRL-C), preparing to exit')
-    save_acc_loss_plots(histories,
-                        os.path.join(os.getcwd(), 'results', plot_acc_file),
-                        os.path.join(os.getcwd(), 'results', plot_loss_file))
-    sys.exit(1)
+epochs_fc = 1  # 5000
+epochs_ft = 1  # 2000
 
+histories = []
 
 signal.signal(signal.SIGTERM, close_signals_handler)
 signal.signal(signal.SIGINT, close_signals_handler)
-
-histories = []
 train_time = time.time()
-histories.append(train_top_n_layers(custom_model, 6, 5000, adam, [stopper, logger]))
-histories.append(train_top_n_layers(custom_model, 18, 2000, sgd, [stopper, logger]))
-histories.append(train_top_n_layers(custom_model, 24, 2000, sgd, [stopper, logger]))
-histories.append(train_top_n_layers(custom_model, 30, 2000, sgd, [stopper, logger]))
-histories.append(train_top_n_layers(custom_model, 36, 2000, sgd, [stopper, logger]))
-histories.append(train_top_n_layers(custom_model, 42, 2000, sgd, [stopper, logger]))
-histories.append(train_top_n_layers(custom_model, 48, 2000, sgd, [stopper, logger]))
-histories.append(train_top_n_layers(custom_model, 54, 2000, sgd, [stopper, logger]))
-histories.append(train_top_n_layers(custom_model, 60, 2000, sgd, [stopper, logger]))
-histories.append(train_top_n_layers(custom_model, 66, 2000, sgd, [stopper, logger]))
-histories.append(train_top_n_layers(custom_model, 72, 2000, sgd, [stopper, logger]))
-histories.append(train_top_n_layers(custom_model, 78, 2000, sgd, [stopper, logger]))
-histories.append(train_top_n_layers(custom_model, 84, 2000, sgd, [stopper, logger, model_saver]))
-print('Total training time {0:.2f} minutes'.format(-(train_time - time.time()) / 60))
 
+histories.append(train_top_n_layers(custom_model, 6, epochs_fc, adam, [stopper, logger], train_steps, val_steps))
+histories.append(train_top_n_layers(custom_model, 18, epochs_ft, sgd, [stopper, logger], train_steps, val_steps))
+histories.append(train_top_n_layers(custom_model, 24, epochs_ft, sgd, [stopper, logger], train_steps, val_steps))
+histories.append(train_top_n_layers(custom_model, 30, epochs_ft, sgd, [stopper, logger], train_steps, val_steps))
+histories.append(train_top_n_layers(custom_model, 36, epochs_ft, sgd, [stopper, logger], train_steps, val_steps))
+histories.append(train_top_n_layers(custom_model, 42, epochs_ft, sgd, [stopper, logger], train_steps, val_steps))
+histories.append(train_top_n_layers(custom_model, 48, epochs_ft, sgd, [stopper, logger], train_steps, val_steps))
+histories.append(train_top_n_layers(custom_model, 54, epochs_ft, sgd, [stopper, logger], train_steps, val_steps))
+histories.append(train_top_n_layers(custom_model, 60, epochs_ft, sgd, [stopper, logger], train_steps, val_steps))
+histories.append(train_top_n_layers(custom_model, 66, epochs_ft, sgd, [stopper, logger], train_steps, val_steps))
+histories.append(train_top_n_layers(custom_model, 72, epochs_ft, sgd, [stopper, logger], train_steps, val_steps))
+histories.append(train_top_n_layers(custom_model, 78, epochs_ft, sgd, [stopper, logger], train_steps, val_steps))
+histories.append(train_top_n_layers(custom_model, 84, epochs_ft, sgd, [stopper, logger, model_saver], train_steps, val_steps))
+
+print('Total training time {0:.2f} minutes'.format(-(train_time - time.time()) / 60))
 save_acc_loss_plots(histories,
                     os.path.join(os.getcwd(), 'results', plot_acc_file),
                     os.path.join(os.getcwd(), 'results', plot_loss_file))

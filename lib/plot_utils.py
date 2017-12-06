@@ -25,7 +25,7 @@ def save_acc_loss_plots(histories, acc_fn, loss_fn):
     plt.xlabel('Epochs')
     plt.ylabel('Accuracy')
     plt.legend(['train_acc', 'val_acc'], loc=0)
-    for i in range(len(epochs_per_step)):
+    for i in range(len(epochs_per_step) - 1):
         plt.annotate(str(epochs_per_step[i]), xy=(epochs_per_step[i+1], 0.2), xytext=(epochs_per_step[i], 0.2), xycoords='data',
                 verticalalignment='center', arrowprops=dict(color='red', arrowstyle="->", ls='--'))
     plt.savefig(acc_fn)
@@ -39,7 +39,7 @@ def save_acc_loss_plots(histories, acc_fn, loss_fn):
     plt.xlabel('Epochs')
     plt.ylabel('Loss')
     plt.legend(['train_loss', 'val_loss'], loc=0)
-    for i in range(len(epochs_per_step)):
+    for i in range(len(epochs_per_step) - 1):
         plt.annotate(str(epochs_per_step[i]), xy=(epochs_per_step[i+1], 0.2), xytext=(epochs_per_step[i], 0.2), xycoords='data',
                 verticalalignment='center', arrowprops=dict(color='red', arrowstyle="->", ls='--'))
     plt.savefig(loss_fn)
