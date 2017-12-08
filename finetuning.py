@@ -52,7 +52,7 @@ test_datagen = ImageDataGenerator(
 train_generator = train_datagen.flow_from_directory(
         'dataset-ethz101food/train',
         target_size=(IMG_WIDTH, IMG_HEIGHT),
-        batch_size=batch_size,
+        batch_size=batch_size,       # larger batch size when training bottom, smaller training upper layers ?
         class_mode='categorical')
 
 validation_generator = test_datagen.flow_from_directory(
@@ -64,10 +64,13 @@ validation_generator = test_datagen.flow_from_directory(
 last_layer = base_model.output
 x = GlobalAveragePooling2D()(last_layer)
 
+# x = Dense(512, activation='relu', name='fc-1')(x)
+# x = Dropout(0.5)(x)
+# x = Dense(256, activation='relu', name='fc-2')(x)
+# x = Dropout(0.5)(x)
+# out = Dense(num_classes, activation='softmax', name='output_layer')(x)
+
 x = Dense(512, activation='relu', name='fc-1')(x)
-x = Dropout(0.5)(x)
-x = Dense(256, activation='relu', name='fc-2')(x)
-x = Dropout(0.5)(x)
 out = Dense(num_classes, activation='softmax', name='output_layer')(x)
 
 custom_model = Model(inputs=base_model.input, outputs=out)
@@ -110,13 +113,14 @@ def close_signals_handler(signum, frame):
 
 # filenames
 logfile = model_name + '_ft_' + time.strftime("%Y-%m-%d_%H-%M-%S") + '.csv'
-checkpoints_filename = model_name + '_ft_acc{val_acc:.2f}_e{epoch:d}_' + time.strftime("%Y-%m-%d_%H-%M-%S") + '.hdf5'
+checkpoints_filename = model_name + '_ft_weights_acc{val_acc:.2f}_e{epoch:d}_' + time.strftime("%Y-%m-%d_%H-%M-%S") + '.hdf5'
 plot_acc_file = model_name + '_ft_acc' + time.strftime("%Y-%m-%d_%H-%M-%S")
 plot_loss_file = model_name + '_ft_loss' + time.strftime("%Y-%m-%d_%H-%M-%S")
 
 # optimizers
 sgd = keras.optimizers.SGD(lr=1e-2, decay=1e-6, momentum=0.9, nesterov=True)
 adam = 'adam'
+rmsprop = 'rmsprop'
 
 # callbacks
 stopper = early_stopper(monitor='val_loss', patience=2)
@@ -135,30 +139,11 @@ signal.signal(signal.SIGTERM, close_signals_handler)
 signal.signal(signal.SIGINT, close_signals_handler)
 train_time = time.time()
 
-histories = [train_top_n_layers(custom_model, 6, epochs_fc, adam, [stopper, logger], train_steps, val_steps)]
-
+histories = [train_top_n_layers(custom_model, 6, epochs_fc, rmsprop, [stopper, logger], train_steps, val_steps)]
 for i in range(6+ft_granularity, 6+model_n_layers+1, ft_granularity):
-    histories.append(train_top_n_layers(custom_model, i, epochs_ft, sgd, [stopper, logger, model_saver], train_steps, val_steps))
+    histories.append(train_top_n_layers(custom_model, i, epochs_ft, adam, [stopper, logger, model_saver], train_steps, val_steps))
 
 print('Total training time {0:.2f} minutes'.format(-(train_time - time.time()) / 60))
 save_acc_loss_plots(histories,
                     os.path.join(os.getcwd(), 'results', plot_acc_file),
                     os.path.join(os.getcwd(), 'results', plot_loss_file))
-
-# for i in range(6 + 12, 6 + 168 + 1, 12):
-#     print(i)
-#
-# 18
-# 30
-# 42
-# 54
-# 66
-# 78
-# 90
-# 102
-# 114
-# 126
-# 138
-# 150
-# 162
-# 174
