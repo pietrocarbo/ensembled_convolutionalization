@@ -3,7 +3,7 @@ import sys
 import argparse
 import numpy as np
 import keras
-from keras.layers import GlobalAveragePooling2D, Dense, Dropout
+from keras.layers import GlobalAveragePooling2D, Dense, Dropout, Input
 from keras.models import Model
 from keras.models import load_model
 from keras.preprocessing import image
@@ -37,46 +37,74 @@ def classify_image(image_file, preprocessing):
 def assemble_net(base_model):
     last_layer = base_model.output
     x = GlobalAveragePooling2D()(last_layer)
-
     x = Dense(512, activation='relu', name='fc-1')(x)
     x = Dropout(0.5)(x)
     x = Dense(256, activation='relu', name='fc-2')(x)
     x = Dropout(0.5)(x)
     out = Dense(101, activation='softmax', name='output_layer')(x)
-
     return Model(inputs=base_model.input, outputs=out)
 
 
-if os.path.exists(args.model) and os.path.exists(args.input) and 0 < args.top < 102:
-
+if os.path.exists(args.model) and os.path.exists(args.input) and 0 < args.top < 101:
 
     if args.model_name == 'resnet50':
         from keras.applications.resnet50 import preprocess_input
+        from keras.applications.mobilenet import preprocess_input
+        if args.weights:
+            base_model = keras.applications.resnet50.ResNet50(input_shape=(224, 224, 3), include_top=False, weights='imagenet', classes=101)
+            model = assemble_net(base_model)
+            model.load_weights(args.model)
+        else:
+            model = load_model(args.model)
 
     elif args.model_name == 'mobilenet':
         from keras.applications.mobilenet import preprocess_input
-        if args.wof is not None:
-            base_model = keras.applications.mobilenet.MobileNet(input_shape=None, alpha=1.0, depth_multiplier=1, dropout=1e-3, include_top=True, weights='imagenet', input_tensor=None, pooling=None, classes=1000)
+        if args.weights:
+            base_model = keras.applications.mobilenet.MobileNet(input_shape=(224, 224, 3), alpha=1.0, depth_multiplier=1, dropout=1e-3, include_top=False, weights='imagenet', classes=101)
             model = assemble_net(base_model)
+            model.load_weights(args.model)
+        else:
+            model = load_model(args.model)
 
     elif args.model_name == 'incv3':
         from keras.applications.inception_v3 import preprocess_input
+        if args.weights:
+            base_model = keras.applications.inception_v3.InceptionV3(include_top=False, weights='imagenet', input_shape=(224, 224, 3), classes=101)
+            model = assemble_net(base_model)
+            model.load_weights(args.model)
+        else:
+            model = load_model(args.model)
 
     elif args.model_name == 'xcept':
         from keras.applications.xception import preprocess_input
+        if args.weights:
+            base_model = keras.applications.xception.Xception(include_top=False, weights='imagenet', input_shape=(224, 224, 3), classes=101)
+            model = assemble_net(base_model)
+            model.load_weights(args.model)
+        else:
+            model = load_model(args.model)
 
     elif args.model_name == 'vgg19':
         from keras.applications.vgg19 import preprocess_input
+        if args.weights:
+            base_model = keras.applications.vgg19.VGG19(include_top=False, weights='imagenet', input_shape=(224, 224, 3), classes=101)
+            model = assemble_net(base_model)
+            model.load_weights(args.model)
+        else:
+            model = load_model(args.model)
 
     elif args.model_name == 'incresv2':
         from keras.applications.inception_resnet_v2 import preprocess_input
+        if args.weights:
+            base_model = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet', input_shape=(224, 224, 3), classes=101)
+            model = assemble_net(base_model)
+            model.load_weights(args.model)
+        else:
+            model = load_model(args.model)
 
     else:
         print("model name unrecognizable")
         sys.exit(-1)
-
-    model = load_model(args.model)
-
 
     if os.path.isdir(args.input):
         output = [classify_image(os.path.join(args.input, image), preprocess_input) for image in os.listdir(args.input)]

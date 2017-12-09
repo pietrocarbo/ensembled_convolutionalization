@@ -1,7 +1,9 @@
+import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 plt.style.use('seaborn-bright')
+
 
 def save_acc_loss_plots(histories, acc_fn, loss_fn):
     epochs_per_step = []
@@ -25,6 +27,7 @@ def save_acc_loss_plots(histories, acc_fn, loss_fn):
     plt.xlabel('Epochs')
     plt.ylabel('Accuracy')
     plt.legend(['train_acc', 'val_acc'], loc=0)
+    epochs_per_step = np.cumsum(epochs_per_step)
     for i in range(len(epochs_per_step) - 1):
         plt.annotate(str(epochs_per_step[i]), xy=(epochs_per_step[i+1], 0.2), xytext=(epochs_per_step[i], 0.2), xycoords='data',
                 verticalalignment='center', arrowprops=dict(color='red', arrowstyle="->", ls='--'))

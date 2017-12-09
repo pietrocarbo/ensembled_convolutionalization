@@ -18,7 +18,7 @@ from keras.applications.resnet50 import preprocess_input
 model_name = 'resnet50'
 model_n_layers = 168
 num_classes = 101
-base_model = keras.applications.resnet50.ResNet50(input_shape=(224, 224, 3), include_top=False, weights='imagenet', input_tensor=None, pooling=None, classes=num_classes)
+base_model = keras.applications.resnet50.ResNet50(input_shape=(224, 224, 3), include_top=False, weights='imagenet', pooling=None, classes=num_classes)
 
 # 76% - 88 layers - base_model = keras.applications.mobilenet.MobileNet(input_shape=(224, 224, 3), alpha=1.0, depth_multiplier=1, dropout=1e-3, include_top=False, weights='imagenet', input_tensor=None, pooling=None, classes=num_classes)
 # base_model = keras.applications.xception.Xception(include_top=False, weights='imagenet', input_tensor=None, input_shape=(224, 224, 3), pooling=None, classes=num_classes)
@@ -28,6 +28,7 @@ base_model = keras.applications.resnet50.ResNet50(input_shape=(224, 224, 3), inc
 # base_model = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet', input_tensor=None, input_shape=(224, 224, 3), pooling=None, classes=num_classes)
 
 # memory management
+# cpu_parallelism = True
 # from keras import backend as K
 # if not cpu_parallelism:
 #     session_conf = tf.ConfigProto(intra_op_parallelism_threads=1, inter_op_parallelism_threads=1)
@@ -43,10 +44,24 @@ IMG_HEIGHT = 224
 
 train_datagen = ImageDataGenerator(
     horizontal_flip=True,
+    rotation_range=40,
+    width_shift_range=0.2,
+    height_shift_range=0.2,
+    rescale=1./255,
+    shear_range=0.2,
+    zoom_range=0.2,
+    fill_mode='nearest',
     preprocessing_function=preprocess_input)
 
 test_datagen = ImageDataGenerator(
     horizontal_flip=True,
+    rotation_range=40,
+    width_shift_range=0.2,
+    height_shift_range=0.2,
+    rescale=1./255,
+    shear_range=0.2,
+    zoom_range=0.2,
+    fill_mode='nearest',
     preprocessing_function=preprocess_input)
 
 train_generator = train_datagen.flow_from_directory(
@@ -70,7 +85,9 @@ x = GlobalAveragePooling2D()(last_layer)
 # x = Dropout(0.5)(x)
 # out = Dense(num_classes, activation='softmax', name='output_layer')(x)
 
-x = Dense(512, activation='relu', name='fc-1')(x)
+# x = Dense(512, activation='relu', name='fc-1')(x)
+# out = Dense(num_classes, activation='softmax', name='output_layer')(x)
+
 out = Dense(num_classes, activation='softmax', name='output_layer')(x)
 
 custom_model = Model(inputs=base_model.input, outputs=out)
@@ -133,7 +150,7 @@ train_steps = None  # None to consider all the training set / 1 to test stuff
 val_steps = None  # None to consider all the validation set / 1 to test stuff
 epochs_fc = 5000  # 5000
 epochs_ft = 2000  # 2000
-ft_granularity = 12
+ft_granularity = 24
 
 signal.signal(signal.SIGTERM, close_signals_handler)
 signal.signal(signal.SIGINT, close_signals_handler)
