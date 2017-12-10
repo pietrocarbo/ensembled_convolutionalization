@@ -151,7 +151,7 @@ signal.signal(signal.SIGTERM, close_signals_handler)
 signal.signal(signal.SIGINT, close_signals_handler)
 train_time = time.time()
 
-with open(os.path.join(os.getcwd(), 'models', model_arch_file, 'w')) as outfile:
+with open(os.path.join(os.getcwd(), 'models', model_arch_file, 'w+')) as outfile:
     json.dumps(json.loads(custom_model.to_json()), outfile, indent=2)
 
 histories = [train_top_n_layers(custom_model, topnn_nlayers, epochs_fc, rmsprop, [stopper, logger], train_steps, val_steps)]
