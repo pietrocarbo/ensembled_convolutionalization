@@ -152,7 +152,7 @@ signal.signal(signal.SIGINT, close_signals_handler)
 train_time = time.time()
 
 with open(os.path.join(os.getcwd(), 'models', model_arch_file), 'w') as outfile:
-    json.dumps(json.loads(custom_model.to_json()), outfile, indent=2)
+    json.dump(json.loads(custom_model.to_json()), outfile, indent=2)
 
 histories = [train_top_n_layers(custom_model, topnn_nlayers, epochs_fc, rmsprop, [stopper, logger], train_steps, val_steps)]
 for trained_layers_idx in range(topnn_nlayers + ft_granularity, topnn_nlayers + model_nlayers + 1, ft_granularity):
