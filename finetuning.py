@@ -4,6 +4,8 @@ import signal
 import time
 import json
 
+import tensorflow as tf
+
 import keras
 from keras.preprocessing.image import ImageDataGenerator
 from keras.layers import GlobalAveragePooling2D, Dense, Dropout
@@ -53,6 +55,7 @@ custom_model = Model(inputs=base_model.input, outputs=out)
 # print(custom_model.summary())
 
 batch_size = int(sys.argv[1]) if len(sys.argv) > 1 else 32
+print('Batch size is ' + batch_size)
 IMG_WIDTH = 224
 IMG_HEIGHT = 224
 
@@ -100,6 +103,7 @@ def train_top_n_layers(model, n, epochs, optimizer, callbacks=None, train_steps=
 
     custom_model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
 
+    keras.backend.get_session().run(tf.global_variables_initializer())
     start = time.time()
     history = model.fit_generator(train_generator,
                                   steps_per_epoch=train_steps or 75750 // batch_size,
