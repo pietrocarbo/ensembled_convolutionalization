@@ -59,27 +59,27 @@ print('Batch size is ' + str(batch_size))
 IMG_WIDTH = 224
 IMG_HEIGHT = 224
 
-train_datagen = ImageDataGenerator(
-    horizontal_flip=True,
-    rotation_range=40,
-    width_shift_range=0.2,
-    height_shift_range=0.2,
-    rescale=1./255,
-    shear_range=0.2,
-    zoom_range=0.2,
-    fill_mode='nearest',
-    preprocessing_function=preprocess_input)
+data_augmentation_level = 0  # 1, 2, ..
 
-test_datagen = ImageDataGenerator(
-    horizontal_flip=True,
-    rotation_range=40,
-    width_shift_range=0.2,
-    height_shift_range=0.2,
-    rescale=1./255,
-    shear_range=0.2,
-    zoom_range=0.2,
-    fill_mode='nearest',
-    preprocessing_function=preprocess_input)
+dict_augmentation = {"preprocessing_function": preprocess_input, "rescale": 1./255}
+
+if data_augmentation_level > 0:
+    dict_augmentation["horizontal_flip"] = True
+    dict_augmentation["fill_mode"] = 'nearest'
+
+if data_augmentation_level > 1:
+    dict_augmentation["width_shift_range"] = 0.2
+    dict_augmentation["height_shift_range"] = 0.2
+
+if data_augmentation_level > 2:
+    dict_augmentation["shear_range"] = 0.2
+    dict_augmentation["zoom_range"] = 0.2
+
+if data_augmentation_level > 3:
+    dict_augmentation["rotation_range"] = 40
+
+train_datagen = ImageDataGenerator(**dict_augmentation)
+test_datagen = ImageDataGenerator(**dict_augmentation)
 
 train_generator = train_datagen.flow_from_directory(
         'dataset-ethz101food/train',
