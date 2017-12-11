@@ -12,24 +12,24 @@ from keras.models import Model
 from lib.plot_utils import save_acc_loss_plots
 from lib.randomization import lower_randomization_effects
 from lib.callbacks import checkpointer, early_stopper, lr_reducer, csv_logger
-from lib.memory_management import allow_memory_growth
-
-allow_memory_growth()
+from lib.memory_management import memory_growth_config
 
 from keras.applications.resnet50 import preprocess_input
 model_name = 'xception'
-model_nlayers = 126
-num_classes = 101
+base_model = keras.applications.xception.Xception(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
 
-base_model = keras.applications.xception.Xception(include_top=False, weights='imagenet', input_shape=(224, 224, 3), classes=num_classes)
-# 77% - 168 layers - 1dense - base_model = keras.applications.resnet50.ResNet50(input_shape=(224, 224, 3), include_top=False, weights='imagenet', classes=num_classes)
-# 76% - 88 layers - 3dens - base_model = keras.applications.mobilenet.MobileNet(input_shape=(224, 224, 3), alpha=1.0, depth_multiplier=1, dropout=1e-3, include_top=False, weights='imagenet', input_tensor=None, pooling=None, classes=num_classes)
+# 77% - 168 layers - 1dense - 32bs- base_model = keras.applications.resnet50.ResNet50(input_shape=(224, 224, 3), include_top=False, weights='imagenet')
+# 76% - 88 layers - 3dens - 32bs- base_model = keras.applications.mobilenet.MobileNet(input_shape=(224, 224, 3), alpha=1.0, depth_multiplier=1, dropout=1e-3, include_top=False, weights='imagenet')
 
-# base_model = keras.applications.vgg19.VGG19(include_top=False, weights='imagenet', input_tensor=None, input_shape=(224, 224, 3), pooling=None, classes=num_classes)
-# base_model = keras.applications.inception_v3.InceptionV3(include_top=False, weights='imagenet', input_tensor=None, input_shape=(224, 224, 3), pooling=None, classes=num_classes)
-# base_model = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet', input_tensor=None, input_shape=(224, 224, 3), pooling=None, classes=num_classes)
+# base_model = keras.applications.vgg19.VGG19(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
+# base_model = keras.applications.inception_v3.InceptionV3(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
+# base_model = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
 
 lower_randomization_effects()
+memory_growth_config()
+
+model_nlayers = len(base_model.layers)
+num_classes = 101
 
 last_layer = base_model.output
 x = GlobalAveragePooling2D()(last_layer)
@@ -52,7 +52,7 @@ else:
 custom_model = Model(inputs=base_model.input, outputs=out)
 # print(custom_model.summary())
 
-batch_size = 32
+batch_size = sys.argv[1] or 32
 IMG_WIDTH = 224
 IMG_HEIGHT = 224
 
