@@ -55,7 +55,7 @@ custom_model = Model(inputs=base_model.input, outputs=out)
 # print(custom_model.summary())
 
 batch_size = int(sys.argv[1]) if len(sys.argv) > 1 else 32
-print('Batch size is ' + batch_size)
+print('Batch size is ' + str(batch_size))
 IMG_WIDTH = 224
 IMG_HEIGHT = 224
 
