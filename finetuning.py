@@ -52,7 +52,7 @@ else:
 custom_model = Model(inputs=base_model.input, outputs=out)
 # print(custom_model.summary())
 
-batch_size = sys.argv[1] if sys.argv[1] else 32
+batch_size = sys.argv[1] if len(sys.argv) > 1 else 32
 IMG_WIDTH = 224
 IMG_HEIGHT = 224
 
