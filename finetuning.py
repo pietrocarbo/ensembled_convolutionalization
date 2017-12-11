@@ -12,6 +12,9 @@ from keras.models import Model
 from lib.plot_utils import save_acc_loss_plots
 from lib.randomization import lower_randomization_effects
 from lib.callbacks import checkpointer, early_stopper, lr_reducer, csv_logger
+from lib.memory_management import allow_memory_growth
+
+allow_memory_growth()
 
 from keras.applications.resnet50 import preprocess_input
 model_name = 'xception'
