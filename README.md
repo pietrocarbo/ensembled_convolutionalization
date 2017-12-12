@@ -27,8 +27,9 @@ Run the script `copy_splitdataset.py` to split the dataset in train/test folders
 
 * Segmentazione tramite Fully Convolutional Networks (modello a parte inizialmente poi da integrare per classificazione foto con bassa confidenza)
 
-###### Comando per aggiornare Keras
+###### Comando per aggiornare Keras e Theano
 pip install git+git://github.com/fchollet/keras.git --upgrade --no-deps
+pip install git+git://github.com/Theano/Theano.git --upgrade --no-deps
 
 ###### Flag per usare GPU su Theano backend
 conda create -n env1 python python-dev numpy scipy mkl theano pygpu

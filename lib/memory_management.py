@@ -3,6 +3,7 @@ from keras import backend as K
 
 
 def memory_growth_config(cpu_parallelism=True, allow_growth=True, memory_fraction=None):
+    K.clear_session()
     if not cpu_parallelism:
         session_conf = tf.ConfigProto(intra_op_parallelism_threads=1, inter_op_parallelism_threads=1)
     else:
