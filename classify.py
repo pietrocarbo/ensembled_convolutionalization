@@ -9,7 +9,7 @@ from keras.models import load_model
 from keras.preprocessing import image
 
 parser = argparse.ArgumentParser(description='script used to classify a food image')
-parser.add_argument('model-architecture_name', type=str, help='name of the model or file containing it\'s architecture')
+parser.add_argument('model-architecture_name', type=str, help='name of the model or file containing it\'s architecture')  # TODO distinguish between name or filename
 parser.add_argument('model', type=str, help='the file path of the model to use')
 parser.add_argument('-w', '--weights', action='store_true', help='flag that indicates if we are loading only weights')
 parser.add_argument('input', type=str, help='the path of the image or the directory containing images to classify')

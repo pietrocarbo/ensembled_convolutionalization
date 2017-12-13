@@ -172,9 +172,8 @@ logger = csv_logger(logfile)
 # training parameters
 train_steps = None  # None to consider all the training set / 1 to test stuff
 val_steps = None  # None to consider all the validation set / 1 to test stuff
-epochs_fc = 500  # 5000
-epochs_ft = 200  # 2000
-ft_granularity = 24
+epochs_fc = 500
+epochs_ft = 200
 
 signal.signal(signal.SIGTERM, close_signals_handler)
 signal.signal(signal.SIGINT, close_signals_handler)
@@ -211,6 +210,7 @@ elif ft_type == bottomup:
         epochs=epochs_fc,
         optimizer=rmsprop,
         callbacks=[stopper, logger, model_saver])]
+    ft_granularity = 24
     for trained_layers_idx in range(topnn_nlayers + ft_granularity, topnn_nlayers + base_model_nlayers + 1, ft_granularity):
         histories += train_top_n_layers(
             model=custom_model,
