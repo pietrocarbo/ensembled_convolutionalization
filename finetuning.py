@@ -54,7 +54,7 @@ if top_net == dense3:
 
 elif top_net == denseLRBN:
     x = GlobalAveragePooling2D()(base_model_output)
-    x = Dense(4096, kernel_initializer='he_uniform', bias_initializer="he_uniform", activation=LeakyReLU(), kernel_regularizer=l2(.0005), bias_regularizer=l2(.0005))(x)
+    x = Dense(4096, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005), bias_regularizer=l2(.0005))(x)
     x = LeakyReLU()(x)
     x = BatchNormalization()(x)
     x = Dropout(.4)(x)
