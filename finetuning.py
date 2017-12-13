@@ -10,9 +10,9 @@ import keras
 from keras.preprocessing.image import ImageDataGenerator
 from keras.layers import GlobalAveragePooling2D, Dense, Dropout, BatchNormalization, Activation
 from keras.layers.advanced_activations import LeakyReLU, PReLU
+from keras.activations import selu
 from keras.models import Model
 from keras.regularizers import l2
-from keras.activations import selu
 
 from lib.plot_utils import save_acc_loss_plots
 from lib.randomization import lower_randomization_effects
@@ -26,11 +26,11 @@ memory_growth_config()
 from keras.applications.resnet50 import preprocess_input
 model_name = 'xception'
 
-base_model = keras.applications.vgg19.VGG19(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
+# base_model = keras.applications.vgg19.VGG19(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
 
 # 77% - 1dense - 32bs - base_model = keras.applications.resnet50.ResNet50(input_shape=(224, 224, 3), include_top=False, weights='imagenet')
 # 76% - 3dens - 32bs - base_model = keras.applications.mobilenet.MobileNet(input_shape=(224, 224, 3), alpha=1.0, depth_multiplier=1, dropout=1e-3, include_top=False, weights='imagenet')
-# 42% - 3dense - 32bs - base_model = keras.applications.xception.Xception(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
+base_model = keras.applications.xception.Xception(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
 
 # base_model = keras.applications.inception_v3.InceptionV3(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
 # base_model = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
