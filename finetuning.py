@@ -8,7 +8,7 @@ import tensorflow as tf
 
 import keras
 from keras.preprocessing.image import ImageDataGenerator
-from keras.layers import GlobalAveragePooling2D, Dense, Dropout, Flatten, BatchNormalization
+from keras.layers import GlobalAveragePooling2D, Dense, Dropout, BatchNormalization, Activation
 from keras.layers.advanced_activations import LeakyReLU, PReLU
 from keras.models import Model
 from keras.regularizers import l2
@@ -25,45 +25,54 @@ memory_growth_config()
 
 from keras.applications.resnet50 import preprocess_input
 model_name = 'xception'
-base_model = keras.applications.xception.Xception(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
 
-# 77% - 168 layers - 1dense - 32bs- base_model = keras.applications.resnet50.ResNet50(input_shape=(224, 224, 3), include_top=False, weights='imagenet')
-# 76% - 88 layers - 3dens - 32bs- base_model = keras.applications.mobilenet.MobileNet(input_shape=(224, 224, 3), alpha=1.0, depth_multiplier=1, dropout=1e-3, include_top=False, weights='imagenet')
+base_model = keras.applications.vgg19.VGG19(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
 
-# base_model = keras.applications.vgg19.VGG19(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
+# 77% - 1dense - 32bs - base_model = keras.applications.resnet50.ResNet50(input_shape=(224, 224, 3), include_top=False, weights='imagenet')
+# 76% - 3dens - 32bs - base_model = keras.applications.mobilenet.MobileNet(input_shape=(224, 224, 3), alpha=1.0, depth_multiplier=1, dropout=1e-3, include_top=False, weights='imagenet')
+# 42% - 3dense - 32bs - base_model = keras.applications.xception.Xception(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
+
 # base_model = keras.applications.inception_v3.InceptionV3(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
 # base_model = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
 
-model_nlayers = len(base_model.layers)
+base_model_nlayers = len(base_model.layers)
 num_classes = 101
 
 base_model_output = base_model.output
-x = GlobalAveragePooling2D()(base_model_output)
 
-topnn_nlayers = 6  # global pooling/dropout layers count as 1 layer
-if topnn_nlayers == 6:
+dense3, denseLRBN, dense1, *_ = range(10)
+top_net = denseLRBN
+
+if top_net == dense3:
+    x = GlobalAveragePooling2D()(base_model_output)
     x = Dense(512, activation='relu', name='fc-1')(x)
     x = Dropout(0.5)(x)
     x = Dense(256, activation='relu', name='fc-2')(x)
     x = Dropout(0.5)(x)
     out = Dense(num_classes, activation='softmax', name='output_layer')(x)
-elif topnn_nlayers == 3:
-    pass
-    x = Dense(4096, kernel_initializer='he_uniform', bias_initializer="he_uniform", activation=LeakyReLU(), kernel_regularizer=l2(.0005))(x)
+    topnn_nlayers = 6  # global pooling/dropout layers count as 1 layer
+
+elif top_net == denseLRBN:
+    x = GlobalAveragePooling2D()(base_model_output)
+    x = Dense(4096, kernel_initializer='he_uniform', bias_initializer="he_uniform", activation=LeakyReLU(), kernel_regularizer=l2(.0005), bias_regularizer=l2(.0005))(x)
+    x = LeakyReLU()(x)
     x = BatchNormalization()(x)
     x = Dropout(.4)(x)
-    x = Flatten()(x)
-    predictions = Dense(num_classes, kernel_initializer='he_uniform', bias_initializer="he_uniform", activation='softmax')(x)
-elif topnn_nlayers == 2:
+    out = Dense(num_classes, kernel_initializer='he_uniform', bias_initializer="he_uniform", activation='softmax')(x)
+    topnn_nlayers = 6
+
+elif top_net == dense1:
+    x = GlobalAveragePooling2D()(base_model_output)
     out = Dense(num_classes, activation='softmax', name='output_layer')(x)
+    topnn_nlayers = 2
+
 else:
     raise ValueError('Unspecified top neural network architecture')
 
 custom_model = Model(inputs=base_model.input, outputs=out)
-# print(custom_model.summary())
+print('Custom model is \n' + custom_model.summary())
 
 batch_size = int(sys.argv[1]) if len(sys.argv) > 1 else 32
-print('Batch size is ' + str(batch_size))
 IMG_WIDTH = 224
 IMG_HEIGHT = 224
 
@@ -108,6 +117,7 @@ def train_top_n_layers(model, threshold_trainability, epochs, optimizer, batch_s
         target_size=(IMG_WIDTH, IMG_HEIGHT),
         batch_size=batch_size,
         class_mode='categorical')
+    print('Batch size is ' + str(batch_size))
 
     custom_model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
     keras.backend.get_session().run(tf.global_variables_initializer())
@@ -173,16 +183,44 @@ train_time = time.time()
 with open(os.path.join(os.getcwd(), 'models', model_arch_file), 'w') as outfile:
     json.dump(json.loads(custom_model.to_json()), outfile, indent=2)
 
-ft_type = 0
-if ft_type == 0:
-    histories = [train_top_n_layers(custom_model, topnn_nlayers, epochs_fc, rmsprop, batch_size, [stopper, logger, model_saver], max_queue_size=10)]
-    histories += train_top_n_layers(custom_model, 100, epochs_ft, sgd, percentage(batch_size, 80), [stopper, logger, model_saver], max_queue_size=10)
+twopass, bottomup, *_ = range(10)
+ft_type = twopass
 
-elif ft_type == 1:
-    histories = [train_top_n_layers(custom_model, topnn_nlayers, epochs_fc, rmsprop, [stopper, logger, model_saver])]
-    for trained_layers_idx in range(topnn_nlayers + ft_granularity, topnn_nlayers + model_nlayers + 1, ft_granularity):
-        histories += train_top_n_layers(custom_model, trained_layers_idx, epochs_ft, adam, [stopper, logger, model_saver])
+if ft_type == twopass:
+    histories = [train_top_n_layers(
+        model=custom_model,
+        threshold_trainability=topnn_nlayers,
+        epochs=epochs_fc,
+        optimizer=rmsprop,
+        batch_size=batch_size,
+        callbacks=[stopper, logger, model_saver],
+        max_queue_size=10)]
+    histories += train_top_n_layers(
+        model=custom_model,
+        threshold_trainability=percentage(base_model_nlayers+topnn_nlayers, 50),
+        epochs=epochs_ft,
+        optimizer=sgd,
+        batch_size=percentage(batch_size, 80),
+        callbacks=[stopper, logger, model_saver],
+        max_queue_size=10)
 
+elif ft_type == bottomup:
+    histories = [train_top_n_layers(
+        model=custom_model,
+        threshold_trainability=topnn_nlayers,
+        epochs=epochs_fc,
+        optimizer=rmsprop,
+        callbacks=[stopper, logger, model_saver])]
+    for trained_layers_idx in range(topnn_nlayers + ft_granularity, topnn_nlayers + base_model_nlayers + 1, ft_granularity):
+        histories += train_top_n_layers(
+            model=custom_model,
+            threshold_trainability=trained_layers_idx,
+            epochs=epochs_ft,
+            optimizer=adam,
+            callbacks=[stopper, logger, model_saver])
+
+else:
+    raise ValueError('Unspecified training technique')
 
 print('Total training time {0:.2f} minutes'.format(-(train_time - time.time()) / 60))
 save_acc_loss_plots(histories,
