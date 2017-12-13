@@ -70,7 +70,8 @@ else:
     raise ValueError('Unspecified top neural network architecture')
 
 custom_model = Model(inputs=base_model.input, outputs=out)
-print('Custom model is \n' + custom_model.summary())
+print('Custom model structure')
+custom_model.summary()
 
 batch_size = int(sys.argv[1]) if len(sys.argv) > 1 else 32
 IMG_WIDTH = 224
