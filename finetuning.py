@@ -56,7 +56,7 @@ elif TOP_NET_ARCH == vgg19:
     x = Dropout(0.5)(x)
     x = Dense(4096, kernel_initializer='glorot_normal', bias_initializer="zeros", activation='relu', kernel_regularizer=l2(.0005), name="fc-2-glorot-l2")(x)
     x = Dropout(0.5)(x)
-    out = x = Dense(num_classes, activation="softmax", name='output_layer')(x)
+    out = Dense(num_classes, activation="softmax", name='output_layer')(x)
     topnn_nlayers = 6
 
 elif TOP_NET_ARCH == denseLRBN:
