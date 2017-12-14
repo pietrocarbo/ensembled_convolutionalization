@@ -21,7 +21,7 @@ from lib.memory_management import memory_growth_config
 
 
 lower_randomization_effects()
-memory_growth_config()
+memory_growth_config(memory_fraction=0.9)
 
 from keras.applications.vgg19 import preprocess_input
 model_name = 'vgg19'
