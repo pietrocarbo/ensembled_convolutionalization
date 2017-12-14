@@ -19,13 +19,12 @@ from lib.randomization import lower_randomization_effects
 from lib.callbacks import checkpointer, early_stopper, lr_reducer, csv_logger
 from lib.memory_management import memory_growth_config
 
-
 lower_randomization_effects()
-memory_growth_config(memory_fraction=0.9)
+memory_growth_config()
 
-from keras.applications.vgg19 import preprocess_input
-model_name = 'vgg19'
-base_model = keras.applications.vgg19.VGG19(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
+from keras.applications.vgg16 import preprocess_input
+model_name = 'vgg16'
+base_model = keras.applications.vgg16.VGG16(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
 
 # 77% - 1dense - 32bs - base_model = keras.applications.resnet50.ResNet50(input_shape=(224, 224, 3), include_top=False, weights='imagenet')
 # 76% - 3dens - 32bs - base_model = keras.applications.mobilenet.MobileNet(input_shape=(224, 224, 3), alpha=1.0, depth_multiplier=1, dropout=1e-3, include_top=False, weights='imagenet')
@@ -34,12 +33,12 @@ base_model = keras.applications.vgg19.VGG19(include_top=False, weights='imagenet
 # base_model = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
 
 base_model_nlayers = len(base_model.layers)
-num_classes = 101
-
 base_model_output = base_model.output
 
-dense3, denseLRBN, dense1, vgg19, *_ = range(10)
-TOP_NET_ARCH = vgg19
+
+num_classes = 101
+dense3, dense2LRBN, dense1, vgg19, *_ = range(10)
+TOP_NET_ARCH = dense1
 
 if TOP_NET_ARCH == dense3:
     x = GlobalAveragePooling2D()(base_model_output)
@@ -59,7 +58,7 @@ elif TOP_NET_ARCH == vgg19:
     out = Dense(num_classes, activation="softmax", name='output_layer')(x)
     topnn_nlayers = 6
 
-elif TOP_NET_ARCH == denseLRBN:
+elif TOP_NET_ARCH == dense2LRBN:
     x = GlobalAveragePooling2D()(base_model_output)
     x = Dense(4096, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005), bias_regularizer=l2(.0005))(x)
     x = LeakyReLU()(x)
@@ -86,7 +85,11 @@ IMG_HEIGHT = 224
 
 data_augmentation_level = 1  # 0, 1, 2, ..
 
-dict_augmentation = {"preprocessing_function": preprocess_input}  # , "rescale": 1./255}
+dict_augmentation = dict(preprocessing_function=preprocess_input
+                       #  rescale=1./255
+                       # "featurewise_center":True,
+                       # "featurewise_std_normalization":True
+)
 
 if data_augmentation_level > 0:
     dict_augmentation["horizontal_flip"] = True
@@ -104,10 +107,10 @@ if data_augmentation_level > 3:
     dict_augmentation["rotation_range"] = 40
 
 train_datagen = ImageDataGenerator(**dict_augmentation)
-test_datagen = ImageDataGenerator(**dict_augmentation)
+test_datagen = ImageDataGenerator(dict(preprocessing_function=preprocess_input))
 
 
-def train_top_n_layers(model, threshold_trainability, epochs, optimizer, batch_size=32, callbacks=None, train_steps=None, val_steps=None, test_epoch_end=False, max_queue_size=10):
+def train_top_n_layers(model, threshold_trainability, epochs, optimizer, batch_size=32, callbacks=None, train_steps=None, val_steps=None, test_epoch_end=False):
     for i in range(len(model.layers)):
         if i < threshold_trainability:
             model.layers[i].trainable = False
@@ -127,7 +130,7 @@ def train_top_n_layers(model, threshold_trainability, epochs, optimizer, batch_s
         class_mode='categorical')
     print('Batch size is ' + str(batch_size))
 
-    custom_model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy', 'top_k_categorical_accuracy'])
+    custom_model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['categorical_accuracy', 'top_k_categorical_accuracy'])
     keras.backend.get_session().run(tf.global_variables_initializer())
 
     start = time.time()
@@ -136,8 +139,7 @@ def train_top_n_layers(model, threshold_trainability, epochs, optimizer, batch_s
                                   epochs=epochs, verbose=1,
                                   validation_data=validation_generator,
                                   validation_steps=val_steps or 25250 // batch_size,
-                                  callbacks=callbacks,
-                                  max_queue_size=max_queue_size)
+                                  callbacks=callbacks)
     print('Training time {0:.2f} minutes'.format(-(start - time.time()) / 60))
 
     if test_epoch_end:
@@ -170,7 +172,7 @@ plot_loss_file = model_name + '_ft_loss' + timestamp
 
 # optimizers
 rmsprop = 'rmsprop'
-sgd = keras.optimizers.SGD(lr=1e-1, decay=1e-6, momentum=0.9, nesterov=True)
+sgd = keras.optimizers.SGD(lr=1e-2, decay=1e-6, momentum=0.9, nesterov=True)
 adam = 'adam'
 
 # callbacks
@@ -200,18 +202,16 @@ if FT_TECNIQUE == twopass:
         model=custom_model,
         threshold_trainability=topnn_nlayers,
         epochs=epochs_fc,
-        optimizer=rmsprop,
+        optimizer=sgd,
         batch_size=batch_size,
-        callbacks=[stopper, logger, model_saver],
-        max_queue_size=10)]
+        callbacks=[stopper, logger, model_saver, lr_reduce])]
     histories.append(train_top_n_layers(
         model=custom_model,
         threshold_trainability=percentage(base_model_nlayers+topnn_nlayers, 50),
         epochs=epochs_ft,
         optimizer=sgd,
         batch_size=batch_size,
-        callbacks=[stopper, logger, model_saver],
-        max_queue_size=10))
+        callbacks=[stopper, logger, model_saver, lr_reduce]))
 
 elif FT_TECNIQUE == bottomup:
     histories = [train_top_n_layers(
@@ -221,8 +221,8 @@ elif FT_TECNIQUE == bottomup:
         optimizer=adam,
         batch_size=batch_size,
         callbacks=[stopper, logger, model_saver, lr_reduce])]
-    granularity = percentage(base_model_nlayers, 4)
-    for trained_layers_idx in range(topnn_nlayers + granularity, topnn_nlayers + base_model_nlayers + 1, granularity):
+    ft_steps = base_model_nlayers // 4
+    for trained_layers_idx in range(topnn_nlayers + ft_steps, topnn_nlayers + base_model_nlayers + 1, ft_steps):
         histories.append(train_top_n_layers(
             model=custom_model,
             threshold_trainability=trained_layers_idx,
