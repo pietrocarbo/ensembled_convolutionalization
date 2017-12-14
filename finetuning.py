@@ -222,7 +222,7 @@ elif FT_TECNIQUE == bottomup:
         model=custom_model,
         threshold_trainability=topnn_nlayers,
         epochs=epochs_fc,
-        optimizer=sgd,
+        optimizer=adam,
         batch_size=batch_size,
         callbacks=[stopper, logger, model_saver, lr_reduce])]
     granularity = percentage(base_model_nlayers, 4)
