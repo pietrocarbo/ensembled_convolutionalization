@@ -195,7 +195,7 @@ with open(os.path.join(os.getcwd(), 'models', model_arch_file), 'w') as outfile:
     json.dump(json.loads(custom_model.to_json()), outfile, indent=2)
 
 twopass, bottomup, *_ = range(10)
-FT_TECNIQUE = bottomup
+FT_TECNIQUE = twopass
 
 if FT_TECNIQUE == twopass:
     histories = [train_top_n_layers(
