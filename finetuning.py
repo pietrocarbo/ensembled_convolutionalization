@@ -8,7 +8,7 @@ import tensorflow as tf
 
 import keras
 from keras.preprocessing.image import ImageDataGenerator
-from keras.layers import GlobalAveragePooling2D, Dense, Dropout, BatchNormalization, Activation
+from keras.layers import GlobalAveragePooling2D, Dense, Dropout, BatchNormalization, Activation, Flatten
 from keras.layers.advanced_activations import LeakyReLU, PReLU
 from keras.activations import selu
 from keras.models import Model
@@ -23,15 +23,13 @@ from lib.memory_management import memory_growth_config
 lower_randomization_effects()
 memory_growth_config()
 
-from keras.applications.resnet50 import preprocess_input
-model_name = 'xception'
-
-# base_model = keras.applications.vgg19.VGG19(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
+from keras.applications.vgg19 import preprocess_input
+model_name = 'vgg19'
+base_model = keras.applications.vgg19.VGG19(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
 
 # 77% - 1dense - 32bs - base_model = keras.applications.resnet50.ResNet50(input_shape=(224, 224, 3), include_top=False, weights='imagenet')
 # 76% - 3dens - 32bs - base_model = keras.applications.mobilenet.MobileNet(input_shape=(224, 224, 3), alpha=1.0, depth_multiplier=1, dropout=1e-3, include_top=False, weights='imagenet')
-base_model = keras.applications.xception.Xception(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
-
+# 43% - 3dLRBN - 30bs - base_model = keras.applications.xception.Xception(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
 # base_model = keras.applications.inception_v3.InceptionV3(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
 # base_model = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
 
@@ -40,10 +38,10 @@ num_classes = 101
 
 base_model_output = base_model.output
 
-dense3, denseLRBN, dense1, *_ = range(10)
-top_net = denseLRBN
+dense3, denseLRBN, dense1, vgg19, *_ = range(10)
+TOP_NET_ARCH = vgg19
 
-if top_net == dense3:
+if TOP_NET_ARCH == dense3:
     x = GlobalAveragePooling2D()(base_model_output)
     x = Dense(512, activation='relu', name='fc-1')(x)
     x = Dropout(0.5)(x)
@@ -52,16 +50,25 @@ if top_net == dense3:
     out = Dense(num_classes, activation='softmax', name='output_layer')(x)
     topnn_nlayers = 6  # global pooling/dropout layers count as 1 layer
 
-elif top_net == denseLRBN:
+elif TOP_NET_ARCH == vgg19:
+    x = Flatten(name='flatten')(base_model_output)
+    x = Dense(4096, kernel_initializer='glorot_normal', bias_initializer="zeros", activation='relu', kernel_regularizer=l2(.0005), name="fc-1-glorot-l2")(x)
+    x = Dropout(0.5)(x)
+    x = Dense(4096, kernel_initializer='glorot_normal', bias_initializer="zeros", activation='relu', kernel_regularizer=l2(.0005), name="fc-2-glorot-l2")(x)
+    x = Dropout(0.5)(x)
+    out = x = Dense(num_classes, activation="softmax", name='output_layer')(x)
+    topnn_nlayers = 6
+
+elif TOP_NET_ARCH == denseLRBN:
     x = GlobalAveragePooling2D()(base_model_output)
     x = Dense(4096, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005), bias_regularizer=l2(.0005))(x)
     x = LeakyReLU()(x)
     x = BatchNormalization()(x)
     x = Dropout(.4)(x)
-    out = Dense(num_classes, kernel_initializer='he_uniform', bias_initializer="he_uniform", activation='softmax')(x)
+    out = Dense(num_classes, kernel_initializer='he_uniform', bias_initializer="he_uniform", activation='softmax', name='output_layer')(x)
     topnn_nlayers = 6
 
-elif top_net == dense1:
+elif TOP_NET_ARCH == dense1:
     x = GlobalAveragePooling2D()(base_model_output)
     out = Dense(num_classes, activation='softmax', name='output_layer')(x)
     topnn_nlayers = 2
@@ -77,9 +84,9 @@ batch_size = int(sys.argv[1]) if len(sys.argv) > 1 else 32
 IMG_WIDTH = 224
 IMG_HEIGHT = 224
 
-data_augmentation_level = 0  # 1, 2, ..
+data_augmentation_level = 1  # 0, 1, 2, ..
 
-dict_augmentation = {"preprocessing_function": preprocess_input, "rescale": 1./255}
+dict_augmentation = {"preprocessing_function": preprocess_input}  # , "rescale": 1./255}
 
 if data_augmentation_level > 0:
     dict_augmentation["horizontal_flip"] = True
@@ -120,7 +127,7 @@ def train_top_n_layers(model, threshold_trainability, epochs, optimizer, batch_s
         class_mode='categorical')
     print('Batch size is ' + str(batch_size))
 
-    custom_model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
+    custom_model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy', 'top_k_categorical_accuracy'])
     keras.backend.get_session().run(tf.global_variables_initializer())
 
     start = time.time()
@@ -152,21 +159,23 @@ def percentage(whole, part):
     return (whole * part) // 100
 
 
+timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
+
 # filenames
-model_arch_file = model_name + '_architecture_' + time.strftime("%Y-%m-%d_%H-%M-%S") + '.json'
-logfile = model_name + '_ft_' + time.strftime("%Y-%m-%d_%H-%M-%S") + '.csv'
+model_arch_file = model_name + '_architecture_' + timestamp + '.json'
+logfile = model_name + '_ft_' + timestamp + '.csv'
 checkpoints_filename = model_name + '_ft_weights_acc{val_acc:.2f}_e{epoch:d}_' + time.strftime("%Y-%m-%d_%H-%M-%S") + '.hdf5'
-plot_acc_file = model_name + '_ft_acc' + time.strftime("%Y-%m-%d_%H-%M-%S")
-plot_loss_file = model_name + '_ft_loss' + time.strftime("%Y-%m-%d_%H-%M-%S")
+plot_acc_file = model_name + '_ft_acc' + timestamp
+plot_loss_file = model_name + '_ft_loss' + timestamp
 
 # optimizers
 rmsprop = 'rmsprop'
-sgd = keras.optimizers.SGD(lr=1e-4, decay=1e-6, momentum=0.9, nesterov=True)
+sgd = keras.optimizers.SGD(lr=1e-1, decay=1e-6, momentum=0.9, nesterov=True)
 adam = 'adam'
 
 # callbacks
-stopper = early_stopper(monitor='val_loss', patience=5)
-lr_reduce = lr_reducer(factor=0.1, patience=4)
+stopper = early_stopper(monitor='val_acc', patience=5)
+lr_reduce = lr_reducer(factor=0.1, patience=3)
 model_saver = checkpointer(checkpoints_filename)
 logger = csv_logger(logfile)
 
@@ -184,9 +193,9 @@ with open(os.path.join(os.getcwd(), 'models', model_arch_file), 'w') as outfile:
     json.dump(json.loads(custom_model.to_json()), outfile, indent=2)
 
 twopass, bottomup, *_ = range(10)
-ft_type = twopass
+FT_TECNIQUE = bottomup
 
-if ft_type == twopass:
+if FT_TECNIQUE == twopass:
     histories = [train_top_n_layers(
         model=custom_model,
         threshold_trainability=topnn_nlayers,
@@ -195,30 +204,32 @@ if ft_type == twopass:
         batch_size=batch_size,
         callbacks=[stopper, logger, model_saver],
         max_queue_size=10)]
-    histories += train_top_n_layers(
+    histories.append(train_top_n_layers(
         model=custom_model,
         threshold_trainability=percentage(base_model_nlayers+topnn_nlayers, 50),
         epochs=epochs_ft,
         optimizer=sgd,
-        batch_size=percentage(batch_size, 80),
+        batch_size=batch_size,
         callbacks=[stopper, logger, model_saver],
-        max_queue_size=10)
+        max_queue_size=10))
 
-elif ft_type == bottomup:
+elif FT_TECNIQUE == bottomup:
     histories = [train_top_n_layers(
         model=custom_model,
         threshold_trainability=topnn_nlayers,
         epochs=epochs_fc,
-        optimizer=rmsprop,
-        callbacks=[stopper, logger, model_saver])]
-    ft_granularity = 24
-    for trained_layers_idx in range(topnn_nlayers + ft_granularity, topnn_nlayers + base_model_nlayers + 1, ft_granularity):
-        histories += train_top_n_layers(
+        optimizer=sgd,
+        batch_size=batch_size,
+        callbacks=[stopper, logger, model_saver, lr_reduce])]
+    granularity = percentage(base_model_nlayers, 4)
+    for trained_layers_idx in range(topnn_nlayers + granularity, topnn_nlayers + base_model_nlayers + 1, granularity):
+        histories.append(train_top_n_layers(
             model=custom_model,
             threshold_trainability=trained_layers_idx,
             epochs=epochs_ft,
-            optimizer=adam,
-            callbacks=[stopper, logger, model_saver])
+            optimizer=sgd,
+            batch_size=batch_size,
+            callbacks=[stopper, logger, model_saver, lr_reduce]))
 
 else:
     raise ValueError('Unspecified training technique')
