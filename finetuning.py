@@ -39,7 +39,7 @@ base_model_output = base_model.output
 
 num_classes = 101
 dense3, dense2LRBN, dense1, vgg19, dense2, *_ = range(10)
-TOP_NET_ARCH = dense1
+TOP_NET_ARCH = dense2
 
 if TOP_NET_ARCH == dense3:
     x = GlobalAveragePooling2D()(base_model_output)
