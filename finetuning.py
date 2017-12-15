@@ -24,7 +24,7 @@ memory_growth_config()
 
 from keras.applications.inception_v3 import preprocess_input
 model_name = 'incv3'
-base_model = keras.applications.inception_v3.InceptionV3(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
+base_model = keras.applications.inception_v3.InceptionV3(include_top=False, weights='imagenet')
 
 
 # 77% - 1dense - 32bs - base_model = keras.applications.resnet50.ResNet50(input_shape=(224, 224, 3), include_top=False, weights='imagenet')
@@ -38,7 +38,7 @@ base_model_output = base_model.output
 
 
 num_classes = 101
-dense3, dense2LRBN, dense1, vgg19, *_ = range(10)
+dense3, dense2LRBN, dense1, vgg19, dense2, *_ = range(10)
 TOP_NET_ARCH = dense1
 
 if TOP_NET_ARCH == dense3:
@@ -68,6 +68,12 @@ elif TOP_NET_ARCH == dense2LRBN:
     out = Dense(num_classes, kernel_initializer='he_uniform', bias_initializer="he_uniform", activation='softmax', name='output_layer')(x)
     topnn_nlayers = 6
 
+elif TOP_NET_ARCH == dense2:
+    x = GlobalAveragePooling2D()(base_model_output)
+    x = Dense(1024, activation='relu')(x)
+    out = Dense(num_classes, activation='softmax', name='output_layer')(x)     
+    topnn_nlayers = 3
+
 elif TOP_NET_ARCH == dense1:
     x = GlobalAveragePooling2D()(base_model_output)
     out = Dense(num_classes, activation='softmax', name='output_layer')(x)
@@ -80,9 +86,9 @@ custom_model = Model(inputs=base_model.input, outputs=out)
 print('Custom model structure')
 custom_model.summary()
 
-IMG_WIDTH = 224
-IMG_HEIGHT = 224
-data_augmentation_level = 1
+IMG_WIDTH = 299
+IMG_HEIGHT = 299
+data_augmentation_level = 0
 
 dict_augmentation = dict(preprocessing_function=preprocess_input)
 test_datagen = ImageDataGenerator(**dict_augmentation)
@@ -167,7 +173,7 @@ plot_loss_file = model_name + '_ft_loss' + timestamp
 
 # optimizers
 rmsprop = 'rmsprop'
-sgd = keras.optimizers.SGD(lr=1e-2, decay=1e-6, momentum=0.9, nesterov=True)
+sgd = keras.optimizers.SGD(lr=1e-4, decay=1e-6, momentum=0.9, nesterov=True)
 adam = 'adam'
 
 # callbacks
@@ -198,7 +204,7 @@ if FT_TECNIQUE == twopass:
         model=custom_model,
         threshold_trainability=topnn_nlayers,
         epochs=epochs_fc,
-        optimizer=sgd,
+        optimizer=rmsprop,
         batch_size=batch_size,
         train_steps=train_steps, val_steps=val_steps,
         callbacks=[stopper, logger, model_saver, lr_reduce])]
