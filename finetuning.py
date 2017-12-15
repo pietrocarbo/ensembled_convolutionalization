@@ -176,9 +176,9 @@ sgd = keras.optimizers.SGD(lr=1e-2, decay=1e-6, momentum=0.9, nesterov=True)
 adam = 'adam'
 
 # callbacks
-stopper = early_stopper(monitor='val_acc', patience=5)
+stopper = early_stopper(monitor='val_categorical_accuracy', patience=5)
 lr_reduce = lr_reducer(factor=0.1, patience=3)
-model_saver = checkpointer(checkpoints_filename)
+model_saver = checkpointer(monitor="val_categorical_accuracy", checkpoints_filename)
 logger = csv_logger(logfile)
 
 # training parameters
