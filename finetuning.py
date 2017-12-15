@@ -166,7 +166,7 @@ timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
 # filenames
 model_arch_file = model_name + '_architecture_' + timestamp + '.json'
 logfile = model_name + '_ft_' + timestamp + '.csv'
-checkpoints_filename = model_name + '_ft_weights_acc{val_acc:.2f}_e{epoch:d}_' + time.strftime("%Y-%m-%d_%H-%M-%S") + '.hdf5'
+checkpoints_filename = model_name + '_ft_weights_acc{val_categorical_accuracy:.2f}_e{epoch:d}_' + time.strftime("%Y-%m-%d_%H-%M-%S") + '.hdf5'
 plot_acc_file = model_name + '_ft_acc' + timestamp
 plot_loss_file = model_name + '_ft_loss' + timestamp
 
