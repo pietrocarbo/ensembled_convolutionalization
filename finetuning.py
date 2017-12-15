@@ -22,14 +22,15 @@ from lib.memory_management import memory_growth_config
 lower_randomization_effects()
 memory_growth_config()
 
-from keras.applications.vgg16 import preprocess_input
-model_name = 'vgg16'
-base_model = keras.applications.vgg16.VGG16(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
+from keras.applications.inception_v3 import preprocess_input
+model_name = 'incv3'
+base_model = keras.applications.inception_v3.InceptionV3(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
+
 
 # 77% - 1dense - 32bs - base_model = keras.applications.resnet50.ResNet50(input_shape=(224, 224, 3), include_top=False, weights='imagenet')
 # 76% - 3dens - 32bs - base_model = keras.applications.mobilenet.MobileNet(input_shape=(224, 224, 3), alpha=1.0, depth_multiplier=1, dropout=1e-3, include_top=False, weights='imagenet')
 # 43% - 3dLRBN - 30bs - base_model = keras.applications.xception.Xception(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
-# base_model = keras.applications.inception_v3.InceptionV3(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
+# 1% - base_model = keras.applications.vgg16.VGG16(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
 # base_model = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
 
 base_model_nlayers = len(base_model.layers)
@@ -79,17 +80,12 @@ custom_model = Model(inputs=base_model.input, outputs=out)
 print('Custom model structure')
 custom_model.summary()
 
-batch_size = int(sys.argv[1]) if len(sys.argv) > 1 else 32
 IMG_WIDTH = 224
 IMG_HEIGHT = 224
+data_augmentation_level = 1
 
-data_augmentation_level = 1  # 0, 1, 2, ..
-
-dict_augmentation = dict(preprocessing_function=preprocess_input
-                       #  rescale=1./255
-                       # "featurewise_center":True,
-                       # "featurewise_std_normalization":True
-)
+dict_augmentation = dict(preprocessing_function=preprocess_input)
+test_datagen = ImageDataGenerator(**dict_augmentation)
 
 if data_augmentation_level > 0:
     dict_augmentation["horizontal_flip"] = True
@@ -107,7 +103,6 @@ if data_augmentation_level > 3:
     dict_augmentation["rotation_range"] = 40
 
 train_datagen = ImageDataGenerator(**dict_augmentation)
-test_datagen = ImageDataGenerator(dict(preprocessing_function=preprocess_input))
 
 
 def train_top_n_layers(model, threshold_trainability, epochs, optimizer, batch_size=32, callbacks=None, train_steps=None, val_steps=None, test_epoch_end=False):
@@ -133,13 +128,13 @@ def train_top_n_layers(model, threshold_trainability, epochs, optimizer, batch_s
     custom_model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['categorical_accuracy', 'top_k_categorical_accuracy'])
     keras.backend.get_session().run(tf.global_variables_initializer())
 
-    start = time.time()
     history = model.fit_generator(train_generator,
-                                  steps_per_epoch=train_steps or 75750 // batch_size,
+                                  steps_per_epoch=train_steps,
                                   epochs=epochs, verbose=1,
                                   validation_data=validation_generator,
-                                  validation_steps=val_steps or 25250 // batch_size,
+                                  validation_steps=val_steps,
                                   callbacks=callbacks)
+    start = time.time()
     print('Training time {0:.2f} minutes'.format(-(start - time.time()) / 60))
 
     if test_epoch_end:
@@ -182,8 +177,9 @@ model_saver = checkpointer(checkpoints_filename, monitor="val_categorical_accura
 logger = csv_logger(logfile)
 
 # training parameters
-train_steps = None  # None to consider all the training set / 1 to test stuff
-val_steps = None  # None to consider all the validation set / 1 to test stuff
+batch_size = int(sys.argv[1]) if len(sys.argv) > 1 else 32
+train_steps = None or 75750 // batch_size
+val_steps = None or 25250 // batch_size
 epochs_fc = 500
 epochs_ft = 200
 
@@ -204,6 +200,7 @@ if FT_TECNIQUE == twopass:
         epochs=epochs_fc,
         optimizer=sgd,
         batch_size=batch_size,
+        train_steps=train_steps, val_steps=val_steps,
         callbacks=[stopper, logger, model_saver, lr_reduce])]
     histories.append(train_top_n_layers(
         model=custom_model,
@@ -211,6 +208,7 @@ if FT_TECNIQUE == twopass:
         epochs=epochs_ft,
         optimizer=sgd,
         batch_size=batch_size,
+        train_steps=train_steps, val_steps=val_steps,
         callbacks=[stopper, logger, model_saver, lr_reduce]))
 
 elif FT_TECNIQUE == bottomup:
@@ -220,6 +218,7 @@ elif FT_TECNIQUE == bottomup:
         epochs=epochs_fc,
         optimizer=adam,
         batch_size=batch_size,
+        train_steps=train_steps, val_steps=val_steps,
         callbacks=[stopper, logger, model_saver, lr_reduce])]
     ft_steps = base_model_nlayers // 4
     for trained_layers_idx in range(topnn_nlayers + ft_steps, topnn_nlayers + base_model_nlayers + 1, ft_steps):
@@ -229,6 +228,7 @@ elif FT_TECNIQUE == bottomup:
             epochs=epochs_ft,
             optimizer=sgd,
             batch_size=batch_size,
+            train_steps=train_steps, val_steps=val_steps,
             callbacks=[stopper, logger, model_saver, lr_reduce]))
 
 else:

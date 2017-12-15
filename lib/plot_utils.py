@@ -13,11 +13,11 @@ def save_acc_loss_plots(histories, acc_fn, loss_fn):
     train_acc = []
     training_steps = len(histories)
     for i in range(training_steps):
-        epochs_per_step.append(len(histories[i].history['val_acc']))
-        for j in range(len(histories[i].history['val_acc'])):
-            train_acc.append(histories[i].history['acc'][j])
+        epochs_per_step.append(len(histories[i].history['val_categorical_accuracy']))
+        for j in range(len(histories[i].history['val_categorical_accuracy'])):
+            train_acc.append(histories[i].history['categorical_accuracy'][j])
             train_loss.append(histories[i].history['loss'][j])
-            val_acc.append(histories[i].history['val_acc'][j])
+            val_acc.append(histories[i].history['val_categorical_accuracy'][j])
             val_loss.append(histories[i].history['val_loss'][j])
 
     x = range(len(train_acc))
