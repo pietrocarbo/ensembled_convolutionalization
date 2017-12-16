@@ -39,7 +39,7 @@ base_model_output = base_model.output
 
 num_classes = 101
 dense3, dense2LRBN, dense1, vgg19, dense2, *_ = range(10)
-TOP_NET_ARCH = dense1
+TOP_NET_ARCH = dense2LRBN
 
 if TOP_NET_ARCH == dense3:
     x = GlobalAveragePooling2D()(base_model_output)
@@ -61,7 +61,7 @@ elif TOP_NET_ARCH == vgg19:
 
 elif TOP_NET_ARCH == dense2LRBN:
     x = GlobalAveragePooling2D()(base_model_output)
-    x = Dense(4096, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005), bias_regularizer=l2(.0005))(x)
+    x = Dense(2048, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005), bias_regularizer=l2(.0005))(x)
     x = LeakyReLU()(x)
     x = BatchNormalization()(x)
     x = Dropout(.4)(x)
@@ -88,7 +88,7 @@ custom_model.summary()
 
 IMG_WIDTH = 299
 IMG_HEIGHT = 299
-data_augmentation_level = 0
+data_augmentation_level = 4
 
 dict_augmentation = dict(preprocessing_function=preprocess_input)
 test_datagen = ImageDataGenerator(**dict_augmentation)
@@ -134,13 +134,13 @@ def train_top_n_layers(model, threshold_trainability, epochs, optimizer, batch_s
     custom_model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['categorical_accuracy', 'top_k_categorical_accuracy'])
     keras.backend.get_session().run(tf.global_variables_initializer())
 
+    start = time.time()
     history = model.fit_generator(train_generator,
                                   steps_per_epoch=train_steps,
                                   epochs=epochs, verbose=1,
                                   validation_data=validation_generator,
                                   validation_steps=val_steps,
                                   callbacks=callbacks)
-    start = time.time()
     print('Training time {0:.2f} minutes'.format(-(start - time.time()) / 60))
 
     if test_epoch_end:
@@ -197,7 +197,7 @@ with open(os.path.join(os.getcwd(), 'models', model_arch_file), 'w') as outfile:
     json.dump(json.loads(custom_model.to_json()), outfile, indent=2)
 
 twopass, bottomup, *_ = range(10)
-FT_TECNIQUE = twopass
+FT_TECNIQUE = bottomup
 
 if FT_TECNIQUE == twopass:
     histories = [train_top_n_layers(
@@ -207,7 +207,7 @@ if FT_TECNIQUE == twopass:
         optimizer=rmsprop,
         batch_size=batch_size,
         train_steps=train_steps, val_steps=val_steps,
-        callbacks=[stopper, logger, model_saver, lr_reduce])]
+        callbacks=[stopper, logger, model_saver])]
     histories.append(train_top_n_layers(
         model=custom_model,
         threshold_trainability=percentage(base_model_nlayers+topnn_nlayers, 50),
@@ -222,11 +222,11 @@ elif FT_TECNIQUE == bottomup:
         model=custom_model,
         threshold_trainability=topnn_nlayers,
         epochs=epochs_fc,
-        optimizer=adam,
+        optimizer=rmsprop,
         batch_size=batch_size,
         train_steps=train_steps, val_steps=val_steps,
-        callbacks=[stopper, logger, model_saver, lr_reduce])]
-    ft_steps = base_model_nlayers // 4
+        callbacks=[stopper, logger, model_saver])]
+    ft_steps = base_model_nlayers // 10
     for trained_layers_idx in range(topnn_nlayers + ft_steps, topnn_nlayers + base_model_nlayers + 1, ft_steps):
         histories.append(train_top_n_layers(
             model=custom_model,
