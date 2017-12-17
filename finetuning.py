@@ -23,9 +23,9 @@ lower_randomization_effects()
 memory_growth_config()
 
 from keras.applications.inception_v3 import preprocess_input
+
 model_name = 'incv3'
 base_model = keras.applications.inception_v3.InceptionV3(include_top=False, weights='imagenet')
-
 
 # 77% - 1dense - 32bs - base_model = keras.applications.resnet50.ResNet50(input_shape=(224, 224, 3), include_top=False, weights='imagenet')
 # 76% - 3dens - 32bs - base_model = keras.applications.mobilenet.MobileNet(input_shape=(224, 224, 3), alpha=1.0, depth_multiplier=1, dropout=1e-3, include_top=False, weights='imagenet')
@@ -35,7 +35,6 @@ base_model = keras.applications.inception_v3.InceptionV3(include_top=False, weig
 
 base_model_nlayers = len(base_model.layers)
 base_model_output = base_model.output
-
 
 num_classes = 101
 dense3, dense3LRBN, dense1, vgg19, dense2, *_ = range(10)
@@ -52,30 +51,35 @@ if TOP_NET_ARCH == dense3:
 
 elif TOP_NET_ARCH == vgg19:
     x = Flatten(name='flatten')(base_model_output)
-    x = Dense(4096, kernel_initializer='glorot_normal', bias_initializer="zeros", activation='relu', kernel_regularizer=l2(.0005), name="fc-1-glorot-l2")(x)
+    x = Dense(4096, kernel_initializer='glorot_normal', bias_initializer="zeros", activation='relu',
+              kernel_regularizer=l2(.0005), name="fc-1-glorot-l2")(x)
     x = Dropout(0.5)(x)
-    x = Dense(4096, kernel_initializer='glorot_normal', bias_initializer="zeros", activation='relu', kernel_regularizer=l2(.0005), name="fc-2-glorot-l2")(x)
+    x = Dense(4096, kernel_initializer='glorot_normal', bias_initializer="zeros", activation='relu',
+              kernel_regularizer=l2(.0005), name="fc-2-glorot-l2")(x)
     x = Dropout(0.5)(x)
     out = Dense(num_classes, activation="softmax", name='output_layer')(x)
     topnn_nlayers = 6
 
 elif TOP_NET_ARCH == dense3LRBN:
     x = GlobalAveragePooling2D()(base_model_output)
-    x = Dense(1024, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005), bias_regularizer=l2(.0005))(x)
+    x = Dense(1024, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005),
+              bias_regularizer=l2(.0005))(x)
     x = LeakyReLU()(x)
     x = BatchNormalization()(x)
     x = Dropout(.5)(x)
-    x = Dense(512, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005), bias_regularizer=l2(.0005))(x)
+    x = Dense(512, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005),
+              bias_regularizer=l2(.0005))(x)
     x = LeakyReLU()(x)
     x = BatchNormalization()(x)
     x = Dropout(.5)(x)
-    out = Dense(num_classes, kernel_initializer='he_uniform', bias_initializer="he_uniform", activation='softmax', name='output_layer')(x)
+    out = Dense(num_classes, kernel_initializer='he_uniform', bias_initializer="he_uniform", activation='softmax',
+                name='output_layer')(x)
     topnn_nlayers = 9
 
 elif TOP_NET_ARCH == dense2:
     x = GlobalAveragePooling2D()(base_model_output)
     x = Dense(1024, activation='relu')(x)
-    out = Dense(num_classes, activation='softmax', name='output_layer')(x)     
+    out = Dense(num_classes, activation='softmax', name='output_layer')(x)
     topnn_nlayers = 3
 
 elif TOP_NET_ARCH == dense1:
@@ -115,13 +119,14 @@ if data_augmentation_level > 3:
 train_datagen = ImageDataGenerator(**dict_augmentation)
 
 
-def train_top_n_layers(model, threshold_train, epochs, optimizer, batch_size=32, callbacks=None, train_steps=None, val_steps=None, test_epoch_end=True):
+def train_top_n_layers(model, threshold_train, epochs, optimizer, batch_size=32, callbacks=None, train_steps=None,
+                       val_steps=None, test_epoch_end=True):
     training = freezed = 0
     for i in range(len(model.layers)):
         model.layers[i].trainable = False if i < threshold_train else True
-	training = training + 1 if i < threshold_train else training
-        freezed = freezed + 1 if i < threshold_train else freezed	
-    print('Training ' + training + ' on layers, ' + freezed + ' freezed layers')
+        training = training + 1 if i < threshold_train else training
+        freezed = freezed + 1 if i < threshold_train else freezed
+    print('Training on ' + training + ' layers, ' + freezed + ' freezed layers')
 
     train_generator = train_datagen.flow_from_directory(
         'dataset-ethz101food/train',
@@ -136,7 +141,8 @@ def train_top_n_layers(model, threshold_train, epochs, optimizer, batch_size=32,
         class_mode='categorical')
     print('Batch size is ' + str(batch_size))
 
-    custom_model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['categorical_accuracy', 'top_k_categorical_accuracy'])
+    custom_model.compile(loss='categorical_crossentropy', optimizer=optimizer,
+                         metrics=['categorical_accuracy', 'top_k_categorical_accuracy'])
     keras.backend.get_session().run(tf.global_variables_initializer())
 
     start = time.time()
@@ -172,7 +178,8 @@ timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
 # filenames
 model_arch_file = model_name + '_architecture_' + timestamp + '.json'
 logfile = model_name + '_ft_' + timestamp + '.csv'
-checkpoints_filename = model_name + '_ft_weights_acc{val_categorical_accuracy:.2f}_e{epoch:d}_' + time.strftime("%Y-%m-%d_%H-%M-%S") + '.hdf5'
+checkpoints_filename = model_name + '_ft_weights_acc{val_categorical_accuracy:.2f}_e{epoch:d}_' + time.strftime(
+    "%Y-%m-%d_%H-%M-%S") + '.hdf5'
 plot_acc_file = model_name + '_ft_acc' + timestamp
 plot_loss_file = model_name + '_ft_loss' + timestamp
 
