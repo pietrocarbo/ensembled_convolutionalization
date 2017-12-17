@@ -121,15 +121,15 @@ train_datagen = ImageDataGenerator(**dict_augmentation)
 
 def train_top_n_layers(model, threshold_train, epochs, optimizer, batch_size=32, callbacks=None, train_steps=None,
                        val_steps=None, test_epoch_end=True):
-    training = freezed = 0
+    ltrained = lfreezed = 0
     for i in range(len(model.layers)):
         if i < threshold_train:
             model.layers[i].trainable = False
-            freezed += 1
+            lfreezed += 1
         else:
             model.layers[i].trainable = True
-            training += 1
-    print('Training on ' + training + ' layers, ' + freezed + ' freezed layers')
+            ltrained += 1
+    print('Training on {} layers, {} freezed layers'.format(ltrained, lfreezed))
 
     train_generator = train_datagen.flow_from_directory(
         'dataset-ethz101food/train',
