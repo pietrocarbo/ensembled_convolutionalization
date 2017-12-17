@@ -19,6 +19,9 @@ from lib.randomization import lower_randomization_effects
 from lib.callbacks import checkpointer, early_stopper, lr_reducer, csv_logger
 from lib.memory_management import memory_growth_config
 
+#se sei mirco mettere 1, per Pietro mettere 0
+mircoisrunning = 0
+
 lower_randomization_effects()
 memory_growth_config()
 
@@ -149,12 +152,25 @@ def train_top_n_layers(model, threshold_train, epochs, optimizer, batch_size=32,
     keras.backend.get_session().run(tf.global_variables_initializer())
 
     start = time.time()
-    history = model.fit_generator(train_generator,
-                                  steps_per_epoch=train_steps,
-                                  epochs=epochs, verbose=1,
-                                  validation_data=validation_generator,
-                                  validation_steps=val_steps,
-                                  callbacks=callbacks)
+
+    if mircoisrunning == 0:
+        history = model.fit_generator(train_generator,
+                                    steps_per_epoch=train_steps,
+                                    epochs=epochs, verbose=1,
+                                    validation_data=validation_generator,
+                                    validation_steps=val_steps,
+                                    callbacks=callbacks
+                                    )
+    else:
+        history = model.fit_generator(train_generator,
+                                    steps_per_epoch=train_steps,
+                                    epochs=epochs, verbose=1,
+                                    validation_data=validation_generator,
+                                    validation_steps=val_steps,
+                                    #callbacks=callbacks
+                                    )
+
+
     print('Training time {0:.2f} minutes'.format(-(start - time.time()) / 60))
 
     if test_epoch_end:
@@ -207,11 +223,12 @@ signal.signal(signal.SIGTERM, close_signals_handler)
 signal.signal(signal.SIGINT, close_signals_handler)
 train_time = time.time()
 
-with open(os.path.join(os.getcwd(), 'models', model_arch_file), 'w') as outfile:
-    json.dump(json.loads(custom_model.to_json()), outfile, indent=2)
+if mircoisrunning == 0:
+    with open(os.path.join(os.getcwd(), 'models', model_arch_file), 'w') as outfile:
+       json.dump(json.loads(custom_model.to_json()), outfile, indent=2)
 
 twopass, bottomup, whole_net, *_ = range(10)
-FT_TECNIQUE = whole_net
+FT_TECNIQUE = bottomup
 
 if FT_TECNIQUE == twopass:
     histories = [train_top_n_layers(
@@ -221,7 +238,8 @@ if FT_TECNIQUE == twopass:
         optimizer=rmsprop,
         batch_size=batch_size,
         train_steps=train_steps, val_steps=val_steps,
-        callbacks=[stopper, logger, model_saver])]
+        callbacks=[stopper, logger, model_saver]
+     )]
     histories.append(train_top_n_layers(
         model=custom_model,
         threshold_train=base_model_nlayers // 2,
@@ -229,7 +247,8 @@ if FT_TECNIQUE == twopass:
         optimizer=sgd,
         batch_size=batch_size,
         train_steps=train_steps, val_steps=val_steps,
-        callbacks=[stopper, logger, model_saver, lr_reduce]))
+        callbacks=[stopper, logger, model_saver, lr_reduce]
+     ))
 
 elif FT_TECNIQUE == bottomup:
     histories = [train_top_n_layers(
@@ -239,7 +258,8 @@ elif FT_TECNIQUE == bottomup:
         optimizer=rmsprop,
         batch_size=batch_size,
         train_steps=train_steps, val_steps=val_steps,
-        callbacks=[stopper, logger, model_saver])]
+        callbacks=[stopper, logger, model_saver]
+     )]
     ft_step = base_model_nlayers // 10
     for threshold in range(base_model_nlayers - ft_step, -1, -ft_step):
         histories.append(train_top_n_layers(
@@ -249,7 +269,8 @@ elif FT_TECNIQUE == bottomup:
             optimizer=sgd,
             batch_size=batch_size,
             train_steps=train_steps, val_steps=val_steps,
-            callbacks=[stopper, logger, model_saver, lr_reduce]))
+            callbacks=[stopper, logger, model_saver, lr_reduce]
+        ))
 
 elif FT_TECNIQUE == whole_net:
     histories = [train_top_n_layers(
@@ -259,7 +280,8 @@ elif FT_TECNIQUE == whole_net:
         optimizer=rmsprop,
         batch_size=batch_size,
         train_steps=train_steps, val_steps=val_steps,
-        callbacks=[stopper, logger, model_saver])]
+        callbacks=[stopper, logger, model_saver]
+     )]
 
 else:
     raise ValueError('Unspecified training technique')
