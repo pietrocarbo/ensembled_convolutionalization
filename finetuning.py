@@ -211,7 +211,7 @@ with open(os.path.join(os.getcwd(), 'models', model_arch_file), 'w') as outfile:
     json.dump(json.loads(custom_model.to_json()), outfile, indent=2)
 
 twopass, bottomup, whole_net, *_ = range(10)
-FT_TECNIQUE = whole_net
+FT_TECNIQUE = bottomup
 
 if FT_TECNIQUE == twopass:
     histories = [train_top_n_layers(
