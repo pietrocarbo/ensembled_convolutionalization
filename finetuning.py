@@ -74,7 +74,7 @@ elif TOP_NET_ARCH == dense3LRBN:
     x = Dropout(.5)(x)
     out = Dense(num_classes, kernel_initializer='he_uniform', bias_initializer="he_uniform", activation='softmax',
                 name='output_layer')(x)
-    topnn_nlayers = 9
+    topnn_nlayers = 10
 
 elif TOP_NET_ARCH == dense2:
     x = GlobalAveragePooling2D()(base_model_output)
