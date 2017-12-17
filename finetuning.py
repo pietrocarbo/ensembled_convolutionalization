@@ -123,9 +123,12 @@ def train_top_n_layers(model, threshold_train, epochs, optimizer, batch_size=32,
                        val_steps=None, test_epoch_end=True):
     training = freezed = 0
     for i in range(len(model.layers)):
-        model.layers[i].trainable = False if i < threshold_train else True
-        training = training + 1 if i < threshold_train else training
-        freezed = freezed + 1 if i < threshold_train else freezed
+        if i < threshold_train:
+            model.layers[i].trainable = False
+            freezed += 1
+        else:
+            model.layers[i].trainable = True
+            training += 1
     print('Training on ' + training + ' layers, ' + freezed + ' freezed layers')
 
     train_generator = train_datagen.flow_from_directory(
