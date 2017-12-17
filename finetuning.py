@@ -38,8 +38,8 @@ base_model_output = base_model.output
 
 
 num_classes = 101
-dense3, dense2LRBN, dense1, vgg19, dense2, *_ = range(10)
-TOP_NET_ARCH = dense2LRBN
+dense3, dense3LRBN, dense1, vgg19, dense2, *_ = range(10)
+TOP_NET_ARCH = dense3LRBN
 
 if TOP_NET_ARCH == dense3:
     x = GlobalAveragePooling2D()(base_model_output)
@@ -59,14 +59,18 @@ elif TOP_NET_ARCH == vgg19:
     out = Dense(num_classes, activation="softmax", name='output_layer')(x)
     topnn_nlayers = 6
 
-elif TOP_NET_ARCH == dense2LRBN:
+elif TOP_NET_ARCH == dense3LRBN:
     x = GlobalAveragePooling2D()(base_model_output)
-    x = Dense(2048, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005), bias_regularizer=l2(.0005))(x)
+    x = Dense(1024, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005), bias_regularizer=l2(.0005))(x)
     x = LeakyReLU()(x)
     x = BatchNormalization()(x)
-    x = Dropout(.4)(x)
+    x = Dropout(.5)(x)
+    x = Dense(512, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005), bias_regularizer=l2(.0005))(x)
+    x = LeakyReLU()(x)
+    x = BatchNormalization()(x)
+    x = Dropout(.5)(x)
     out = Dense(num_classes, kernel_initializer='he_uniform', bias_initializer="he_uniform", activation='softmax', name='output_layer')(x)
-    topnn_nlayers = 6
+    topnn_nlayers = 9
 
 elif TOP_NET_ARCH == dense2:
     x = GlobalAveragePooling2D()(base_model_output)
@@ -111,12 +115,9 @@ if data_augmentation_level > 3:
 train_datagen = ImageDataGenerator(**dict_augmentation)
 
 
-def train_top_n_layers(model, threshold_trainability, epochs, optimizer, batch_size=32, callbacks=None, train_steps=None, val_steps=None, test_epoch_end=False):
+def train_top_n_layers(model, threshold_train, epochs, optimizer, batch_size=32, callbacks=None, train_steps=None, val_steps=None, test_epoch_end=False):
     for i in range(len(model.layers)):
-        if i < threshold_trainability:
-            model.layers[i].trainable = False
-        else:
-            model.layers[i].trainable = True
+        model.layers[i].trainable = False if i < threshold_train else True
 
     train_generator = train_datagen.flow_from_directory(
         'dataset-ethz101food/train',
@@ -172,22 +173,21 @@ plot_acc_file = model_name + '_ft_acc' + timestamp
 plot_loss_file = model_name + '_ft_loss' + timestamp
 
 # optimizers
+adam = 'adam'
 rmsprop = 'rmsprop'
 sgd = keras.optimizers.SGD(lr=1e-4, decay=1e-6, momentum=0.9, nesterov=True)
-adam = 'adam'
 
 # callbacks
-stopper = early_stopper(monitor='val_categorical_accuracy', patience=5)
-lr_reduce = lr_reducer(factor=0.1, patience=3)
-model_saver = checkpointer(checkpoints_filename, monitor="val_categorical_accuracy")
 logger = csv_logger(logfile)
+lr_reduce = lr_reducer(factor=0.1, patience=3)
+stopper = early_stopper(monitor='val_categorical_accuracy', patience=5)
+model_saver = checkpointer(checkpoints_filename, monitor="val_categorical_accuracy")
 
 # training parameters
 batch_size = int(sys.argv[1]) if len(sys.argv) > 1 else 32
 train_steps = None or 75750 // batch_size
 val_steps = None or 25250 // batch_size
-epochs_fc = 500
-epochs_ft = 200
+epochs = 500
 
 signal.signal(signal.SIGTERM, close_signals_handler)
 signal.signal(signal.SIGINT, close_signals_handler)
@@ -196,22 +196,22 @@ train_time = time.time()
 with open(os.path.join(os.getcwd(), 'models', model_arch_file), 'w') as outfile:
     json.dump(json.loads(custom_model.to_json()), outfile, indent=2)
 
-twopass, bottomup, *_ = range(10)
+twopass, bottomup, whole_net, *_ = range(10)
 FT_TECNIQUE = bottomup
 
 if FT_TECNIQUE == twopass:
     histories = [train_top_n_layers(
         model=custom_model,
-        threshold_trainability=topnn_nlayers,
-        epochs=epochs_fc,
+        threshold_train=base_model_nlayers,
+        epochs=epochs,
         optimizer=rmsprop,
         batch_size=batch_size,
         train_steps=train_steps, val_steps=val_steps,
         callbacks=[stopper, logger, model_saver])]
     histories.append(train_top_n_layers(
         model=custom_model,
-        threshold_trainability=percentage(base_model_nlayers+topnn_nlayers, 50),
-        epochs=epochs_ft,
+        threshold_train=base_model_nlayers // 2,
+        epochs=epochs,
         optimizer=sgd,
         batch_size=batch_size,
         train_steps=train_steps, val_steps=val_steps,
@@ -220,22 +220,32 @@ if FT_TECNIQUE == twopass:
 elif FT_TECNIQUE == bottomup:
     histories = [train_top_n_layers(
         model=custom_model,
-        threshold_trainability=topnn_nlayers,
-        epochs=epochs_fc,
+        threshold_train=base_model_nlayers,
+        epochs=epochs,
         optimizer=rmsprop,
         batch_size=batch_size,
         train_steps=train_steps, val_steps=val_steps,
         callbacks=[stopper, logger, model_saver])]
-    ft_steps = base_model_nlayers // 10
-    for trained_layers_idx in range(topnn_nlayers + ft_steps, topnn_nlayers + base_model_nlayers + 1, ft_steps):
+    ft_step = base_model_nlayers // 10
+    for threshold in range(base_model_nlayers - ft_step, -1, -ft_step):
         histories.append(train_top_n_layers(
             model=custom_model,
-            threshold_trainability=trained_layers_idx,
-            epochs=epochs_ft,
+            threshold_train=threshold,
+            epochs=epochs,
             optimizer=sgd,
             batch_size=batch_size,
             train_steps=train_steps, val_steps=val_steps,
             callbacks=[stopper, logger, model_saver, lr_reduce]))
+
+elif FT_TECNIQUE == whole_net:
+    histories = [train_top_n_layers(
+        model=custom_model,
+        threshold_train=-1,
+        epochs=epochs,
+        optimizer=rmsprop,
+        batch_size=batch_size,
+        train_steps=train_steps, val_steps=val_steps,
+        callbacks=[stopper, logger, model_saver])]
 
 else:
     raise ValueError('Unspecified training technique')
