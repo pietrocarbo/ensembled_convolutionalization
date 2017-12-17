@@ -115,9 +115,13 @@ if data_augmentation_level > 3:
 train_datagen = ImageDataGenerator(**dict_augmentation)
 
 
-def train_top_n_layers(model, threshold_train, epochs, optimizer, batch_size=32, callbacks=None, train_steps=None, val_steps=None, test_epoch_end=False):
+def train_top_n_layers(model, threshold_train, epochs, optimizer, batch_size=32, callbacks=None, train_steps=None, val_steps=None, test_epoch_end=True):
+    training = freezed = 0
     for i in range(len(model.layers)):
         model.layers[i].trainable = False if i < threshold_train else True
+	training = training + 1 if i < threshold_train else training
+        freezed = freezed + 1 if i < threshold_train else freezed	
+    print('Training ' + training + ' on layers, ' + freezed + ' freezed layers')
 
     train_generator = train_datagen.flow_from_directory(
         'dataset-ethz101food/train',
@@ -197,7 +201,7 @@ with open(os.path.join(os.getcwd(), 'models', model_arch_file), 'w') as outfile:
     json.dump(json.loads(custom_model.to_json()), outfile, indent=2)
 
 twopass, bottomup, whole_net, *_ = range(10)
-FT_TECNIQUE = bottomup
+FT_TECNIQUE = whole_net
 
 if FT_TECNIQUE == twopass:
     histories = [train_top_n_layers(
