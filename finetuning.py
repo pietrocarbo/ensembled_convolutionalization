@@ -19,9 +19,6 @@ from lib.randomization import lower_randomization_effects
 from lib.callbacks import checkpointer, early_stopper, lr_reducer, csv_logger
 from lib.memory_management import memory_growth_config
 
-#se sei mirco mettere 1, per Pietro mettere 0
-mircoisrunning = 0
-
 lower_randomization_effects()
 memory_growth_config()
 
@@ -153,23 +150,13 @@ def train_top_n_layers(model, threshold_train, epochs, optimizer, batch_size=32,
 
     start = time.time()
 
-    if mircoisrunning == 0:
-        history = model.fit_generator(train_generator,
-                                    steps_per_epoch=train_steps,
-                                    epochs=epochs, verbose=1,
-                                    validation_data=validation_generator,
-                                    validation_steps=val_steps,
-                                    callbacks=callbacks
-                                    )
-    else:
-        history = model.fit_generator(train_generator,
-                                    steps_per_epoch=train_steps,
-                                    epochs=epochs, verbose=1,
-                                    validation_data=validation_generator,
-                                    validation_steps=val_steps,
-                                    #callbacks=callbacks
-                                    )
-
+    history = model.fit_generator(train_generator,
+                                steps_per_epoch=train_steps,
+                                epochs=epochs, verbose=1,
+                                validation_data=validation_generator,
+                                validation_steps=val_steps,
+                                callbacks=callbacks
+                                )
 
     print('Training time {0:.2f} minutes'.format(-(start - time.time()) / 60))
 
@@ -223,9 +210,8 @@ signal.signal(signal.SIGTERM, close_signals_handler)
 signal.signal(signal.SIGINT, close_signals_handler)
 train_time = time.time()
 
-if mircoisrunning == 0:
-    with open(os.path.join(os.getcwd(), 'models', model_arch_file), 'w') as outfile:
-       json.dump(json.loads(custom_model.to_json()), outfile, indent=2)
+with open(os.path.join(os.getcwd(), 'models', model_arch_file), 'w') as outfile:
+   json.dump(json.loads(custom_model.to_json()), outfile, indent=2)
 
 twopass, bottomup, whole_net, *_ = range(10)
 FT_TECNIQUE = bottomup
