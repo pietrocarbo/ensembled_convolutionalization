@@ -38,7 +38,7 @@ base_model_output = base_model.output
 
 num_classes = 101
 dense3, dense3LRBN, dense1, vgg19, dense2, *_ = range(10)
-TOP_NET_ARCH = dense3LRBN
+TOP_NET_ARCH = dense2
 
 if TOP_NET_ARCH == dense3:
     x = GlobalAveragePooling2D()(base_model_output)
@@ -96,7 +96,7 @@ custom_model.summary()
 
 IMG_WIDTH = 299
 IMG_HEIGHT = 299
-data_augmentation_level = 4
+data_augmentation_level = 3
 
 dict_augmentation = dict(preprocessing_function=preprocess_input)
 test_datagen = ImageDataGenerator(**dict_augmentation)
@@ -158,8 +158,8 @@ def train_top_n_layers(model, threshold_train, epochs, optimizer, batch_size=32,
     print('Training time {0:.2f} minutes'.format(-(start - time.time()) / 60))
 
     if test_epoch_end:
-        (loss, accuracy) = model.evaluate_generator(validation_generator, 250 // 32)
-        print("[EVAL] loss={:.4f}, accuracy: {:.4f}%".format(loss, accuracy * 100))
+        (loss, accuracy, top5acc) = model.evaluate_generator(validation_generator, 250 // 32)
+        print("[EVAL] loss={:.4f}, accuracy: {:.4f}%, top-5 accuracy {:.4f}%".format(loss, accuracy * 100))
     return history
 
 
@@ -211,20 +211,20 @@ with open(os.path.join(os.getcwd(), 'models', model_arch_file), 'w') as outfile:
     json.dump(json.loads(custom_model.to_json()), outfile, indent=2)
 
 twopass, bottomup, whole_net, *_ = range(10)
-FT_TECNIQUE = bottomup
+FT_TECNIQUE = twopass
 
 if FT_TECNIQUE == twopass:
     histories = [train_top_n_layers(
         model=custom_model,
         threshold_train=base_model_nlayers,
-        epochs=epochs,
+        epochs=20,
         optimizer=rmsprop,
         batch_size=batch_size,
         train_steps=train_steps, val_steps=val_steps,
-        callbacks=[stopper, logger, model_saver])]
+        callbacks=[logger, model_saver])]
     histories.append(train_top_n_layers(
         model=custom_model,
-        threshold_train=base_model_nlayers // 2,
+        threshold_train=249,
         epochs=epochs,
         optimizer=sgd,
         batch_size=batch_size,
