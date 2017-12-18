@@ -1,4 +1,4 @@
-import numpy as np
+import os
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -32,6 +32,7 @@ def save_acc_loss_plots(histories, acc_fn, loss_fn):
     # for i in range(len(epochs_per_step) - 1):
     #     plt.annotate(str(epochs_per_step[i]), xy=(epochs_per_step[i+1], 0.2), xytext=(epochs_per_step[i], 0.2), xycoords='data',
     #             verticalalignment='center', arrowprops=dict(color='red', arrowstyle="->", ls='--'))
+    os.makedirs('results', exist_ok=True)
     plt.savefig(acc_fn)
 
     plt.clf()
