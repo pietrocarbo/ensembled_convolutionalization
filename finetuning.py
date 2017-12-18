@@ -78,8 +78,9 @@ elif TOP_NET_ARCH == dense3LRBN:
 
 elif TOP_NET_ARCH == dense2:
     x = GlobalAveragePooling2D()(base_model_output)
-    x = Dense(1024, activation='relu')(x)
-    out = Dense(num_classes, activation='softmax', name='output_layer')(x)
+    x = Dense(1024, activation='relu', kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005),
+              bias_regularizer=l2(.0005))(x)
+    out = Dense(num_classes, activation='softmax', kernel_initializer='he_uniform', bias_initializer="he_uniform")(x)
     topnn_nlayers = 3
 
 elif TOP_NET_ARCH == dense1:
@@ -110,10 +111,10 @@ if data_augmentation_level > 1:
     dict_augmentation["height_shift_range"] = 0.2
 
 if data_augmentation_level > 2:
-    dict_augmentation["shear_range"] = 0.2
     dict_augmentation["zoom_range"] = 0.2
 
 if data_augmentation_level > 3:
+    dict_augmentation["shear_range"] = 0.2
     dict_augmentation["rotation_range"] = 40
 
 train_datagen = ImageDataGenerator(**dict_augmentation)
@@ -158,8 +159,8 @@ def train_top_n_layers(model, threshold_train, epochs, optimizer, batch_size=32,
     print('Training time {0:.2f} minutes'.format(-(start - time.time()) / 60))
 
     if test_epoch_end:
-        (loss, accuracy, top5acc) = model.evaluate_generator(validation_generator, 250 // 32)
-        print("[EVAL] loss={:.4f}, accuracy: {:.4f}%, top-5 accuracy {:.4f}%".format(loss, accuracy * 100))
+        (loss, acc, top5acc) = model.evaluate_generator(validation_generator, val_steps)
+        print("[EVAL] loss={:.4f}, top-1 accuracy: {:.4f}%, top-5 accuracy: {:.4f}%".format(loss, acc * 100, top5acc * 100))
     return history
 
 
@@ -201,7 +202,7 @@ model_saver = checkpointer(checkpoints_filename, monitor="val_categorical_accura
 batch_size = int(sys.argv[1]) if len(sys.argv) > 1 else 32
 train_steps = None or 75750 // batch_size
 val_steps = None or 25250 // batch_size
-epochs = 500
+epochs = 200
 
 signal.signal(signal.SIGTERM, close_signals_handler)
 signal.signal(signal.SIGINT, close_signals_handler)
@@ -217,7 +218,7 @@ if FT_TECNIQUE == twopass:
     histories = [train_top_n_layers(
         model=custom_model,
         threshold_train=base_model_nlayers,
-        epochs=20,
+        epochs=10,
         optimizer=rmsprop,
         batch_size=batch_size,
         train_steps=train_steps, val_steps=val_steps,

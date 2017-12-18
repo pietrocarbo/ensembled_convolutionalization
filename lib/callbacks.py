@@ -3,6 +3,7 @@ import keras
 
 
 def checkpointer(filename, monitor='val_acc', verbose=0, save_best_only=True, save_weights_only=True, period=1):
+    os.makedirs('models', exist_ok=True)
     return keras.callbacks.ModelCheckpoint(os.path.join(os.getcwd(), 'models', filename), monitor=monitor,
                                            verbose=verbose, save_best_only=save_best_only, save_weights_only=save_weights_only, mode='auto', period=period)
 
@@ -16,4 +17,5 @@ def lr_reducer(monitor='val_loss', factor=0.1, patience=5, epsilon=0.0001, coold
 
 
 def csv_logger(filename, separator='\t', append=True):
+    os.makedirs('logs', exist_ok=True)
     return keras.callbacks.CSVLogger(os.path.join(os.getcwd(), 'logs', filename), separator=separator, append=append)

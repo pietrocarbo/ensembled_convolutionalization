@@ -11,7 +11,7 @@ Clone this github repository in a folder that we will call `repo_home`
 From a terminal run the commands
 * `pip install pipenv && pip install virtualenv`
 * `cd repo_home`
-* `virtualenv env`
+* `virtualenv env` (Mac OS X -> `virtualenv -p python3 env`)
 * `./env/Scripts/activate` (or `source env/bin/activate` on Unix systems)
 * `pip install -r requirements.txt`
 
