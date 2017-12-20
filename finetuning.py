@@ -23,7 +23,6 @@ lower_randomization_effects()
 memory_growth_config()
 
 from keras.applications.inception_v3 import preprocess_input
-
 model_name = 'incv3'
 base_model = keras.applications.inception_v3.InceptionV3(include_top=False, weights='imagenet')
 
@@ -173,14 +172,14 @@ def close_signals_handler(signum, frame):
     sys.exit(1)
 
 
-def percentage(whole, part):
-    return (whole * part) // 100
-
+signal.signal(signal.SIGTERM, close_signals_handler)
+signal.signal(signal.SIGINT, close_signals_handler)
 
 timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
 
 # filenames
 model_arch_file = model_name + '_architecture_' + timestamp + '.json'
+traincfg_file =  model_name + '_trainconfig_' + timestamp + '.json'
 logfile = model_name + '_ft_' + timestamp + '.csv'
 checkpoints_filename = model_name + '_ft_weights_acc{val_categorical_accuracy:.2f}_e{epoch:d}_' + time.strftime(
     "%Y-%m-%d_%H-%M-%S") + '.hdf5'
@@ -200,20 +199,41 @@ model_saver = checkpointer(checkpoints_filename, monitor="val_categorical_accura
 
 # training parameters
 batch_size = int(sys.argv[1]) if len(sys.argv) > 1 else 32
-train_steps = None or 75750 // batch_size
-val_steps = None or 25250 // batch_size
-epochs = 200
+train_steps = 1 or 75750 // batch_size
+val_steps = 1 or 25250 // batch_size
+epochs = 1
 
-signal.signal(signal.SIGTERM, close_signals_handler)
-signal.signal(signal.SIGINT, close_signals_handler)
-train_time = time.time()
+twopass, bottomup, whole_net, = ("twopass", "bottomup", "whole_net")
+FT_TECNIQUE = twopass
 
+traincfg = {
+    "train_tecnique": FT_TECNIQUE,
+    "batch_size": batch_size,
+    "train_batches_per_epoch": train_steps,
+    "val_batches_per_epoch": train_steps,
+
+    "threshold_train_1": base_model_nlayers,
+    "optimizer_train_1": "RMSPROP",
+    "epochs_train_1": 10,
+    "callbacks_train_1": "logger, saver",
+
+    "threshold_train_2": 249,
+    "optimizer_train_2": "SGD(lr=1e-4, decay=1e-6, momentum=0.9, nesterov=True)",
+    "epochs_train_2": epochs,
+    "callbacks_train_2": "logger, saver, lrreducer, stopper",
+
+    "ft_step": None,
+}
+
+os.makedirs('logs', exist_ok=True)
+with open(os.path.join(os.getcwd(), 'logs', traincfg_file), 'w') as outfile:
+    json.dump(traincfg, outfile, indent=2, sort_keys=True)
+
+os.makedirs('models', exist_ok=True)
 with open(os.path.join(os.getcwd(), 'models', model_arch_file), 'w') as outfile:
     json.dump(json.loads(custom_model.to_json()), outfile, indent=2)
 
-twopass, bottomup, whole_net, *_ = range(10)
-FT_TECNIQUE = twopass
-
+train_time = time.time()
 if FT_TECNIQUE == twopass:
     histories = [train_top_n_layers(
         model=custom_model,
