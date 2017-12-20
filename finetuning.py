@@ -34,7 +34,7 @@ base_model = keras.applications.inception_resnet_v2.InceptionResNetV2(include_to
 
 num_classes = 101
 dense3, dense3LRBN, dense1, vgg19, dense2, *_ = range(10)
-TOP_NET_ARCH = dense2
+TOP_NET_ARCH = dense1
 
 if TOP_NET_ARCH == dense3:
     x = GlobalAveragePooling2D()(base_model.output)
