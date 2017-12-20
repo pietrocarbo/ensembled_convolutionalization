@@ -35,3 +35,6 @@ pip install git+git://github.com/Theano/Theano.git --upgrade --no-deps
 conda create -n env1 python python-dev numpy scipy mkl theano pygpu
 THEANO_FLAGS=device=cuda0 python <test_theanoGPU.py>
 os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=gpu,floatX=float32,lib.cnmem=0.7,dnn.enabled=True"
+
+##### Windows commands
+del models\* logs\* results\* /Q

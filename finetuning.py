@@ -8,9 +8,8 @@ import tensorflow as tf
 
 import keras
 from keras.preprocessing.image import ImageDataGenerator
-from keras.layers import GlobalAveragePooling2D, Dense, Dropout, BatchNormalization, Activation, Flatten
-from keras.layers.advanced_activations import LeakyReLU, PReLU
-from keras.activations import selu
+from keras.layers import GlobalAveragePooling2D, Dense, Dropout, BatchNormalization, Flatten
+from keras.layers.advanced_activations import LeakyReLU
 from keras.models import Model
 from keras.regularizers import l2
 
@@ -22,45 +21,41 @@ from lib.memory_management import memory_growth_config
 lower_randomization_effects()
 memory_growth_config()
 
-from keras.applications.inception_v3 import preprocess_input
-model_name = 'incv3'
-base_model = keras.applications.inception_v3.InceptionV3(include_top=False, weights='imagenet')
+from keras.applications.inception_resnet_v2 import preprocess_input
+model_name = 'incv2resnet'
+base_model = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet')
 
-# 77% - 1dense - 32bs - base_model = keras.applications.resnet50.ResNet50(input_shape=(224, 224, 3), include_top=False, weights='imagenet')
-# 76% - 3dens - 32bs - base_model = keras.applications.mobilenet.MobileNet(input_shape=(224, 224, 3), alpha=1.0, depth_multiplier=1, dropout=1e-3, include_top=False, weights='imagenet')
-# 43% - 3dLRBN - 30bs - base_model = keras.applications.xception.Xception(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
-# 1% - base_model = keras.applications.vgg16.VGG16(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
+# 77% - 1dense - 32bs - keras.applications.resnet50.ResNet50(input_shape=(224, 224, 3), include_top=False, weights='imagenet')
+# 76% - 3dens - 32bs - keras.applications.mobilenet.MobileNet(input_shape=(224, 224, 3), alpha=1.0, depth_multiplier=1, dropout=1e-3, include_top=False, weights='imagenet')
+# 58% - 32bs - keras.applications.inception_v3.InceptionV3(include_top=False, weights='imagenet')
+# 43% - 3dLRBN - 30bs - keras.applications.xception.Xception(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
+# 1% - keras.applications.vgg16.VGG16(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
 # base_model = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
-
-base_model_nlayers = len(base_model.layers)
-base_model_output = base_model.output
 
 num_classes = 101
 dense3, dense3LRBN, dense1, vgg19, dense2, *_ = range(10)
 TOP_NET_ARCH = dense2
 
 if TOP_NET_ARCH == dense3:
-    x = GlobalAveragePooling2D()(base_model_output)
+    x = GlobalAveragePooling2D()(base_model.output)
     x = Dense(512, activation='relu', name='fc-1')(x)
     x = Dropout(0.5)(x)
     x = Dense(256, activation='relu', name='fc-2')(x)
     x = Dropout(0.5)(x)
-    out = Dense(num_classes, activation='softmax', name='output_layer')(x)
-    topnn_nlayers = 6  # global pooling/dropout layers count as 1 layer
+    topnet_output = Dense(num_classes, activation='softmax', name='output_layer')(x)
 
 elif TOP_NET_ARCH == vgg19:
-    x = Flatten(name='flatten')(base_model_output)
+    x = Flatten(name='flatten')(base_model.output)
     x = Dense(4096, kernel_initializer='glorot_normal', bias_initializer="zeros", activation='relu',
               kernel_regularizer=l2(.0005), name="fc-1-glorot-l2")(x)
     x = Dropout(0.5)(x)
     x = Dense(4096, kernel_initializer='glorot_normal', bias_initializer="zeros", activation='relu',
               kernel_regularizer=l2(.0005), name="fc-2-glorot-l2")(x)
     x = Dropout(0.5)(x)
-    out = Dense(num_classes, activation="softmax", name='output_layer')(x)
-    topnn_nlayers = 6
+    topnet_output = Dense(num_classes, activation="softmax", name='output_layer')(x)
 
 elif TOP_NET_ARCH == dense3LRBN:
-    x = GlobalAveragePooling2D()(base_model_output)
+    x = GlobalAveragePooling2D()(base_model.output)
     x = Dense(1024, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005),
               bias_regularizer=l2(.0005))(x)
     x = LeakyReLU()(x)
@@ -71,26 +66,27 @@ elif TOP_NET_ARCH == dense3LRBN:
     x = LeakyReLU()(x)
     x = BatchNormalization()(x)
     x = Dropout(.5)(x)
-    out = Dense(num_classes, kernel_initializer='he_uniform', bias_initializer="he_uniform", activation='softmax',
-                name='output_layer')(x)
-    topnn_nlayers = 10
+    topnet_output = Dense(num_classes, kernel_initializer='he_uniform', bias_initializer="he_uniform", activation='softmax',
+                          name='output_layer')(x)
 
 elif TOP_NET_ARCH == dense2:
-    x = GlobalAveragePooling2D()(base_model_output)
-    x = Dense(1024, activation='relu', kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005),
-              bias_regularizer=l2(.0005))(x)
-    out = Dense(num_classes, activation='softmax', kernel_initializer='he_uniform', bias_initializer="he_uniform")(x)
-    topnn_nlayers = 3
+    x = GlobalAveragePooling2D()(base_model.output)
+    x = Dense(1024, activation='relu', kernel_initializer='he_uniform', bias_initializer="he_uniform")(x)
+    x = Dropout(.3)(x)
+    topnet_output = Dense(num_classes, activation='softmax', kernel_initializer='he_uniform', bias_initializer="he_uniform")(x)
 
 elif TOP_NET_ARCH == dense1:
-    x = GlobalAveragePooling2D()(base_model_output)
-    out = Dense(num_classes, activation='softmax', name='output_layer')(x)
-    topnn_nlayers = 2
+    x = GlobalAveragePooling2D()(base_model.output)
+    topnet_output = Dense(num_classes, activation='softmax', name='output_layer')(x)
 
 else:
     raise ValueError('Unspecified top neural network architecture')
 
-custom_model = Model(inputs=base_model.input, outputs=out)
+custom_model = Model(inputs=base_model.input, outputs=topnet_output)
+
+base_model_nlayers = len(base_model.layers)
+topnn_nlayers = len(custom_model.layers) - len(base_model.layers)
+
 print('Custom model structure')
 custom_model.summary()
 
@@ -146,7 +142,6 @@ def train_top_n_layers(model, threshold_train, epochs, optimizer, batch_size=32,
 
     custom_model.compile(loss='categorical_crossentropy', optimizer=optimizer,
                          metrics=['categorical_accuracy', 'top_k_categorical_accuracy'])
-    keras.backend.get_session().run(tf.global_variables_initializer())
 
     start = time.time()
     history = model.fit_generator(train_generator,
@@ -194,17 +189,17 @@ sgd = keras.optimizers.SGD(lr=1e-4, decay=1e-6, momentum=0.9, nesterov=True)
 # callbacks
 logger = csv_logger(logfile)
 lr_reduce = lr_reducer(factor=0.1, patience=3)
-stopper = early_stopper(monitor='val_categorical_accuracy', patience=5)
+stopper = early_stopper(monitor='val_categorical_accuracy', patience=3)
 model_saver = checkpointer(checkpoints_filename, monitor="val_categorical_accuracy")
 
 # training parameters
 batch_size = int(sys.argv[1]) if len(sys.argv) > 1 else 32
-train_steps = 1 or 75750 // batch_size
-val_steps = 1 or 25250 // batch_size
-epochs = 1
+train_steps = None or 75750 // batch_size
+val_steps = None or 25250 // batch_size
+epochs = 250
 
 twopass, bottomup, whole_net, = ("twopass", "bottomup", "whole_net")
-FT_TECNIQUE = twopass
+FT_TECNIQUE = bottomup
 
 traincfg = {
     "train_tecnique": FT_TECNIQUE,
@@ -214,15 +209,15 @@ traincfg = {
 
     "threshold_train_1": base_model_nlayers,
     "optimizer_train_1": "RMSPROP",
-    "epochs_train_1": 10,
-    "callbacks_train_1": "logger, saver",
+    "epochs_train_1": epochs,
+    "callbacks_train_1": "stoppper3, logger, saver",
 
-    "threshold_train_2": 249,
-    "optimizer_train_2": "SGD(lr=1e-4, decay=1e-6, momentum=0.9, nesterov=True)",
+    "threshold_train_2": "-1",
+    "optimizer_train_2": "RMSPROP",
     "epochs_train_2": epochs,
-    "callbacks_train_2": "logger, saver, lrreducer, stopper",
+    "callbacks_train_2": "stopper3, logger, saver",
 
-    "ft_step": None,
+    "ft_step": base_model_nlayers // 10,
 }
 
 os.makedirs('logs', exist_ok=True)
@@ -266,11 +261,11 @@ elif FT_TECNIQUE == bottomup:
         histories.append(train_top_n_layers(
             model=custom_model,
             threshold_train=threshold,
-            epochs=epochs,
+            epochs=rmsprop,
             optimizer=sgd,
             batch_size=batch_size,
             train_steps=train_steps, val_steps=val_steps,
-            callbacks=[stopper, logger, model_saver, lr_reduce]))
+            callbacks=[stopper, logger, model_saver]))
 
 elif FT_TECNIQUE == whole_net:
     histories = [train_top_n_layers(
