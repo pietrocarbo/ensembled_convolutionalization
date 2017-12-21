@@ -212,7 +212,7 @@ traincfg = {
     "threshold_train_1": base_model_nlayers,
     "optimizer_train_1": "RMSPROP",
     "epochs_train_1": epochs,
-    "callbacks_train_1": "stoppper3, logger, saver",
+    "callbacks_train_1": "stopper3, logger, saver",
 
     "threshold_train_2": "-1",
     "optimizer_train_2": "RMSPROP",
