@@ -6,8 +6,6 @@ plt.style.use('seaborn-bright')
 
 
 def save_acc_loss_plots(histories, acc_fn, loss_fn):
-    os.makedirs('results', exist_ok=True)
-
     epochs_per_step = []
     val_acc = []
     val_loss = []

@@ -17,7 +17,9 @@ from lib.plot_utils import save_acc_loss_plots
 from lib.randomization import lower_randomization_effects
 from lib.callbacks import checkpointer, early_stopper, lr_reducer, csv_logger
 from lib.memory_management import memory_growth_config
+from lib.outputs_directories import create_empty_directories
 
+create_empty_directories(['results','logs', 'models'], empty_dirs=True)
 lower_randomization_effects()
 memory_growth_config()
 
@@ -220,11 +222,9 @@ traincfg = {
     "ft_step": base_model_nlayers // 10,
 }
 
-os.makedirs('logs', exist_ok=True)
 with open(os.path.join(os.getcwd(), 'logs', traincfg_file), 'w') as outfile:
     json.dump(traincfg, outfile, indent=2, sort_keys=True)
 
-os.makedirs('models', exist_ok=True)
 with open(os.path.join(os.getcwd(), 'models', model_arch_file), 'w') as outfile:
     json.dump(json.loads(custom_model.to_json()), outfile, indent=2)
 
@@ -261,8 +261,8 @@ elif FT_TECNIQUE == bottomup:
         histories.append(train_top_n_layers(
             model=custom_model,
             threshold_train=threshold,
-            epochs=rmsprop,
-            optimizer=sgd,
+            epochs=epochs,
+            optimizer=rmsprop,
             batch_size=batch_size,
             train_steps=train_steps, val_steps=val_steps,
             callbacks=[stopper, logger, model_saver]))
