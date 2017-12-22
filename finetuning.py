@@ -23,9 +23,9 @@ create_empty_directories(['results','logs', 'models'], empty_dirs=True)
 lower_randomization_effects()
 memory_growth_config()
 
-from keras.applications.inception_resnet_v2 import preprocess_input
-model_name = 'VGG16'
-base_model = keras.applications.vgg16.VGG16(include_top=False, weights='imagenet')
+from keras.applications.vgg16 import preprocess_input
+model_name = 'vgg16'
+base_model = keras.applications.vgg16.VGG16(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
 
 # 79% - 1dense - 32bs - keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet')
 # 77% - 1dense - 32bs - keras.applications.resnet50.ResNet50(input_shape=(224, 224, 3), include_top=False, weights='imagenet')
@@ -93,8 +93,8 @@ topnn_nlayers = len(custom_model.layers) - len(base_model.layers)
 print('Custom model structure')
 custom_model.summary()
 
-IMG_WIDTH = 299
-IMG_HEIGHT = 299
+IMG_WIDTH = 224
+IMG_HEIGHT = 224
 data_augmentation_level = 3
 
 dict_augmentation = dict(preprocessing_function=preprocess_input)
@@ -257,7 +257,7 @@ elif FT_TECNIQUE == bottomup:
         batch_size=batch_size,
         train_steps=train_steps, val_steps=val_steps,
         callbacks=[stopper, logger, model_saver])]
-    ft_step = base_model_nlayers // 10
+    ft_step = base_model_nlayers // 5
     for threshold in range(base_model_nlayers - ft_step, -1, -ft_step):
         histories.append(train_top_n_layers(
             model=custom_model,
