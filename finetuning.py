@@ -25,7 +25,7 @@ memory_growth_config()
 
 from keras.applications.inception_resnet_v2 import preprocess_input
 model_name = 'VGG16'
-base_model = keras.applications.vgg16.VGG16(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
+base_model = keras.applications.vgg16.VGG16(include_top=False, weights='imagenet')
 
 # 79% - 1dense - 32bs - keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet')
 # 77% - 1dense - 32bs - keras.applications.resnet50.ResNet50(input_shape=(224, 224, 3), include_top=False, weights='imagenet')
