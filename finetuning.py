@@ -24,9 +24,10 @@ lower_randomization_effects()
 memory_growth_config()
 
 from keras.applications.inception_resnet_v2 import preprocess_input
-model_name = 'incv2resnet'
-base_model = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet')
+model_name = 'VGG16'
+base_model = keras.applications.vgg16.VGG16(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
 
+# 79% - 1dense - 32bs - keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet')
 # 77% - 1dense - 32bs - keras.applications.resnet50.ResNet50(input_shape=(224, 224, 3), include_top=False, weights='imagenet')
 # 76% - 3dens - 32bs - keras.applications.mobilenet.MobileNet(input_shape=(224, 224, 3), alpha=1.0, depth_multiplier=1, dropout=1e-3, include_top=False, weights='imagenet')
 # 58% - 32bs - keras.applications.inception_v3.InceptionV3(include_top=False, weights='imagenet')
