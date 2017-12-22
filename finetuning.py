@@ -202,7 +202,7 @@ val_steps = None or 25250 // batch_size
 epochs = 250
 
 twopass, bottomup, whole_net, = ("twopass", "bottomup", "whole_net")
-FT_TECNIQUE = bottomup
+FT_TECNIQUE = twopass
 
 traincfg = {
     "train_tecnique": FT_TECNIQUE,
@@ -241,7 +241,7 @@ if FT_TECNIQUE == twopass:
         callbacks=[logger, model_saver])]
     histories.append(train_top_n_layers(
         model=custom_model,
-        threshold_train=249,
+        threshold_train=-1,
         epochs=epochs,
         optimizer=sgd,
         batch_size=batch_size,
