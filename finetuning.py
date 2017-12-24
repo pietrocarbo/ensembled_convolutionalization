@@ -28,13 +28,13 @@ from keras.applications.xception import preprocess_input
 model_name = 'xception'
 base_model = keras.applications.xception.Xception(include_top=False, weights='imagenet', input_shape=(IMG_WIDTH, IMG_HEIGHT, 3))
 
-# 79% - 1dense - 32bs - keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet')
-# 78% - 1dense - 32bs - keras.applications.vgg19.VGG19(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
-# 78% - keras.applications.vgg16.VGG16(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
-# 77% - 1dense - 32bs - keras.applications.resnet50.ResNet50(input_shape=(224, 224, 3), include_top=False, weights='imagenet')
-# 76% - 3dens - 32bs - keras.applications.mobilenet.MobileNet(input_shape=(224, 224, 3), alpha=1.0, depth_multiplier=1, dropout=1e-3, include_top=False, weights='imagenet')
-# 58% - 32bs - keras.applications.inception_v3.InceptionV3(include_top=False, weights='imagenet')
-# 43% - 3dLRBN - 30bs - keras.applications.xception.Xception(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
+# 79% - 1dense - 32bs - keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet', input_shape=(IMG_WIDTH, IMG_HEIGHT, 3))
+# 78% - 1dense - 32bs - keras.applications.vgg19.VGG19(include_top=False, weights='imagenet', input_shape=(IMG_WIDTH, IMG_HEIGHT, 3))
+# 78% - keras.applications.vgg16.VGG16(include_top=False, weights='imagenet', input_shape=(IMG_WIDTH, IMG_HEIGHT, 3))
+# 77% - 1dense - 32bs - keras.applications.resnet50.ResNet50(include_top=False, weights='imagenet', input_shape=(IMG_WIDTH, IMG_HEIGHT, 3))
+# 76% - 3dens - 32bs - keras.applications.mobilenet.MobileNet(alpha=1.0, depth_multiplier=1, dropout=1e-3, include_top=False, weights='imagenet', input_shape=(IMG_WIDTH, IMG_HEIGHT, 3))
+# 58% - 32bs - keras.applications.inception_v3.InceptionV3(include_top=False, weights='imagenet', input_shape=(IMG_WIDTH, IMG_HEIGHT, 3))
+# 43% - 3dLRBN - 30bs - keras.applications.xception.Xception(include_top=False, weights='imagenet', input_shape=(IMG_WIDTH, IMG_HEIGHT, 3))
 
 num_classes = 101
 dense3, dense3LRBN, dense1, vgg19, dense2, *_ = range(10)
@@ -201,6 +201,7 @@ val_steps = None or 25250 // batch_size
 epochs = 250
 
 twopass, bottomup, whole_net, = ("twopass", "bottomup", "whole_net")
+ft_bottumup_step = base_model_nlayers // 5
 FT_TECNIQUE = bottomup
 
 traincfg = {
@@ -219,7 +220,7 @@ traincfg = {
     "epochs_train_2": epochs,
     "callbacks_train_2": "stopper3, logger, saver",
 
-    "ft_step": base_model_nlayers // 10,
+    "ft_step": ft_bottumup_step,
 }
 
 with open(os.path.join(os.getcwd(), 'logs', traincfg_file), 'w') as outfile:
@@ -256,8 +257,7 @@ elif FT_TECNIQUE == bottomup:
         batch_size=batch_size,
         train_steps=train_steps, val_steps=val_steps,
         callbacks=[stopper, logger, model_saver])]
-    ft_step = base_model_nlayers // 5
-    for threshold in range(base_model_nlayers - ft_step, -1, -ft_step):
+    for threshold in range(base_model_nlayers - ft_bottumup_step, -1, -ft_bottumup_step):
         histories.append(train_top_n_layers(
             model=custom_model,
             threshold_train=threshold,
