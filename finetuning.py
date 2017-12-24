@@ -4,8 +4,6 @@ import signal
 import time
 import json
 
-import tensorflow as tf
-
 import keras
 from keras.preprocessing.image import ImageDataGenerator
 from keras.layers import GlobalAveragePooling2D, Dense, Dropout, BatchNormalization, Flatten
@@ -23,18 +21,20 @@ create_empty_directories(['results','logs', 'models'], empty_dirs=True)
 lower_randomization_effects()
 memory_growth_config()
 
-from keras.applications.vgg16 import preprocess_input
-model_name = 'vgg16'
-base_model = keras.applications.vgg16.VGG16(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
+IMG_WIDTH = 299
+IMG_HEIGHT = 299
 
-# 78% - 1dense - 32bs - keras.applications.vgg19.VGG19(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
+from keras.applications.xception import preprocess_input
+model_name = 'xception'
+base_model = keras.applications.xception.Xception(include_top=False, weights='imagenet', input_shape=(IMG_WIDTH, IMG_HEIGHT, 3))
+
 # 79% - 1dense - 32bs - keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet')
+# 78% - 1dense - 32bs - keras.applications.vgg19.VGG19(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
+# 78% - keras.applications.vgg16.VGG16(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
 # 77% - 1dense - 32bs - keras.applications.resnet50.ResNet50(input_shape=(224, 224, 3), include_top=False, weights='imagenet')
 # 76% - 3dens - 32bs - keras.applications.mobilenet.MobileNet(input_shape=(224, 224, 3), alpha=1.0, depth_multiplier=1, dropout=1e-3, include_top=False, weights='imagenet')
 # 58% - 32bs - keras.applications.inception_v3.InceptionV3(include_top=False, weights='imagenet')
 # 43% - 3dLRBN - 30bs - keras.applications.xception.Xception(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
-# 50% - keras.applications.vgg16.VGG16(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
-# base_model = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
 
 num_classes = 101
 dense3, dense3LRBN, dense1, vgg19, dense2, *_ = range(10)
@@ -94,9 +94,7 @@ topnn_nlayers = len(custom_model.layers) - len(base_model.layers)
 print('Custom model structure')
 custom_model.summary()
 
-IMG_WIDTH = 224
-IMG_HEIGHT = 224
-data_augmentation_level = 3
+data_augmentation_level = 4
 
 dict_augmentation = dict(preprocessing_function=preprocess_input)
 test_datagen = ImageDataGenerator(**dict_augmentation)
@@ -203,7 +201,7 @@ val_steps = None or 25250 // batch_size
 epochs = 250
 
 twopass, bottomup, whole_net, = ("twopass", "bottomup", "whole_net")
-FT_TECNIQUE = twopass
+FT_TECNIQUE = bottomup
 
 traincfg = {
     "train_tecnique": FT_TECNIQUE,
