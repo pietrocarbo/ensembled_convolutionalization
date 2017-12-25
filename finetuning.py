@@ -24,21 +24,21 @@ memory_growth_config()
 IMG_WIDTH = 299
 IMG_HEIGHT = 299
 
-from keras.applications.xception import preprocess_input
-model_name = 'xception'
-base_model = keras.applications.xception.Xception(include_top=False, weights='imagenet', input_shape=(IMG_WIDTH, IMG_HEIGHT, 3))
+from keras.applications.inception_v3 import preprocess_input
+model_name = 'inceptionv3'
+base_model = keras.applications.inception_v3.InceptionV3(include_top=False, weights='imagenet', input_shape=(IMG_WIDTH, IMG_HEIGHT, 3))
 
+# 80% - 3dLRBN - 30bs - keras.applications.xception.Xception(include_top=False, weights='imagenet', input_shape=(IMG_WIDTH, IMG_HEIGHT, 3))
 # 79% - 1dense - 32bs - keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet', input_shape=(IMG_WIDTH, IMG_HEIGHT, 3))
 # 78% - 1dense - 32bs - keras.applications.vgg19.VGG19(include_top=False, weights='imagenet', input_shape=(IMG_WIDTH, IMG_HEIGHT, 3))
 # 78% - keras.applications.vgg16.VGG16(include_top=False, weights='imagenet', input_shape=(IMG_WIDTH, IMG_HEIGHT, 3))
 # 77% - 1dense - 32bs - keras.applications.resnet50.ResNet50(include_top=False, weights='imagenet', input_shape=(IMG_WIDTH, IMG_HEIGHT, 3))
 # 76% - 3dens - 32bs - keras.applications.mobilenet.MobileNet(alpha=1.0, depth_multiplier=1, dropout=1e-3, include_top=False, weights='imagenet', input_shape=(IMG_WIDTH, IMG_HEIGHT, 3))
 # 58% - 32bs - keras.applications.inception_v3.InceptionV3(include_top=False, weights='imagenet', input_shape=(IMG_WIDTH, IMG_HEIGHT, 3))
-# 43% - 3dLRBN - 30bs - keras.applications.xception.Xception(include_top=False, weights='imagenet', input_shape=(IMG_WIDTH, IMG_HEIGHT, 3))
 
 num_classes = 101
 dense3, dense3LRBN, dense1, vgg19, dense2, *_ = range(10)
-TOP_NET_ARCH = dense1
+TOP_NET_ARCH = dense3LRBN
 
 if TOP_NET_ARCH == dense3:
     x = GlobalAveragePooling2D()(base_model.output)
@@ -64,12 +64,12 @@ elif TOP_NET_ARCH == dense3LRBN:
               bias_regularizer=l2(.0005))(x)
     x = LeakyReLU()(x)
     x = BatchNormalization()(x)
-    x = Dropout(.5)(x)
+    x = Dropout(0.5)(x)
     x = Dense(512, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005),
               bias_regularizer=l2(.0005))(x)
     x = LeakyReLU()(x)
     x = BatchNormalization()(x)
-    x = Dropout(.5)(x)
+    x = Dropout(0.5)(x)
     topnet_output = Dense(num_classes, kernel_initializer='he_uniform', bias_initializer="he_uniform", activation='softmax',
                           name='output_layer')(x)
 
