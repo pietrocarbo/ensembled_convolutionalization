@@ -197,8 +197,8 @@ model_saver = checkpointer(checkpoints_filename, monitor="val_categorical_accura
 
 # training parameters
 batch_size = int(sys.argv[1]) if len(sys.argv) > 1 else 32
-train_steps = 1 or 75750 // batch_size
-val_steps = 1 or 25250 // batch_size
+train_steps = None or 75750 // batch_size
+val_steps = None or 25250 // batch_size
 epochs = 250
 
 twopass, bottomup, whole_net, = ("twopass", "bottomup", "whole_net")
