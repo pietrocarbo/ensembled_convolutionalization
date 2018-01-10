@@ -42,7 +42,7 @@ for i, l in enumerate(model.layers):
 
 x = AveragePooling2D(pool_size=(7, 7))(last_pool_layer.output)
 
-x = Conv2D(101, (1, 1), strides=(1, 1), activation='relu', padding='valid', weights=[new_W, b])(x)
+x = Conv2D(101, (1, 1), strides=(1, 1), activation='softmax', padding='valid', weights=[new_W, b])(x)
 
 model = Model(inputs=model.get_layer("input_1").input, outputs=x)
 
@@ -50,8 +50,9 @@ print("CONVOLUTIONALIZATED MODEL")
 model.summary()
 
 
-input_file = "test_images/pizza.jpg"
-img = image.load_img(input_file)  # , target_size=(224, 224)
+# input_file = "test_images/pizza.jpg"
+input_file = "dataset-ethz101food/train/apple_pie/68383.jpg"
+img = image.load_img(input_file, target_size=(224*3, 224*3))
 x = image.img_to_array(img)
 x = np.expand_dims(x, axis=0)
 x = preprocess_input(x)

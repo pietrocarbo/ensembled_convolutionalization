@@ -21,12 +21,12 @@ create_empty_directories(['results','logs', 'models'], empty_dirs=True)
 lower_randomization_effects()
 memory_growth_config()
 
-IMG_WIDTH = 299
-IMG_HEIGHT = 299
+IMG_WIDTH = 224
+IMG_HEIGHT = 224
 
-from keras.applications.inception_v3 import preprocess_input
-model_name = 'inceptionv3'
-base_model = keras.applications.inception_v3.InceptionV3(include_top=False, weights='imagenet', input_shape=(IMG_WIDTH, IMG_HEIGHT, 3))
+from keras.applications.vgg16 import preprocess_input
+model_name = 'vgg16'
+base_model = keras.applications.vgg16.VGG16(include_top=False, weights='imagenet', input_shape=(IMG_WIDTH, IMG_HEIGHT, 3))
 
 # 80% - 3dLRBN - 30bs - keras.applications.xception.Xception(include_top=False, weights='imagenet', input_shape=(IMG_WIDTH, IMG_HEIGHT, 3))
 # 79% - 1dense - 32bs - keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet', input_shape=(IMG_WIDTH, IMG_HEIGHT, 3))
@@ -38,7 +38,7 @@ base_model = keras.applications.inception_v3.InceptionV3(include_top=False, weig
 
 num_classes = 101
 dense3, dense3LRBN, dense1, vgg19, dense2, *_ = range(10)
-TOP_NET_ARCH = dense3LRBN
+TOP_NET_ARCH = dense1
 
 if TOP_NET_ARCH == dense3:
     x = GlobalAveragePooling2D()(base_model.output)
@@ -80,7 +80,8 @@ elif TOP_NET_ARCH == dense2:
     topnet_output = Dense(num_classes, activation='softmax', kernel_initializer='he_uniform', bias_initializer="he_uniform")(x)
 
 elif TOP_NET_ARCH == dense1:
-    x = GlobalAveragePooling2D()(base_model.output)
+    # x = GlobalAveragePooling2D()(base_model.output)
+    x = Flatten()(base_model.output)
     topnet_output = Dense(num_classes, activation='softmax', name='output_layer')(x)
 
 else:
@@ -196,13 +197,13 @@ model_saver = checkpointer(checkpoints_filename, monitor="val_categorical_accura
 
 # training parameters
 batch_size = int(sys.argv[1]) if len(sys.argv) > 1 else 32
-train_steps = None or 75750 // batch_size
-val_steps = None or 25250 // batch_size
+train_steps = 1 or 75750 // batch_size
+val_steps = 1 or 25250 // batch_size
 epochs = 250
 
 twopass, bottomup, whole_net, = ("twopass", "bottomup", "whole_net")
 ft_bottumup_step = base_model_nlayers // 5
-FT_TECNIQUE = bottomup
+FT_TECNIQUE = twopass
 
 traincfg = {
     "train_tecnique": FT_TECNIQUE,
@@ -220,7 +221,7 @@ traincfg = {
     "epochs_train_2": epochs,
     "callbacks_train_2": "stopper3, logger, saver",
 
-    "ft_step": ft_bottumup_step,
+    "ft_step": -1,
 }
 
 with open(os.path.join(os.getcwd(), 'logs', traincfg_file), 'w') as outfile:
@@ -234,19 +235,19 @@ if FT_TECNIQUE == twopass:
     histories = [train_top_n_layers(
         model=custom_model,
         threshold_train=base_model_nlayers,
-        epochs=10,
+        epochs=epochs,
         optimizer=rmsprop,
         batch_size=batch_size,
         train_steps=train_steps, val_steps=val_steps,
-        callbacks=[logger, model_saver])]
+        callbacks=[stopper, logger, model_saver])]
     histories.append(train_top_n_layers(
         model=custom_model,
         threshold_train=-1,
         epochs=epochs,
-        optimizer=sgd,
+        optimizer=rmsprop,
         batch_size=batch_size,
         train_steps=train_steps, val_steps=val_steps,
-        callbacks=[stopper, logger, model_saver, lr_reduce]))
+        callbacks=[stopper, logger, model_saver]))
 
 elif FT_TECNIQUE == bottomup:
     histories = [train_top_n_layers(
