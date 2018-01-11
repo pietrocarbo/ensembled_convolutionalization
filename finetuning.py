@@ -24,9 +24,9 @@ memory_growth_config()
 IMG_WIDTH = 224
 IMG_HEIGHT = 224
 
-from keras.applications.vgg16 import preprocess_input
-model_name = 'vgg16'
-base_model = keras.applications.vgg16.VGG16(include_top=False, weights='imagenet', input_shape=(IMG_WIDTH, IMG_HEIGHT, 3))
+from keras.applications.mobilenet import preprocess_input
+model_name = 'mobilenet'
+base_model = keras.applications.mobilenet.MobileNet(alpha=1.0, depth_multiplier=1, dropout=1e-3, include_top=False, weights='imagenet', input_shape=(IMG_WIDTH, IMG_HEIGHT, 3))
 
 # 80% - 3dLRBN - 30bs - keras.applications.xception.Xception(include_top=False, weights='imagenet', input_shape=(IMG_WIDTH, IMG_HEIGHT, 3))
 # 79% - 1dense - 32bs - keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet', input_shape=(IMG_WIDTH, IMG_HEIGHT, 3))
