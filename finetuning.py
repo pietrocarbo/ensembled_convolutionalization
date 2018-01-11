@@ -38,10 +38,11 @@ base_model = keras.applications.vgg16.VGG16(include_top=False, weights='imagenet
 
 num_classes = 101
 dense3, dense3LRBN, dense1, vgg19, dense2, *_ = range(10)
-TOP_NET_ARCH = dense1
+TOP_NET_ARCH = dense3
 
 if TOP_NET_ARCH == dense3:
-    x = GlobalAveragePooling2D()(base_model.output)
+    # x = GlobalAveragePooling2D()(base_model.output)
+    x = Flatten()(base_model.output)
     x = Dense(512, activation='relu', name='fc-1')(x)
     x = Dropout(0.5)(x)
     x = Dense(256, activation='relu', name='fc-2')(x)
@@ -80,8 +81,7 @@ elif TOP_NET_ARCH == dense2:
     topnet_output = Dense(num_classes, activation='softmax', kernel_initializer='he_uniform', bias_initializer="he_uniform")(x)
 
 elif TOP_NET_ARCH == dense1:
-    # x = GlobalAveragePooling2D()(base_model.output)
-    x = Flatten()(base_model.output)
+    x = GlobalAveragePooling2D()(base_model.output)
     topnet_output = Dense(num_classes, activation='softmax', name='output_layer')(x)
 
 else:
