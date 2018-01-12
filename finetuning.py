@@ -24,9 +24,9 @@ memory_growth_config()
 IMG_WIDTH = 224
 IMG_HEIGHT = 224
 
-from keras.applications.mobilenet import preprocess_input
-model_name = 'mobilenet'
-base_model = keras.applications.mobilenet.MobileNet(alpha=1.0, depth_multiplier=1, dropout=1e-3, include_top=False, weights='imagenet', input_shape=(IMG_WIDTH, IMG_HEIGHT, 3))
+from keras.applications.inception_resnet_v2 import preprocess_input
+model_name = 'inception_resnet_2'
+base_model = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet', input_shape=(IMG_WIDTH, IMG_HEIGHT, 3))
 
 # 80% - 3dLRBN - 30bs - keras.applications.xception.Xception(include_top=False, weights='imagenet', input_shape=(IMG_WIDTH, IMG_HEIGHT, 3))
 # 79% - 1dense - 32bs - keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet', input_shape=(IMG_WIDTH, IMG_HEIGHT, 3))
@@ -38,11 +38,10 @@ base_model = keras.applications.mobilenet.MobileNet(alpha=1.0, depth_multiplier=
 
 num_classes = 101
 dense3, dense3LRBN, dense1, vgg19, dense2, *_ = range(10)
-TOP_NET_ARCH = dense3
+TOP_NET_ARCH = dense1
 
 if TOP_NET_ARCH == dense3:
-    # x = GlobalAveragePooling2D()(base_model.output)
-    x = Flatten()(base_model.output)
+    x = GlobalAveragePooling2D()(base_model.output)
     x = Dense(512, activation='relu', name='fc-1')(x)
     x = Dropout(0.5)(x)
     x = Dense(256, activation='relu', name='fc-2')(x)
@@ -81,7 +80,8 @@ elif TOP_NET_ARCH == dense2:
     topnet_output = Dense(num_classes, activation='softmax', kernel_initializer='he_uniform', bias_initializer="he_uniform")(x)
 
 elif TOP_NET_ARCH == dense1:
-    x = GlobalAveragePooling2D()(base_model.output)
+    #x = GlobalAveragePooling2D()(base_model.output)
+    x = Flatten()(base_model.output)
     topnet_output = Dense(num_classes, activation='softmax', name='output_layer')(x)
 
 else:
@@ -203,7 +203,7 @@ epochs = 250
 
 twopass, bottomup, whole_net, = ("twopass", "bottomup", "whole_net")
 ft_bottumup_step = base_model_nlayers // 5
-FT_TECNIQUE = twopass
+FT_TECNIQUE = bottomup
 
 traincfg = {
     "train_tecnique": FT_TECNIQUE,
