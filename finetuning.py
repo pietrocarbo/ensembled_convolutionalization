@@ -24,9 +24,9 @@ memory_growth_config()
 IMG_WIDTH = 224
 IMG_HEIGHT = 224
 
-from keras.applications.inception_resnet_v2 import preprocess_input
-model_name = 'inception_resnet_2'
-base_model = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet', input_shape=(IMG_WIDTH, IMG_HEIGHT, 3))
+from keras.applications.xception import preprocess_input
+model_name = 'xception'
+base_model = keras.applications.xception.Xception(include_top=False, weights='imagenet', input_shape=(IMG_WIDTH, IMG_HEIGHT, 3))
 
 # 80% - 3dLRBN - 30bs - keras.applications.xception.Xception(include_top=False, weights='imagenet', input_shape=(IMG_WIDTH, IMG_HEIGHT, 3))
 # 79% - 1dense - 32bs - keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet', input_shape=(IMG_WIDTH, IMG_HEIGHT, 3))
@@ -38,7 +38,7 @@ base_model = keras.applications.inception_resnet_v2.InceptionResNetV2(include_to
 
 num_classes = 101
 dense3, dense3LRBN, dense1, vgg19, dense2, *_ = range(10)
-TOP_NET_ARCH = dense1
+TOP_NET_ARCH = dense3LRBN
 
 if TOP_NET_ARCH == dense3:
     x = GlobalAveragePooling2D()(base_model.output)
