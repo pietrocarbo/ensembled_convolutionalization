@@ -49,8 +49,15 @@ model = Model(inputs=model.get_layer("input_1").input, outputs=x)
 print("CONVOLUTIONALIZATED MODEL")
 model.summary()
 
-input_file = "dataset-ethz101food/train/apple_pie/68383.jpg"
-img = image.load_img(input_file, target_size=(224*4, 224*4))
+factor = 6
+img_size = (224*factor, 224*factor)
+class_idx = 29   # 12: cannoli, 83: red velvet
+
+# input_file = "dataset-ethz101food/train/cannoli/1163058.jpg"
+# input_file = "dataset-ethz101food/train/apple_pie/68383.jpg"
+# input_file = "dataset-ethz101food/train/red_velvet_cake/1664681.jpg"
+input_file = "dataset-ethz101food/train/cup_cakes/46500.jpg"
+img = image.load_img(input_file, target_size=img_size)
 x = image.img_to_array(img)
 x = np.expand_dims(x, axis=0)
 x = preprocess_input(x)
@@ -60,9 +67,9 @@ unflatten_pred_size = preds.shape
 
 heatmaps_values = [preds[0, :, :, i] for i in range(101)]
 
-pixels = 255 * (1.0 - heatmaps_values[0])
+pixels = 255 * (1.0 - heatmaps_values[class_idx])
 im = Image.fromarray(pixels.astype(np.uint8), mode='L')
-im = im.resize((140, 140))
+im = im.resize(img_size)
 im.show()
 
 preds = preds.flatten()
