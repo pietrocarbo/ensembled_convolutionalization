@@ -59,7 +59,8 @@ elif TOP_NET_ARCH == vgg19:
     topnet_output = Dense(num_classes, activation="softmax", name='output_layer')(x)
 
 elif TOP_NET_ARCH == dense3LRBN:
-    x = GlobalAveragePooling2D()(base_model.output)
+    #x = GlobalAveragePooling2D()(base_model.output)
+    x = Flatten()(base_model.output)
     x = Dense(1024, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005),
               bias_regularizer=l2(.0005))(x)
     x = LeakyReLU()(x)
@@ -80,8 +81,7 @@ elif TOP_NET_ARCH == dense2:
     topnet_output = Dense(num_classes, activation='softmax', kernel_initializer='he_uniform', bias_initializer="he_uniform")(x)
 
 elif TOP_NET_ARCH == dense1:
-    #x = GlobalAveragePooling2D()(base_model.output)
-    x = Flatten()(base_model.output)
+    x = GlobalAveragePooling2D()(base_model.output)
     topnet_output = Dense(num_classes, activation='softmax', name='output_layer')(x)
 
 else:
