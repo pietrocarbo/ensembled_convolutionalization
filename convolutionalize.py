@@ -1,9 +1,9 @@
 from keras.layers import GlobalAveragePooling2D, Dense, Dropout, Input, Conv2D, AveragePooling2D
 from keras.models import Model
 from keras.models import model_from_json
+from PIL import Image
 import json
 import numpy as np
-import os
 
 from keras.applications.vgg16 import preprocess_input
 from keras.preprocessing import image
@@ -49,20 +49,21 @@ model = Model(inputs=model.get_layer("input_1").input, outputs=x)
 print("CONVOLUTIONALIZATED MODEL")
 model.summary()
 
-
-# input_file = "test_images/pizza.jpg"
 input_file = "dataset-ethz101food/train/apple_pie/68383.jpg"
-img = image.load_img(input_file, target_size=(224*3, 224*3))
+img = image.load_img(input_file, target_size=(224*4, 224*4))
 x = image.img_to_array(img)
 x = np.expand_dims(x, axis=0)
 x = preprocess_input(x)
 preds = model.predict(x)
 
+unflatten_pred_size = preds.shape
+
+heatmaps_values = [preds[0, :, :, i] for i in range(101)]
+
+pixels = 255 * (1.0 - heatmaps_values[0])
+im = Image.fromarray(pixels.astype(np.uint8), mode='L')
+im = im.resize((140, 140))
+im.show()
+
 preds = preds.flatten()
-sorted_classes_ix = np.argsort(preds).flatten()
-result = 'Image ' + str(input_file) + ' results:\n'
-with open(os.path.join('dataset-ethz101food', 'meta', 'classes.txt')) as file:
-    class_labels = [line.strip('\n') for line in file.readlines()]
-for i in range(5):
-    idx = sorted_classes_ix[-i]
-    result += '\t prediction {:d}/{:d}  -->  classified as: {:s}({:d}) with a confidence of {:f}\n'.format(i + 1, 5, class_labels[idx], idx, preds[idx])
+print("preds size", unflatten_pred_size, "flattened into", preds.shape, "values\n", preds)
