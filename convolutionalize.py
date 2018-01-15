@@ -3,6 +3,7 @@ from keras.models import Model
 from keras.models import model_from_json
 from PIL import Image
 import json
+import os
 import numpy as np
 
 from keras.applications.vgg16 import preprocess_input
@@ -49,14 +50,28 @@ model = Model(inputs=model.get_layer("input_1").input, outputs=x)
 print("CONVOLUTIONALIZATED MODEL")
 model.summary()
 
-factor = 6
-img_size = (224*factor, 224*factor)
-class_idx = 29   # 12: cannoli, 83: red velvet
+
+def idx_to_name_class(idx):
+    with open(os.path.join('dataset-ethz101food', 'meta', 'classes.txt')) as file:
+        class_labels = [line.strip('\n') for line in file.readlines()]
+    return class_labels[idx]
+
+
+# class_idx = 29   # 12: cannoli, 83: red velvet
+upsampling_factor = 3
+img_size = (224 * upsampling_factor, 224 * upsampling_factor)
+top_n_show = 3
+
+input_class = "cup_cakes"
+input_file = "13281.jpg"
+
+# TODO:Griglia factor*factor, soglia stop aumento factor,
 
 # input_file = "dataset-ethz101food/train/cannoli/1163058.jpg"
 # input_file = "dataset-ethz101food/train/apple_pie/68383.jpg"
 # input_file = "dataset-ethz101food/train/red_velvet_cake/1664681.jpg"
-input_file = "dataset-ethz101food/train/cup_cakes/46500.jpg"
+# input_file = "dataset-ethz101food/train/cup_cakes/46500.jpg"
+input_file = "dataset-ethz101food/train/cup_cakes/13821.jpg"
 img = image.load_img(input_file, target_size=img_size)
 x = image.img_to_array(img)
 x = np.expand_dims(x, axis=0)
@@ -67,10 +82,22 @@ unflatten_pred_size = preds.shape
 
 heatmaps_values = [preds[0, :, :, i] for i in range(101)]
 
-pixels = 255 * (1.0 - heatmaps_values[class_idx])
-im = Image.fromarray(pixels.astype(np.uint8), mode='L')
-im = im.resize(img_size)
-im.show()
+# summed_heatmaps = np.sum(heatmaps_values, axis=(1, 2))
+# idx_classmax = np.argmax(summed_heatmaps).astype(int)
 
-preds = preds.flatten()
-print("preds size", unflatten_pred_size, "flattened into", preds.shape, "values\n", preds)
+max_heatmaps = np.amax(heatmaps_values, axis=(1,2))
+
+top_n_idx = np.argsort(max_heatmaps)[-3:][::-1]
+
+os.makedirs(os.path.join(os.getcwd(), "results", "13821_" + "maps_factor" + str(upsampling_factor)))
+
+for i, idx in enumerate(top_n_idx):
+    name_class = idx_to_name_class(idx)
+    print("Top", i, "category is: id", idx, "name", name_class)
+    pixels = 255 * (1.0 - heatmaps_values[idx])
+    im = Image.fromarray(pixels.astype(np.uint8), mode='L')
+    im = im.resize(img_size)
+    im.save(os.path.join(os.getcwd(), "results", "13821_" + "maps_factor" + str(upsampling_factor), str(i + 1) + "_" + name_class + "_acc" + str(max_heatmaps[idx]) + ".jpg"))
+
+# preds = preds.flatten()
+# print("preds size", unflatten_pred_size, "flattened into", preds.shape, "values\n", preds)
