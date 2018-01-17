@@ -1,3 +1,4 @@
 .idea/
 env/
 dataset-ethz101food/
+trained_models/
