@@ -115,10 +115,10 @@ threshold_accuracy_stop = 0.80
 # "dataset-ethz101food/train/cup_cakes/46500.jpg"
 input_class = "cannoli"
 input_instance = "1706697"
-input_set = "train"
+input_set = "test"
 input_filename = "dataset-ethz101food/" + input_set + "/" + input_class + "/" + input_instance + ".jpg"
 
-if (os.path.exists("/home/el/myfile.txt")):
+if (os.path.exists(input_filename)):
     for upsampling_factor in range (min_upsampling_factor, max_upsampling_factor + 1):
         img_size = (224 * upsampling_factor, 224 * upsampling_factor)
 
