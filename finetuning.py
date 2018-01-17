@@ -81,7 +81,8 @@ elif TOP_NET_ARCH == dense2:
     topnet_output = Dense(num_classes, activation='softmax', kernel_initializer='he_uniform', bias_initializer="he_uniform")(x)
 
 elif TOP_NET_ARCH == dense1:
-    x = GlobalAveragePooling2D()(base_model.output)
+    # x = GlobalAveragePooling2D()(base_model.output)
+    x = Flatten()(base_model.output)
     topnet_output = Dense(num_classes, activation='softmax', name='output_layer')(x)
 
 else:
