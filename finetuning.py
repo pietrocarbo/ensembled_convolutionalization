@@ -21,8 +21,8 @@ create_empty_directories(['results','logs', 'models'], empty_dirs=True)
 lower_randomization_effects()
 memory_growth_config()
 
-IMG_WIDTH = 224
-IMG_HEIGHT = 224
+IMG_WIDTH = 299
+IMG_HEIGHT = 299
 
 from keras.applications.xception import preprocess_input
 model_name = 'xception'
@@ -38,7 +38,7 @@ base_model = keras.applications.xception.Xception(include_top=False, weights='im
 
 num_classes = 101
 dense3, dense3LRBN, dense1, vgg19, dense2, *_ = range(10)
-TOP_NET_ARCH = dense3LRBN
+TOP_NET_ARCH = dense1
 
 if TOP_NET_ARCH == dense3:
     x = GlobalAveragePooling2D()(base_model.output)
@@ -119,7 +119,7 @@ train_datagen = ImageDataGenerator(**dict_augmentation)
 
 
 def train_top_n_layers(model, threshold_train, epochs, optimizer, batch_size=32, callbacks=None, train_steps=None,
-                       val_steps=None, test_epoch_end=True):
+                       val_steps=None, test_epoch_end=True, top5acc_metric=True):
     ltrained = lfreezed = 0
     for i in range(len(model.layers)):
         if i < threshold_train:
@@ -144,7 +144,7 @@ def train_top_n_layers(model, threshold_train, epochs, optimizer, batch_size=32,
     print('Batch size is ' + str(batch_size))
 
     custom_model.compile(loss='categorical_crossentropy', optimizer=optimizer,
-                         metrics=['categorical_accuracy', 'top_k_categorical_accuracy'])
+                         metrics=['categorical_accuracy', 'top_k_categorical_accuracy'] if top5acc_metric else ['categorical_accuracy'])
 
     start = time.time()
     history = model.fit_generator(train_generator,
@@ -156,8 +156,12 @@ def train_top_n_layers(model, threshold_train, epochs, optimizer, batch_size=32,
     print('Training time {0:.2f} minutes'.format(-(start - time.time()) / 60))
 
     if test_epoch_end:
-        (loss, acc, top5acc) = model.evaluate_generator(validation_generator, val_steps)
-        print("[EVAL] loss={:.4f}, top-1 accuracy: {:.4f}%, top-5 accuracy: {:.4f}%".format(loss, acc * 100, top5acc * 100))
+        if top5acc_metric:
+            (loss, acc, top5acc) = model.evaluate_generator(validation_generator, val_steps)
+            print("[EVAL] loss={:.4f}, top-1 accuracy: {:.4f}%, top-5 accuracy: {:.4f}%".format(loss, acc * 100, top5acc * 100))
+        else:
+            (loss, acc) = model.evaluate_generator(validation_generator, val_steps)
+            print("[EVAL] loss={:.4f}, top-1 accuracy: {:.4f}%".format(loss, acc * 100))
     return history
 
 
@@ -221,7 +225,7 @@ traincfg = {
     "epochs_train_2": epochs,
     "callbacks_train_2": "stopper3, logger, saver",
 
-    "ft_step": -1,
+    "ft_step": str(ft_bottumup_step),
 }
 
 with open(os.path.join(os.getcwd(), 'logs', traincfg_file), 'w') as outfile:

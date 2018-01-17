@@ -26,8 +26,8 @@ def prepare_str_file_architecture_syntax(filepath):
     return model_str
 
 
-model = model_from_json(prepare_str_file_architecture_syntax("2017-12-24_acc77_vgg16/vgg16_architecture_2017-12-23_22-53-03.json"))
-model.load_weights("2017-12-24_acc77_vgg16/vgg16_ft_weights_acc0.78_e15_2017-12-23_22-53-03.hdf5")
+model = model_from_json(prepare_str_file_architecture_syntax("trained_models/top5_vgg16_acc77_2017-12-24/vgg16_architecture_2017-12-23_22-53-03.json"))
+model.load_weights("trained_models/top5_vgg16_acc77_2017-12-24/vgg16_ft_weights_acc0.78_e15_2017-12-23_22-53-03.hdf5")
 print("IMPORTED MODEL")
 model.summary()
 
@@ -102,6 +102,7 @@ def save_map(heatmap, resultfname, is_input_img=False, grid=True):
             ax.text(x, y, '{:d}'.format((ii + jj * nx) + 1), color='tab:blue', ha='center', va='center')
 
     fig.savefig(resultfname)
+    plt.clf()
 
 max_upsampling_factor = 6
 min_upsampling_factor = 1
@@ -113,6 +114,14 @@ threshold_accuracy_stop = 0.80
 # "dataset-ethz101food/train/apple_pie/68383.jpg"
 # "dataset-ethz101food/train/red_velvet_cake/1664681.jpg"
 # "dataset-ethz101food/train/cup_cakes/46500.jpg"
+#  test/cannoli/1706697.jpg -> potenzialmente due cibi nella stessa foto
+#  test/beignets/2918213.jpg -> cibo in basso a sinistra
+#  test/french_fries/796641.jpg -> cibo in alto e molto piccolo
+#  train/pizza/2687575.jpg -> potenzialmente lo stesso cibo in più posti
+#  train/spaghetti_bolognese/1331330.jpg -> cibo i ndue posizioni diverse
+#  train/cup_cakes/9256.jpg -> potrebbe dare buoni frutti con upsampling anche a 8
+#  train/cup_cakes/451074.jpg -> molto difficile da trovare ed è lontano ( sopra il bus)
+#  train/cup_cakes/1265596.jpg -> cibo in più posti
 input_class = "cannoli"
 input_instance = "1706697"
 input_set = "test"
@@ -137,28 +146,29 @@ if (os.path.exists(input_filename)):
         top_n_idx = np.argsort(max_heatmaps)[-3:][::-1]
 
         if (os.path.isdir(resultdir)):
-            print("Deleting older version of this folder...\n")
+            print("Deleting older version of the folder " + resultdir)
             shutil.rmtree(resultdir)
-
         os.makedirs(resultdir)
 
         save_map(input_filename, os.path.join(resultdir, input_class + "_" + input_instance + ".jpg"), is_input_img=True)
         for i, idx in enumerate(top_n_idx):
             name_class = idx_to_class_name(idx)
-            print("Top", i, "category is: id", idx, "name", name_class)
+            print("Top", i, "category is: id", idx, ", name", name_class)
             resultfname = os.path.join(resultdir, str(i + 1) + "_" + name_class + "_acc" + str(max_heatmaps[idx]) + ".jpg")
             save_map(heatmaps_values[idx], resultfname)
             print("heatmap saved at", resultfname)
 
         if (max_heatmaps[top_n_idx[0]] >= threshold_accuracy_stop):
-            print ("\nThreshold accuracy stop detected -> " + str(max_heatmaps[top_n_idx[0]]) + " with upsampling_factor -> " + str(upsampling_factor))
-            break
+            print("Upsampling step " + str(upsampling_factor) + " finished -> accuracy threshold stop detected (accuracy: " + str(max_heatmaps[top_n_idx[0]]) + ")\n")
+            # break
         else:
-            print ("\nMax accuracy -> " + str(max_heatmaps[top_n_idx[0]]) + " with upsampling_factor -> " + str(upsampling_factor) + "\n")
+            print("Upsampling step " + str(upsampling_factor) + " finished -> low accuracy, continuing... (accuracy: " + str(max_heatmaps[top_n_idx[0]]) + ")\n")
 
         # ---------------------------------------------------------------------------
         # wrong way to get the most probable category
         # summed_heatmaps = np.sum(heatmaps_values, axis=(1, 2))
         # idx_classmax = np.argmax(summed_heatmaps).astype(int)
 else:
-    print ("The specified image " + input_filename + " not exist")
+    print ("The specified image " + input_filename + " does not exist")
+
+plt.close('all')
