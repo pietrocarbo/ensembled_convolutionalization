@@ -113,49 +113,52 @@ threshold_accuracy_stop = 0.80
 # "dataset-ethz101food/train/apple_pie/68383.jpg"
 # "dataset-ethz101food/train/red_velvet_cake/1664681.jpg"
 # "dataset-ethz101food/train/cup_cakes/46500.jpg"
-input_class = "cup_cakes"
-input_instance = "46500"
+input_class = "cannoli"
+input_instance = "1706697"
 input_set = "train"
 input_filename = "dataset-ethz101food/" + input_set + "/" + input_class + "/" + input_instance + ".jpg"
 
-for upsampling_factor in range (min_upsampling_factor, max_upsampling_factor + 1):
-    img_size = (224 * upsampling_factor, 224 * upsampling_factor)
+if (os.path.exists("/home/el/myfile.txt")):
+    for upsampling_factor in range (min_upsampling_factor, max_upsampling_factor + 1):
+        img_size = (224 * upsampling_factor, 224 * upsampling_factor)
 
-    resultdir = os.path.join(os.getcwd(), "results", input_class + "_" + input_instance, "upsampled" + str(upsampling_factor) + "_heatmaps")
+        resultdir = os.path.join(os.getcwd(), "results", input_class + "_" + input_instance, "upsampled" + str(upsampling_factor) + "_heatmaps")
 
-    input_image = image.load_img(input_filename, target_size=img_size)
-    input_image = image.img_to_array(input_image)
-    input_image_expandedim = np.expand_dims(input_image, axis=0)
-    input_preprocessed_image = preprocess_input(input_image_expandedim)
-    preds = model.predict(input_preprocessed_image)
+        input_image = image.load_img(input_filename, target_size=img_size)
+        input_image = image.img_to_array(input_image)
+        input_image_expandedim = np.expand_dims(input_image, axis=0)
+        input_preprocessed_image = preprocess_input(input_image_expandedim)
+        preds = model.predict(input_preprocessed_image)
 
-    heatmaps_values = [preds[0, :, :, i] for i in range(101)]
+        heatmaps_values = [preds[0, :, :, i] for i in range(101)]
 
-    max_heatmaps = np.amax(heatmaps_values, axis=(1,2))
+        max_heatmaps = np.amax(heatmaps_values, axis=(1,2))
 
-    top_n_idx = np.argsort(max_heatmaps)[-3:][::-1]
+        top_n_idx = np.argsort(max_heatmaps)[-3:][::-1]
 
-    if (os.path.isdir(resultdir)):
-        print("Deleting older version of this folder...\n")
-        shutil.rmtree(resultdir)
+        if (os.path.isdir(resultdir)):
+            print("Deleting older version of this folder...\n")
+            shutil.rmtree(resultdir)
 
-    os.makedirs(resultdir)
+        os.makedirs(resultdir)
 
-    save_map(input_filename, os.path.join(resultdir, input_class + "_" + input_instance + ".jpg"), is_input_img=True)
-    for i, idx in enumerate(top_n_idx):
-        name_class = idx_to_class_name(idx)
-        print("Top", i, "category is: id", idx, "name", name_class)
-        resultfname = os.path.join(resultdir, str(i + 1) + "_" + name_class + "_acc" + str(max_heatmaps[idx]) + ".jpg")
-        save_map(heatmaps_values[idx], resultfname)
-        print("heatmap saved at", resultfname)
+        save_map(input_filename, os.path.join(resultdir, input_class + "_" + input_instance + ".jpg"), is_input_img=True)
+        for i, idx in enumerate(top_n_idx):
+            name_class = idx_to_class_name(idx)
+            print("Top", i, "category is: id", idx, "name", name_class)
+            resultfname = os.path.join(resultdir, str(i + 1) + "_" + name_class + "_acc" + str(max_heatmaps[idx]) + ".jpg")
+            save_map(heatmaps_values[idx], resultfname)
+            print("heatmap saved at", resultfname)
 
-    if (max_heatmaps[top_n_idx[0]] >= threshold_accuracy_stop):
-        print ("\nThreshold accuracy stop detected -> " + str(max_heatmaps[top_n_idx[0]]) + " with upsampling_factor -> " + str(upsampling_factor))
-        break
-    else:
-        print ("\nMax accuracy -> " + str(max_heatmaps[top_n_idx[0]]) + " with upsampling_factor -> " + str(upsampling_factor) + "\n")
+        if (max_heatmaps[top_n_idx[0]] >= threshold_accuracy_stop):
+            print ("\nThreshold accuracy stop detected -> " + str(max_heatmaps[top_n_idx[0]]) + " with upsampling_factor -> " + str(upsampling_factor))
+            break
+        else:
+            print ("\nMax accuracy -> " + str(max_heatmaps[top_n_idx[0]]) + " with upsampling_factor -> " + str(upsampling_factor) + "\n")
 
-    # ---------------------------------------------------------------------------
-    # wrong way to get the most probable category
-    # summed_heatmaps = np.sum(heatmaps_values, axis=(1, 2))
-    # idx_classmax = np.argmax(summed_heatmaps).astype(int)
+        # ---------------------------------------------------------------------------
+        # wrong way to get the most probable category
+        # summed_heatmaps = np.sum(heatmaps_values, axis=(1, 2))
+        # idx_classmax = np.argmax(summed_heatmaps).astype(int)
+else:
+    print ("The specified image " + input_filename + " not exist")
