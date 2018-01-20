@@ -26,7 +26,7 @@ def prepare_str_file_architecture_syntax(filepath):
     return model_str
 
 
-def load_VGG16(architecture_path, weigths_path, debug=True):
+def load_VGG16(architecture_path, weigths_path, debug=False):
     model = model_from_json(prepare_str_file_architecture_syntax(architecture_path))
     model.load_weights(weigths_path)
     if debug:
@@ -74,20 +74,25 @@ def idx_to_class_name(idx):
         class_labels = [line.strip('\n') for line in file.readlines()]
     return class_labels[idx]
 
-def save_map(heatmap, resultfname, tick_interval=None, is_input_img=False):
+def save_map(heatmap, resultfname, input_resize=None, tick_interval=None, is_input_img=False):
     if is_input_img:
-        pil_input = Image.open(heatmap)
-        # pil_input = pil_input.resize(img_size)
-        imgarray = np.asarray(pil_input)
+        image = Image.open(heatmap)
+        if input_resize:
+            image = image.resize(input_resize, Image.ANTIALIAS)
+        imgarray = np.asarray(image)
     else:
         pixels = 255 * (1.0 - heatmap)
         image = Image.fromarray(pixels.astype(np.uint8), mode='L')
-        # image = image.resize(img_size)
+        if input_resize:
+            image = image.resize(input_resize, Image.NEAREST)
         imgarray = np.asarray(image)
 
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
-    # fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
+
+    if input_resize:
+        ax.set_xlim(0, input_resize[0])
+        ax.set_ylim(input_resize[1], 0)
 
     if tick_interval:
         myInterval = tick_interval
@@ -95,6 +100,13 @@ def save_map(heatmap, resultfname, tick_interval=None, is_input_img=False):
         ax.xaxis.set_major_locator(loc)
         ax.yaxis.set_major_locator(loc)
         ax.grid(which='both', axis='both', linestyle='-')
+
+    if is_input_img:
+        ax.imshow(imgarray)
+    else:
+        ax.imshow(imgarray, cmap='Greys_r', interpolation='none')
+
+    if tick_interval:
         nx = abs(int(float(ax.get_xlim()[1] - ax.get_xlim()[0]) / float(myInterval)))
         ny = abs(int(float(ax.get_ylim()[1] - ax.get_ylim()[0]) / float(myInterval)))
         for jj in range(ny):
@@ -102,11 +114,6 @@ def save_map(heatmap, resultfname, tick_interval=None, is_input_img=False):
             for ii in range(nx):
                 x = myInterval / 2. + float(ii) * myInterval
                 ax.text(x, y, '{:d}'.format((ii + jj * nx) + 1), color='tab:blue', ha='center', va='center')
-
-    if is_input_img:
-        ax.imshow(imgarray)
-    else:
-        ax.imshow(imgarray, cmap='Greys_r', interpolation='none')
 
     fig.savefig(resultfname)
     plt.close()
@@ -168,7 +175,7 @@ if (os.path.exists(input_filename)):
 
     else:
         for upsampling_factor in range (min_upsampling_factor, max_upsampling_factor):
-            img_size = (255 * upsampling_factor, 255 * upsampling_factor)
+            img_size = (224 * upsampling_factor, 224 * upsampling_factor)
             input_image = image.load_img(input_filename, target_size=img_size)
             input_image = image.img_to_array(input_image)
             input_image_expandedim = np.expand_dims(input_image, axis=0)
@@ -187,13 +194,14 @@ if (os.path.exists(input_filename)):
                 shutil.rmtree(resultdir)
             os.makedirs(resultdir)
 
-            save_map(input_filename, os.path.join(resultdir, input_class + "_" + input_instance + ".jpg"), tick_interval=224, is_input_img=True)
+            save_map(input_filename, os.path.join(resultdir, input_class + "_" + input_instance + ".jpg"), input_resize=img_size, tick_interval=224, is_input_img=True)
             for i, idx in enumerate(top_n_idx):
                 name_class = idx_to_class_name(idx)
                 print("Top", i, "category is: id", idx, ", name", name_class)
                 resultfname = os.path.join(resultdir, str(i + 1) + "_" + name_class + "_acc" + str(max_heatmaps[idx]) + ".jpg")
-                save_map(heatmaps_values[idx], resultfname, tick_interval=224)
+                save_map(heatmaps_values[idx], resultfname, input_resize=img_size, tick_interval=224)
                 print("heatmap saved at", resultfname)
+
 
             if (max_heatmaps[top_n_idx[0]] >= threshold_accuracy_stop):
                 print("Upsampling step " + str(upsampling_factor) + " finished -> accuracy threshold stop detected (accuracy: " + str(max_heatmaps[top_n_idx[0]]) + ")\n")
