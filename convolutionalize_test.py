@@ -47,7 +47,7 @@ W, b = model.get_layer("output_layer").get_weights()
 print("weights old shape", W.shape, "values", W)
 print("biases old shape", b.shape, "values", b)
 
-weights_shape = (5, 5, p_dim[3], out_dim)
+weights_shape = (p_dim[1], p_dim[2], p_dim[3], out_dim)
 print("weights new shape", weights_shape)
 
 new_W = W.reshape(weights_shape)
@@ -87,12 +87,13 @@ if (os.path.exists(input_filename)):
     #resultdir = os.path.join(os.getcwd(), "results", input_class + "_" + input_instance, "upsampled" + str(upsampling_factor) + "_heatmaps")
 
     input_image = image.load_img(input_filename, target_size=img_size)
-    input_image = image.load_img(input_filename)
+    #input_image = image.load_img(input_filename)
     input_image = image.img_to_array(input_image)
     input_image_expandedim = np.expand_dims(input_image, axis=0)
     input_preprocessed_image = preprocess_input(input_image_expandedim)
     preds = model.predict(input_preprocessed_image)
 
+    print("DONE")
         # heatmaps_values = [preds[0, :, :, i] for i in range(101)]
         #
         # max_heatmaps = np.amax(heatmaps_values, axis=(1,2))
