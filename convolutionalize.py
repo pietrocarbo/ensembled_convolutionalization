@@ -112,21 +112,6 @@ def save_map(heatmap, resultfname, input_size, tick_interval=None, is_input_img=
     fig.savefig(resultfname)
     plt.close()
 
-
-# dataset-ethz101food/test/apple_pie/101251.jpg                 1 standard / 1 upsample1-2
-# "dataset-ethz101food/train/cup_cakes/13821.jpg"               3 standard / 2 upsample4
-# "dataset-ethz101food/train/cannoli/1163058.jpg"               2 standard / 1 upsample1-3
-# "dataset-ethz101food/train/apple_pie/68383.jpg"               1 standard / 1 up1, 2up2-3
-# "dataset-ethz101food/train/red_velvet_cake/1664681.jpg"       1 standard / 1 up1-4
-# "dataset-ethz101food/train/cup_cakes/46500.jpg"               4 standard / 1 up1-3
-#  test/cannoli/1706697.jpg -> potenzialmente due cibi nella stessa foto   5 cannoli / 3 up1
-#  test/beignets/2918213.jpg -> cibo in basso a sinistra   1 standard / 1 up1-2, 2 up3
-#  test/french_fries/796641.jpg -> cibo in alto e molto piccolo   1 standard / 1 up2-4, 3 up5-6
-#  train/pizza/2687575.jpg -> potenzialmente lo stesso cibo in più posti  1 standard / 1 up1-3, 4 up4, 1 up5, 5 up6
-#  train/spaghetti_bolognese/1331330.jpg -> cibo i ndue posizioni diverse  1 standard / 1 up1-4 (figo con up4)
-#  train/cup_cakes/9256.jpg -> potrebbe dare buoni frutti con upsampling anche a 8  1 standard / 1 up2-4, 3 up5-6
-#  train/cup_cakes/451074.jpg -> molto difficile da trovare ed è lontano ( sopra il bus) 0 standard / 2 up1, 3 up5, 5 up6
-#  train/cup_cakes/1265596.jpg -> cibo in più posti  0 standard / 1 up1-4, 4 up5, 2 up6
 input_set = "train"
 input_class = "cup_cakes"
 input_instance = "1265596"
@@ -139,7 +124,6 @@ top_n_show = 5
 
 model_modes = [overlap_fcnVGG16, upsample_fcnVGG16]
 for model in model_modes:
-
     if (os.path.exists(input_filename)):
         if model == overlap_fcnVGG16:
             input_image = image.load_img(input_filename)

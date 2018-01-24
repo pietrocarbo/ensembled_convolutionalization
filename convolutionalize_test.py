@@ -28,31 +28,27 @@ def prepare_str_file_architecture_syntax(filepath):
     return model_str
 
 
-#model = model_from_json(prepare_str_file_architecture_syntax("trained_models/top5_inv2resnet_flatten_acc70_2018-01-12/inception_resnet_2_architecture_2018-01-12_08-41-00.json"))
-base_model = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
-x = Flatten(name='flatten')(base_model.output)
-topnet_output = Dense(101, activation='softmax', name='output_layer')(x)
-model = Model(inputs=base_model.input, outputs=topnet_output)
+model = model_from_json(prepare_str_file_architecture_syntax("trained_models/flattened/2018_01_18_acc80_xception_flatten/xception_architecture_2018-01-17_19-37-00.json"))
+# base_model = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
+# x = Flatten(name="flatten_1")(base_model.output)
+# output = Dense(101, activation='softmax', name='output_layer')(x)
+# model = Model(inputs=base_model.input, outputs=output)
 model.summary()
 
 
-model.load_weights("trained_models/top5_inv2resnet_flatten_acc70_2018-01-12/inception_resnet_2_ft_weights_acc0.70_e2_2018-01-12_08-41-00.hdf5")
-print("IMPORTED MODEL")
-#Fino a qui tutto ok
+model.load_weights("trained_models/flattened/2018_01_18_acc80_xception_flatten/xception_ft_weights_acc0.80_e9_2018-01-17_19-37-00.hdf5")
 
-
-p_dim = model.get_layer("conv_7b_ac").input_shape  # None,5,5,1536
+p_dim = model.get_layer("block14_sepconv2_act").input_shape  # None, ?
 out_dim = model.get_layer("output_layer").get_weights()[1].shape[0]  # None,101
 W, b = model.get_layer("output_layer").get_weights()
-print("weights old shape", W.shape, "values", W)
-print("biases old shape", b.shape, "values", b)
+print("weights old shape", W.shape, "values", W, "biases old shape", b.shape, "values", b)
 
-weights_shape = (p_dim[1], p_dim[2], p_dim[3], out_dim)
+weights_shape = (1, 1, p_dim[3], out_dim)
 print("weights new shape", weights_shape)
 
 new_W = W.reshape(weights_shape)
 
-last_pool_layer = model.get_layer("conv_7b_ac")
+last_pool_layer = model.get_layer("block14_sepconv2_act")
 last_pool_layer.outbound_nodes = []
 model.layers.pop()
 model.layers.pop()
@@ -62,9 +58,9 @@ for i, l in enumerate(model.layers):
 
 #x = AveragePooling2D(pool_size=(7, 7))(last_pool_layer.output)
 
-x = Conv2D(101, (5, 5),strides=(1, 1), activation='softmax', padding='valid', weights=[new_W, b])(last_pool_layer.output)
+x = Conv2D(101, (1, 1), strides=(1, 1), activation='softmax', padding='valid', weights=[new_W, b])(last_pool_layer.output)
 
-model = Model(inputs=model.get_layer("input_1").input, outputs=x)
+model = Model(inputs=base_model.input, outputs=x)
 
 print("CONVOLUTIONALIZATED MODEL")
 model.summary()
@@ -82,12 +78,11 @@ input_filename = "dataset-ethz101food/" + input_set + "/" + input_class + "/" + 
 
 if (os.path.exists(input_filename)):
     #for upsampling_factor in range (min_upsampling_factor, max_upsampling_factor + 1):
-    img_size = (224, 224)
+    # img_size = (224, 224)
 
     #resultdir = os.path.join(os.getcwd(), "results", input_class + "_" + input_instance, "upsampled" + str(upsampling_factor) + "_heatmaps")
 
-    input_image = image.load_img(input_filename, target_size=img_size)
-    #input_image = image.load_img(input_filename)
+    input_image = image.load_img(input_filename)
     input_image = image.img_to_array(input_image)
     input_image_expandedim = np.expand_dims(input_image, axis=0)
     input_preprocessed_image = preprocess_input(input_image_expandedim)

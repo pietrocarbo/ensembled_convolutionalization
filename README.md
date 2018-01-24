@@ -20,12 +20,12 @@ Move the folder `dataset-ethz101food` inside `repo_home`
 Run the script `copy_splitdataset.py` to split the dataset in train/test folders (delete the `images` directory left if you want to save disk space)
 
 
-## TODO
-* Trovare il modello pretrained migliore da usare come baseline (o meglio cercare online modello allenato su ethz o altro dataset di cibo)
+## Milestones
+* Trovare il modello pretrained migliore da usare come baseline 
 
 * Usare i parametri di trasformazione di ImageDataGenerator per ottenere qualcosa in più di accuracy
 
-* Segmentazione tramite Fully Convolutional Networks (modello a parte inizialmente poi da integrare per classificazione foto con bassa confidenza)
+* Localizazzione tramite Fully Convolutional Networks 
 
 ###### Comando per aggiornare Keras e Theano
 pip install git+git://github.com/fchollet/keras.git --upgrade --no-deps
@@ -38,3 +38,15 @@ os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=gpu,floatX=float32,lib.cnmem=
 
 ##### Windows commands
 del models\* logs\* results\* /Q
+
+## TODO
+* Convolutionalize top5 models and validate them on test set (confusion matrices)
+* Ensemble them if possible
+* Mobile (django?) app
+* Relazione LaTeX in inglese in stile articolo 
+
+### Idee per la relazione
+* un immagine per categoria con label per descrizione iniziale
+* pre e post image augmentation
+* parlare delle callbacks e delle strategie di training 
+* confusion matrices

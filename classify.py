@@ -3,7 +3,7 @@ import sys
 import argparse
 import numpy as np
 import keras
-from keras.layers import GlobalAveragePooling2D, Dense, Dropout, Input
+from keras.layers import GlobalAveragePooling2D, Dense, Dropout
 from keras.models import Model
 from keras.models import load_model
 from keras.preprocessing import image
