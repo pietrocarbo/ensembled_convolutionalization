@@ -130,7 +130,6 @@ with open("dataset-ethz101food/meta/test_revisited.txt") as file:
 
 
 y_test = [y//250 for y in range(250*101)]
-y_pred = [None for y in range(250*101)]
 
 # dict_augmentation = dict(preprocessing_function=preprocess_input)
 # def images_generator(directory, batch_size):
@@ -149,39 +148,59 @@ y_pred = [None for y in range(250*101)]
 #             image_batch.append((image.astype(float) - 128) / 128)
 #
 #         yield np.array(image_batch)
-
-
-for ix_pred, input_filename in enumerate(file_list):
-    if (os.path.exists(input_filename)):
-        input_image = image.load_img(input_filename)
-        img_original_size = input_image.size
-        input_image = image.img_to_array(input_image)
-        input_image_expandedim = np.expand_dims(input_image, axis=0)
-        input_preprocessed_image = preprocess_input(input_image_expandedim)
-
-        preds = model.predict(input_preprocessed_image, batch_size=1)
-        # print("input img shape (height, width)", input_image.shape, "preds shape", preds.shape)
-
-        heatmaps_values = [preds[0, :, :, i] for i in range(101)]
-        max_heatmaps = np.amax(heatmaps_values, axis=(1, 2))
-        top_n_ix = np.argsort(max_heatmaps)[-top_n_show:][::-1]
-
-        # for i, ix in enumerate(top_n_ix):
-            # name_class = idx_to_class_name(ix)
-        y_pred[ix_pred] = top_n_ix[0]
-        if ix_pred % 250 == 0:
-            print("Image processed: number", ix_pred, "name", input_filename)  #,"Top", i+1, "category is: id", ix, ", name", name_class)
-    else:
-        print("The specified image " + input_filename + " does not exist")
-
-with open('y_pred', 'wb') as f:
-    pickle.dump(y_pred, f)
-
-# cnf_matrix = confusion_matrix(y_test, y_pred)
-# np.set_printoptions(precision=2)
 #
-# class_names = [idx_to_class_name(i) for i in range(101)]
 #
-# plt.figure()
-# plot_confusion_matrix(cnf_matrix, classes=class_names, title='Confusion matrix (not normalized)')
-# plt.savefig("results/testSetConfusionMatrixNN.jpg")
+# for ix_pred, input_filename in enumerate(file_list):
+#     if (os.path.exists(input_filename)):
+#         input_image = image.load_img(input_filename)
+#         img_original_size = input_image.size
+#         input_image = image.img_to_array(input_image)
+#         input_image_expandedim = np.expand_dims(input_image, axis=0)
+#         input_preprocessed_image = preprocess_input(input_image_expandedim)
+#
+#         preds = model.predict(input_preprocessed_image, batch_size=1)
+#         # print("input img shape (height, width)", input_image.shape, "preds shape", preds.shape)
+#
+#         heatmaps_values = [preds[0, :, :, i] for i in range(101)]
+#         max_heatmaps = np.amax(heatmaps_values, axis=(1, 2))
+#         top_n_ix = np.argsort(max_heatmaps)[-top_n_show:][::-1]
+#
+#         # for i, ix in enumerate(top_n_ix):
+#             # name_class = idx_to_class_name(ix)
+#         y_pred[ix_pred] = top_n_ix[0]
+#         if ix_pred % 250 == 0:
+#             print("Image processed: number", ix_pred, "name", input_filename)  #,"Top", i+1, "category is: id", ix, ", name", name_class)
+#     else:
+#         print("The specified image " + input_filename + " does not exist")
+#
+# with open('y_pred', 'wb') as f:
+#     pickle.dump(y_pred, f)
+
+with open('y_pred', 'rb') as f:
+    y_pred = pickle.load(f)
+
+# print("length pred", len(y_pred), "test", len(y_test))
+# for i in y_pred:
+#     print(i)
+
+y_pred.insert(15863, 63)
+y_pred.pop()
+
+# print("length pred", len(y_pred), "test", len(y_test))
+# for i in y_pred:
+#     print(i)
+
+y_pred = np.asarray(y_pred).astype(int)
+y_test = np.asarray(y_test).astype(int)
+cnf_matrix = confusion_matrix(y_test, y_pred)
+np.set_printoptions(precision=2)
+
+class_names = [idx_to_class_name(i) for i in range(101)]
+
+plt.figure(figsize=(8, 6), dpi=400)
+plt.rcParams.update({'font.size': 2})
+plot_confusion_matrix(cnf_matrix, classes=class_names, title='Confusion matrix')
+plt.savefig("results/testSetConfusionMatrixNN.jpg")
+
+for i in range(101):
+    print("Category", class_names[i], "correct preds", cnf_matrix[i][i])
