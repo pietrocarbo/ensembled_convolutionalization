@@ -125,8 +125,8 @@ base_dir = "dataset-ethz101food/"
 #     file_list = [base_dir + line.strip('"\n') for line in file.readlines()]
 # # for file in file_list:
 # #     print(file)
-with open("dataset-ethz101food/meta/test.txt") as file:
-    file_list = [base_dir + "/test/" + line.strip('\n') + ".jpg" for line in file.readlines()]
+with open("dataset-ethz101food/meta/test_revisited.txt") as file:
+    file_list = [base_dir + "test/" + line.strip('\n') + ".jpg" for line in file.readlines()]
 
 
 y_test = [y//250 for y in range(250*101)]
@@ -159,18 +159,18 @@ for ix_pred, input_filename in enumerate(file_list):
         input_image_expandedim = np.expand_dims(input_image, axis=0)
         input_preprocessed_image = preprocess_input(input_image_expandedim)
 
-        preds = model.predict(input_preprocessed_image)
+        preds = model.predict(input_preprocessed_image, batch_size=1)
         # print("input img shape (height, width)", input_image.shape, "preds shape", preds.shape)
 
         heatmaps_values = [preds[0, :, :, i] for i in range(101)]
         max_heatmaps = np.amax(heatmaps_values, axis=(1, 2))
         top_n_ix = np.argsort(max_heatmaps)[-top_n_show:][::-1]
 
-        for i, ix in enumerate(top_n_ix):
-            name_class = idx_to_class_name(ix)
-            if ix_pred % 250 == 0:
-                print("Category number", ix_pred)  #,"Top", i+1, "category is: id", ix, ", name", name_class)
-            y_pred[ix_pred] = ix
+        # for i, ix in enumerate(top_n_ix):
+            # name_class = idx_to_class_name(ix)
+        y_pred[ix_pred] = top_n_ix[0]
+        if ix_pred % 250 == 0:
+            print("Image processed: number", ix_pred, "name", input_filename)  #,"Top", i+1, "category is: id", ix, ", name", name_class)
     else:
         print("The specified image " + input_filename + " does not exist")
 
