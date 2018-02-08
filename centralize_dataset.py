@@ -58,7 +58,7 @@ def load_VGG16(architecture_path, weigths_path, debug=False):
 
     return model, last_layer, W, b
 
-baseVGG16_1, last_layer, W, b = load_VGG16("trained_models/top5_vgg16_acc77_2017-12-24/vgg16_architecture_2017-12-23_22-53-03.json", "trained_models/top5_vgg16_acc77_2017-12-24/vgg16_ft_weights_acc0.78_e15_2017-12-23_22-53-03.hdf5")
+baseVGG16_1, last_layer, W, b = load_VGG16("trained_models/vgg16_architecture_2017-12-23_22-53-03.json", "trained_models/vgg16_ft_weights_acc0.78_e15_2017-12-23_22-53-03.hdf5")
 x = AveragePooling2D(pool_size=(7, 7), strides=(1, 1))(last_layer.output)
 x = Conv2D(101, (1, 1), strides=(1, 1), activation='softmax', padding='valid', weights=[W, b])(x)
 model = Model(inputs=baseVGG16_1.input, outputs=x)
@@ -71,12 +71,12 @@ model = Model(inputs=baseVGG16_1.input, outputs=x)
 
 
 def idx_to_class_name(idx):
-    with open(os.path.join('dataset-ethz101food', 'meta', 'classes.txt')) as file:
+    with open('trained_models/classes.txt') as file:
         class_labels = [line.strip('\n') for line in file.readlines()]
     return class_labels[idx]
 
 def class_name_to_idx(name):
-    with open(os.path.join('dataset-ethz101food', 'meta', 'classes.txt')) as file:
+    with open('trained_models/classes.txt') as file:
         class_labels = [line.strip('\n') for line in file.readlines()]
         for i, label_name in enumerate(class_labels):
             if label_name == name:
@@ -127,10 +127,10 @@ def save_map(heatmap, resultfname, input_size, tick_interval=None, is_input_img=
 input_set = "train"
 input_class = "cup_cakes"
 input_instance = "46500"
-input_filename = "dataset-ethz101food/" + input_set + "/" + input_class + "/" + input_instance + ".jpg"
+input_filename = "trained_models/"+ input_instance + ".jpg"
 
 class_label = class_name_to_idx(input_class)
-upsampling_step = 1.20
+upsampling_step = 1.2
 max_upsampling_factor = 3
 min_upsampling_factor = 1
 upsampling_factor = 1
@@ -145,7 +145,7 @@ if (os.path.exists(input_filename)):
     while upsampling_factor < max_upsampling_factor:
         print("upsampling factor", upsampling_factor)
 
-        img_size = (int(input.shape[0] * upsampling_factor), int(input.shape[0] * upsampling_factor))
+        img_size = (int(input.shape[0] * upsampling_factor), int(input.shape[1] * upsampling_factor))
         input_img = image.load_img(input_filename, target_size=img_size)
         input_img = image.img_to_array(input_img)
         input_image_expandedim = np.expand_dims(input_img, axis=0)
@@ -158,15 +158,14 @@ if (os.path.exists(input_filename)):
         max_heatmap = np.amax(heatmaps_values)
         max_coordinates = np.unravel_index(np.argmax(heatmaps_values, axis=None), heatmaps_values.shape)
         print("max value", max_heatmap, "found at", max_coordinates)
-
-        results.append((upsampling_factor, preds.shape[1], max_heatmap, max_coordinates))
+        results.append((upsampling_factor, (preds.shape[1],preds.shape[2]), max_heatmap, max_coordinates))
 
         upsampling_factor = upsampling_factor * upsampling_step
 else:
     print ("The specified image " + input_filename + " does not exist")
 
 
-factor, hdim, pred, (hcoordh, hcoordw) = max(results, key=lambda x:x[2])
+factor, (hdim,wdim), pred, (hcoordh, hcoordw) = max(results, key=lambda x:x[2])
 
 input_img = input
 
@@ -174,7 +173,7 @@ def coordinate_fix(heat_coord, heat_dimension, img_dimension):
     return (heat_coord * img_dimension) // heat_dimension
 
 coordh = coordinate_fix(hcoordh, hdim, input_img.shape[0])
-coordw = coordinate_fix(hcoordw, hdim, input_img.shape[1])
+coordw = coordinate_fix(hcoordw, wdim, input_img.shape[1])
 
 print("\nMax confidence", pred, "found at upscale factor", factor, ";",
       "heatmap cell", (hcoordh, hcoordw), "in range [", hdim, ",", hdim, "] ->",
@@ -185,10 +184,13 @@ fig, ax = plt.subplots(1)
 
 ax.imshow(input_img / 255.)
 
-rect_dim = int(input_img.shape[0] / factor)
+#rect_dim = int(input_img.shape[0] / factor)
+rect_dim = int(224/ factor)
+half_rect_dim =int(96/factor) #"half" is in fact 3/7 of 224
 
-circle = patches.Circle((coordw, coordh), 2)
-rect = patches.Rectangle((coordw - rect_dim // 2 , coordh - rect_dim // 2), rect_dim, rect_dim, linewidth=1, edgecolor='r', facecolor='none')
+circle = patches.Circle((coordw, coordh), int(16/factor))
+rect = patches.Rectangle((coordw - half_rect_dim, coordh - half_rect_dim), rect_dim, rect_dim, linewidth=1, edgecolor='r', facecolor='none')
+
 
 ax.add_patch(rect)
 ax.add_patch(circle)
