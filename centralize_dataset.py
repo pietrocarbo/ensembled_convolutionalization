@@ -125,19 +125,22 @@ def save_map(heatmap, resultfname, input_size, tick_interval=None, is_input_img=
 
 
 input_set = "train"
-input_class = "cup_cakes"
-input_instance = "46500"
-input_filename = "trained_models/"+ input_instance + ".jpg"
+input_class =  "cup_cakes" #"beignets" #"apple_pie" #"cannoli"  
+input_instance = "46500" #"beignets_2918213" #"cannoli_1163058" #"apple_pie_68383"
+input_filename = "test_images/"+ input_instance + ".jpg"
 
 class_label = class_name_to_idx(input_class)
-upsampling_step = 1.2
-max_upsampling_factor = 3
-min_upsampling_factor = 1
-upsampling_factor = 1
 
 input = image.load_img(input_filename)
 input = image.img_to_array(input)
 print("image", input_filename, "has shape", input.shape)
+
+mdim = min(input.shape[0],input.shape[1])
+print("mdim = {}".format(mdim))
+upsampling_step = 1.2
+max_upsampling_factor = 3
+min_upsampling_factor = 224./mdim
+upsampling_factor = min_upsampling_factor
 
 results = []
 
@@ -169,14 +172,22 @@ factor, (hdim,wdim), pred, (hcoordh, hcoordw) = max(results, key=lambda x:x[2])
 
 input_img = input
 
-def coordinate_fix(heat_coord, heat_dimension, img_dimension):
-    return (heat_coord * img_dimension) // heat_dimension
+def traslation(heat_coord):
+    return(int(32 * heat_coord / factor)) #32 is the stride of the whole convolutive net
 
-coordh = coordinate_fix(hcoordh, hdim, input_img.shape[0])
-coordw = coordinate_fix(hcoordw, wdim, input_img.shape[1])
+rect_dim = int(224/ factor)
+stride = int(rect_dim / factor * 7)
+
+coordh = coordinate_fix(hcoordh, hdim, input_img.shape[0]-rect_dim)
+coordw = coordinate_fix(hcoordw, wdim, input_img.shape[1]-rect_dim)
+
+coordh = traslation(hcoordh)
+coordw = traslation(hcoordw)
+
+print(coordh,coordw)
 
 print("\nMax confidence", pred, "found at upscale factor", factor, ";",
-      "heatmap cell", (hcoordh, hcoordw), "in range [", hdim, ",", hdim, "] ->",
+      "heatmap cell", (hcoordh, hcoordw), "in range [", hdim, ",", wdim, "] ->",
       "relative img point", (coordh, coordw), "in range [", input_img.shape[0], ",", input_img.shape[1], "]")
 
 
@@ -185,14 +196,13 @@ fig, ax = plt.subplots(1)
 ax.imshow(input_img / 255.)
 
 #rect_dim = int(input_img.shape[0] / factor)
-rect_dim = int(224/ factor)
-half_rect_dim =int(96/factor) #"half" is in fact 3/7 of 224
+#half_rect_dim = int(112/factor) #int(96/factor) #"half" is in fact 3/7 of 224
 
-circle = patches.Circle((coordw, coordh), int(16/factor))
-rect = patches.Rectangle((coordw - half_rect_dim, coordh - half_rect_dim), rect_dim, rect_dim, linewidth=1, edgecolor='r', facecolor='none')
+#circle = patches.Circle((coordw, coordh), int(16/factor))
+rect = patches.Rectangle((coordw, coordh), rect_dim, rect_dim, linewidth=3, edgecolor='b', facecolor='none')
 
 
 ax.add_patch(rect)
-ax.add_patch(circle)
+#ax.add_patch(circle)
 
 plt.show()
