@@ -197,7 +197,7 @@ for class_folder in class_folders:
             scoreFCNbestSize = prob,
             scoreCLF = clf_score,
             scoreCLFcrop = crop_score))
-        print("dumped " + str(i) + "/250")
+        print("dumped " + str(i) + "/1010")
 
 with open("testSet.json", "w+") as file:
     json.dump(dump_list, file, indent=2)
