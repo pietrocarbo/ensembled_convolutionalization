@@ -192,13 +192,13 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
         crop_score = clf_crop[crop_cix]
         # print("Crop classified as", crop_class, "with score", crop_score)
 
-        dump_list.append(dict(filename = filename,
-            scale_factor = factor,
-            square_crop = dict(lower_left = (coordh, coordw), side = rect_dim),
-            scoreFCNtrainSize = rst_list[0][2],
-            scoreFCNbestSize = prob,
-            scoreCLF = clf_score,
-            scoreCLFcrop = crop_score))
+        dump_list.append(dict(filename = str(filename),
+            scale_factor = float(factor),
+            square_crop = dict(lower_left = (int(coordh), int(coordw)), side = int(rect_dim)),
+            scoreFCNtrainSize = float(rst_list[0][2]),
+            scoreFCNbestSize = float(prob),
+            scoreCLF = float(clf_score),
+            scoreCLFcrop = float(crop_score)))
         print("added to dump list " + str(instances_per_folder * i_folder + i_instance) + "/" + str(instances_per_folder * folder_to_scan))
 
 with open("testSet.json", "w+") as file:
