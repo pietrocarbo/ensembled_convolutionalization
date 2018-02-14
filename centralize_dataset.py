@@ -135,9 +135,11 @@ def process_image(input_fn, input_ix):
 dump_list = []
 set = "test"
 class_folders = os.listdir("dataset-ethz101food/" + set)
-for class_folder in class_folders:
+folder_to_scan = 101
+instances_per_folder = 5
+for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
     instances = os.listdir("dataset-ethz101food/" + set + "/" + class_folder)
-    for i, instance in enumerate(instances[0:5]):
+    for i_instance, instance in enumerate(instances[0:instances_per_folder]):
         filename = "dataset-ethz101food/" + set + "/" + class_folder + "/" + instance
 
         # processamento immagine a varie scale
@@ -197,7 +199,7 @@ for class_folder in class_folders:
             scoreFCNbestSize = prob,
             scoreCLF = clf_score,
             scoreCLFcrop = crop_score))
-        print("dumped " + str(i) + "/1010")
+        print("added to dump list " + str(instances_per_folder * i_folder + i_instance) + "/" + str(instances_per_folder * folder_to_scan))
 
 with open("testSet.json", "w+") as file:
     json.dump(dump_list, file, indent=2)
