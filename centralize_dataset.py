@@ -1,20 +1,20 @@
 from keras.layers import Conv2D, AveragePooling2D
 from keras.models import Model
 from keras.models import model_from_json
-from PIL import Image
 
 import shutil
 import matplotlib
 # matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 plt.style.use('seaborn-bright')
-import matplotlib.ticker as plticker
 
 import json
+import pickle
 import os
 import numpy as np
 import matplotlib.patches as patches
 
+from PIL import Image
 from keras.applications.vgg16 import preprocess_input
 from keras.preprocessing import image
 
@@ -58,25 +58,23 @@ def load_VGG16(architecture_path, weigths_path, debug=False):
 
     return model, last_layer, W, b
 
-baseVGG16_1, last_layer, W, b = load_VGG16("trained_models/vgg16_architecture_2017-12-23_22-53-03.json", "trained_models/vgg16_ft_weights_acc0.78_e15_2017-12-23_22-53-03.hdf5")
+baseVGG16, last_layer, W, b = load_VGG16("trained_models/top5_vgg16_acc77_2017-12-24/vgg16_architecture_2017-12-23_22-53-03.json", "trained_models/top5_vgg16_acc77_2017-12-24/vgg16_ft_weights_acc0.78_e15_2017-12-23_22-53-03.hdf5")
 x = AveragePooling2D(pool_size=(7, 7), strides=(1, 1))(last_layer.output)
 x = Conv2D(101, (1, 1), strides=(1, 1), activation='softmax', padding='valid', weights=[W, b])(x)
-model = Model(inputs=baseVGG16_1.input, outputs=x)
-# model.summary()
+VGG16FCN = Model(inputs=baseVGG16.input, outputs=x)
+# VGG16FCN.summary()
 
-# baseVGG16_2, last_layer, W, b = load_VGG16("trained_models/top5_vgg16_acc77_2017-12-24/vgg16_architecture_2017-12-23_22-53-03.json", "trained_models/top5_vgg16_acc77_2017-12-24/vgg16_ft_weights_acc0.78_e15_2017-12-23_22-53-03.hdf5")
-# x = AveragePooling2D(pool_size=(7, 7))(last_layer.output)
-# x = Conv2D(101, (1, 1), strides=(1, 1), activation='softmax', padding='valid', weights=[W, b])(x)
-# upsample_fcnVGG16 = Model(inputs=baseVGG16_2.input, outputs=x)
-
+xception_notFCN = model_from_json(prepare_str_file_architecture_syntax("trained_models/top1_xception_acc80_2017-12-25/xception_architecture_2017-12-24_13-00-22.json"))
+xception_notFCN.load_weights("trained_models/top1_xception_acc80_2017-12-25/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5")
+# xception_notFCN.summary()
 
 def idx_to_class_name(idx):
-    with open('trained_models/classes.txt') as file:
+    with open("dataset-ethz101food/meta/classes.txt") as file:
         class_labels = [line.strip('\n') for line in file.readlines()]
     return class_labels[idx]
 
 def class_name_to_idx(name):
-    with open('trained_models/classes.txt') as file:
+    with open("dataset-ethz101food/meta/classes.txt") as file:
         class_labels = [line.strip('\n') for line in file.readlines()]
         for i, label_name in enumerate(class_labels):
             if label_name == name:
@@ -85,124 +83,123 @@ def class_name_to_idx(name):
             print("class idx not found!")
             exit(-1)
 
-def save_map(heatmap, resultfname, input_size, tick_interval=None, is_input_img=False):
-    if is_input_img:
-        image = Image.open(heatmap)
-        image = image.resize(input_size, Image.ANTIALIAS)
-        imgarray = np.asarray(image)
-    else:
-        pixels = 255 * (1.0 - heatmap)
-        image = Image.fromarray(pixels.astype(np.uint8), mode='L')
-        image = image.resize(input_size, Image.NEAREST)
-        imgarray = np.asarray(image)
-
-    fig = plt.figure()
-    ax = fig.add_subplot(1, 1, 1)
-
-    if tick_interval:
-        myInterval = tick_interval
-        loc = plticker.MultipleLocator(base=myInterval)
-        ax.xaxis.set_major_locator(loc)
-        ax.yaxis.set_major_locator(loc)
-        ax.grid(which='both', axis='both', linestyle='-')
-
-    if is_input_img:
-        ax.imshow(imgarray)
-    else:
-        ax.imshow(imgarray, cmap='Greys_r', interpolation='none')
-
-    if tick_interval:
-        nx = abs(int(float(ax.get_xlim()[1] - ax.get_xlim()[0]) / float(myInterval)))
-        ny = abs(int(float(ax.get_ylim()[1] - ax.get_ylim()[0]) / float(myInterval)))
-        for jj in range(ny):
-            y = myInterval / 2 + jj * myInterval
-            for ii in range(nx):
-                x = myInterval / 2. + float(ii) * myInterval
-                ax.text(x, y, '{:d}'.format((ii + jj * nx) + 1), color='tab:blue', ha='center', va='center')
-
-    fig.savefig(resultfname)
-    plt.close()
-
-
-input_set = "train"
-input_class =  "cup_cakes" #"beignets" #"apple_pie" #"cannoli"  
-input_instance = "46500" #"beignets_2918213" #"cannoli_1163058" #"apple_pie_68383"
-input_filename = "test_images/"+ input_instance + ".jpg"
-
-class_label = class_name_to_idx(input_class)
-
-input = image.load_img(input_filename)
-input = image.img_to_array(input)
-print("image", input_filename, "has shape", input.shape)
-
-mdim = min(input.shape[0],input.shape[1])
-print("mdim = {}".format(mdim))
-upsampling_step = 1.2
-max_upsampling_factor = 3
-min_upsampling_factor = 224./mdim
-upsampling_factor = min_upsampling_factor
-
-results = []
-
-if (os.path.exists(input_filename)):
-    while upsampling_factor < max_upsampling_factor:
-        print("upsampling factor", upsampling_factor)
-
-        img_size = (int(input.shape[0] * upsampling_factor), int(input.shape[1] * upsampling_factor))
-        input_img = image.load_img(input_filename, target_size=img_size)
-        input_img = image.img_to_array(input_img)
-        input_image_expandedim = np.expand_dims(input_img, axis=0)
-        input_preprocessed_image = preprocess_input(input_image_expandedim)
-
-        preds = model.predict(input_preprocessed_image)
-        print("input shape (height, width)", input_img.shape, "-> preds shape", preds.shape)
-
-        heatmaps_values = preds[0, :, :, class_label]
-        max_heatmap = np.amax(heatmaps_values)
-        max_coordinates = np.unravel_index(np.argmax(heatmaps_values, axis=None), heatmaps_values.shape)
-        print("max value", max_heatmap, "found at", max_coordinates)
-        results.append((upsampling_factor, (preds.shape[1],preds.shape[2]), max_heatmap, max_coordinates))
-
-        upsampling_factor = upsampling_factor * upsampling_step
-else:
-    print ("The specified image " + input_filename + " does not exist")
-
-
-factor, (hdim,wdim), pred, (hcoordh, hcoordw) = max(results, key=lambda x:x[2])
-
-input_img = input
-
 def traslation(heat_coord):
     return(int(32 * heat_coord / factor)) #32 is the stride of the whole convolutive net
 
-rect_dim = int(224/ factor)
-stride = int(rect_dim / factor * 7)
 
-coordh = coordinate_fix(hcoordh, hdim, input_img.shape[0]-rect_dim)
-coordw = coordinate_fix(hcoordw, wdim, input_img.shape[1]-rect_dim)
+upsampling_step = 1.2
+max_upsampling_factor = 3
 
-coordh = traslation(hcoordh)
-coordw = traslation(hcoordw)
+def process_image(input_fn, input_ix):
+    results = []
+    if (os.path.exists(input_fn)):
+        input_img_reference = image.load_img(input_fn)
+        input_img_reference = image.img_to_array(input_img_reference)
+        # print("image", input_fn, "has shape", input_img_reference.shape)
 
-print(coordh,coordw)
+        min_dim = min(input_img_reference.shape[0], input_img_reference.shape[1])
+        # print("mdim = {}\n".format(min_dim))
 
-print("\nMax confidence", pred, "found at upscale factor", factor, ";",
-      "heatmap cell", (hcoordh, hcoordw), "in range [", hdim, ",", wdim, "] ->",
-      "relative img point", (coordh, coordw), "in range [", input_img.shape[0], ",", input_img.shape[1], "]")
+        min_upsampling_factor = 224. / min_dim
+        upsampling_factor = min_upsampling_factor
+
+        while upsampling_factor < max_upsampling_factor:
+            # print("\nupsampling factor", upsampling_factor)
+
+            img_size = (int(max(224, input_img_reference.shape[0] * upsampling_factor)), int(max(224, input_img_reference.shape[1] * upsampling_factor)))
+            input_img = image.load_img(input_fn, target_size=img_size)
+            input_img = image.img_to_array(input_img)
+            # fig, ax = plt.subplots(1)
+            # ax.imshow(input_img / 255.)
+            # plt.show()
+            input_image_expandedim = np.expand_dims(input_img, axis=0)
+            input_preprocessed_image = preprocess_input(input_image_expandedim)
+
+            preds = VGG16FCN.predict(input_preprocessed_image)
+            # print("input_img shape (height, width)", input_img.shape, "-> preds shape", preds.shape)
+
+            heatmaps_values = preds[0, :, :, input_ix]
+            max_heatmap = np.amax(heatmaps_values)
+            max_coordinates = np.unravel_index(np.argmax(heatmaps_values, axis=None), heatmaps_values.shape)
+            # print("max value", max_heatmap, "found at", max_coordinates)
+
+            results.append((upsampling_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates))
+
+            upsampling_factor *= upsampling_step
+    else:
+        print ("The specified image " + input_fn + " does not exist")
+    return results
 
 
-fig, ax = plt.subplots(1)
+# ciclo per un set di immagini
+dump_list = []
+set = "test"
+class_folders = os.listdir("dataset-ethz101food/" + set)
+for class_folder in class_folders:
+    instances = os.listdir("dataset-ethz101food/" + set + "/" + class_folder)
+    for i, instance in enumerate(instances)[0:10]:
+        filename = "dataset-ethz101food/" + set + "/" + class_folder + "/" + instance
 
-ax.imshow(input_img / 255.)
+        # processamento immagine a varie scale
+        rst_list = process_image(filename, class_name_to_idx(class_folder))
+        factor, (hdim, wdim), prob, (hcoordh, hcoordw) = max(rst_list, key=lambda x: x[2])
+        rect_dim = int(224 / factor)
+        coordh = traslation(hcoordh)
+        coordw = traslation(hcoordw)
 
-#rect_dim = int(input_img.shape[0] / factor)
-#half_rect_dim = int(112/factor) #int(96/factor) #"half" is in fact 3/7 of 224
+        # classificazione
+        wtrain, htrain = (299, 299)
+        img_classify = image.load_img(filename, target_size=(wtrain, htrain))
+        img_classify = image.img_to_array(img_classify)
+        # fig, ax = plt.subplots(1)
+        # ax.imshow(img_classify / 255.)
+        # plt.show()
+        img_classify_expandedim = np.expand_dims(img_classify, axis=0)
+        img_classify_preprocessed = preprocess_input(img_classify_expandedim)
+        clf = xception_notFCN.predict(img_classify_preprocessed).flatten()
+        clf_cix = np.argmax(clf)
+        clf_class = idx_to_class_name(clf_cix)
+        clf_score = clf[clf_cix]
+        # print("\nImage classified as", clf_class, "with score", clf_score)
 
-#circle = patches.Circle((coordw, coordh), int(16/factor))
-rect = patches.Rectangle((coordw, coordh), rect_dim, rect_dim, linewidth=3, edgecolor='b', facecolor='none')
+        # output localizzazione
+        img_localize = image.load_img(filename)
+        img_localize = image.img_to_array(img_localize)
+        # fig, ax = plt.subplots(1)
+        # ax.imshow(img_localize / 255.)
+        # rect = patches.Rectangle((coordw, coordh), rect_dim, rect_dim, linewidth=1, edgecolor='r', facecolor='none')
+        # ax.add_patch(rect)
+        # print("Max confidence", prob, "found at scale factor", factor, " size [" + str(int(max(224, img_localize.shape[0] * factor))) + ", " +  str(int(max(224, img_localize.shape[1] * factor))) + "]:",
+        #       "heatmap cell", (hcoordh, hcoordw), "in range [" + str(hdim) + ", " + str(wdim) + "] ->",
+        #       "relative img point", (coordh, coordw), "in range [" + str(img_localize.shape[0])+ ", " + str(img_localize.shape[1]) + "]")
+        plt.show()
 
 
-ax.add_patch(rect)
-#ax.add_patch(circle)
+        img_crop = img_localize[coordh:coordh+rect_dim, coordw:coordw+rect_dim]
+        img_crop = image.array_to_img(img_crop)
+        img_crop = img_crop.resize((wtrain, htrain))
+        img_crop = image.img_to_array(img_crop)
+        # fig, ax = plt.subplots(1)
+        # ax.imshow(img_crop / 255.)
+        # plt.show()
+        img_crop_expandedim = np.expand_dims(img_crop, axis=0)
+        img_crop_preprocessed = preprocess_input(img_crop_expandedim)
+        clf_crop = xception_notFCN.predict(img_crop_preprocessed).flatten()
+        crop_cix = np.argmax(clf_crop)
+        crop_class = idx_to_class_name(crop_cix)
+        crop_score = clf_crop[crop_cix]
+        # print("Crop classified as", crop_class, "with score", crop_score)
 
-plt.show()
+        dump_list.append(dict(filename = filename,
+            scale_factor = factor,
+            square_crop = dict(lower_left = (coordh, coordw), side = rect_dim),
+            scoreFCNtrainSize = rst_list[0][2],
+            scoreFCNbestSize = prob,
+            scoreCLF = clf_score,
+            scoreCLFcrop = crop_score))
+        print("dumped " + str(i) + "/250")
+
+with open("testSet.json", "w+") as file:
+    json.dump(dump_list, file, indent=2)
+# with open("testSet.pkl", "wb") as file:
+#     pickle.dump(dump_list, file)
