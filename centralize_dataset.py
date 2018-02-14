@@ -137,7 +137,7 @@ set = "test"
 class_folders = os.listdir("dataset-ethz101food/" + set)
 for class_folder in class_folders:
     instances = os.listdir("dataset-ethz101food/" + set + "/" + class_folder)
-    for i, instance in enumerate(instances)[0:10]:
+    for i, instance in enumerate(instances[0:5]):
         filename = "dataset-ethz101food/" + set + "/" + class_folder + "/" + instance
 
         # processamento immagine a varie scale
