@@ -60,6 +60,7 @@ def process(filename):
 
 
 # process("dumpListtestSet10.json")
-# process("testSet2020.json")
-#  process("testSet2020cmax.json")
-process("testSet2020cmax2.json")
+# process("testSet2020max.json")
+#  process("testSet2020cmax05.json")
+# process("testSet2020cmaxWeighted.json")
+process("testSet2020WeightedMore.json")

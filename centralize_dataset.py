@@ -1,6 +1,8 @@
-from keras.layers import Conv2D, AveragePooling2D
+from keras.layers import Conv2D, AveragePooling2D, Dense, BatchNormalization, LeakyReLU, GlobalAveragePooling2D, Dropout, Input
 from keras.models import Model
 from keras.models import model_from_json
+from keras.regularizers import l2
+import keras
 
 import shutil
 import matplotlib
@@ -65,9 +67,37 @@ x = Conv2D(101, (1, 1), strides=(1, 1), activation='softmax', padding='valid', w
 VGG16FCN = Model(inputs=baseVGG16.input, outputs=x)
 # VGG16FCN.summary()
 
-xception_notFCN = model_from_json(prepare_str_file_architecture_syntax("trained_models/top1_xception_acc80_2017-12-25/xception_architecture_2017-12-24_13-00-22.json"))
-xception_notFCN.load_weights("trained_models/top1_xception_acc80_2017-12-25/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5")
-# xception_notFCN.summary()
+xception = model_from_json(prepare_str_file_architecture_syntax("trained_models/top1_xception_acc80_2017-12-25/xception_architecture_2017-12-24_13-00-22.json"))
+xception.load_weights("trained_models/top1_xception_acc80_2017-12-25/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5")
+
+incresv2 = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet', input_shape=(299, 299, 3))
+x = GlobalAveragePooling2D()(incresv2.output)
+out = Dense(101, activation='softmax', name='output_layer')(x)
+incresv2 = Model(inputs=incresv2.input, outputs=out)
+incresv2.load_weights("trained_models/REMOVED_top2_incresnetv2_acc79_2017-12-22/incv2resnet_ft_weights_acc0.79_e4_2017-12-21_09-02-16.hdf5")
+
+incv3 = keras.applications.inception_v3.InceptionV3(include_top=False, weights='imagenet', input_shape=(299, 299, 3))
+x = GlobalAveragePooling2D()(incv3.output)
+x = Dense(1024, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005), bias_regularizer=l2(.0005))(x)
+x = LeakyReLU()(x)
+x = BatchNormalization()(x)
+x = Dropout(0.5)(x)
+x = Dense(512, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005), bias_regularizer=l2(.0005))(x)
+x = LeakyReLU()(x)
+x = BatchNormalization()(x)
+x = Dropout(0.5)(x)
+out = Dense(101, kernel_initializer='he_uniform', bias_initializer="he_uniform", activation='softmax', name='output_layer')(x)
+incv3 = Model(inputs=incv3.input, outputs=out)
+incv3.load_weights("trained_models/REMOVED_top3_inceptionv3_acc79_2017-12-27/inceptionv3_ft_weights_acc0.79_e10_2017-12-25_22-10-02.hdf5")
+
+model_list = [xception, incresv2, incv3]
+ensemble_input = Input(shape=xception.input_shape[1:])
+outputs = [model(ensemble_input) for model in model_list]
+ensemble_output = keras.layers.average(outputs)
+ensemble = Model(inputs=ensemble_input, outputs=ensemble_output)
+# ensemble.summary()
+
+classifier = ensemble
 
 def idx_to_class_name(idx):
     with open("dataset-ethz101food/meta/classes.txt") as file:
@@ -169,7 +199,8 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
         # processamento immagine a varie scale
         rst_list = process_image(filename, class_name_to_idx(class_folder))
         # factor, (hdim, wdim), prob, (hcoordh, hcoordw), max_crop, max_crop_ix = max(rst_list, key=lambda x: x[2])
-        factor, (hdim, wdim), prob, (hcoordh, hcoordw), max_crop, max_crop_ix = custom_max2(rst_list)
+        factor, (hdim, wdim), prob, (hcoordh, hcoordw), max_crop, max_crop_ix = custom_max(rst_list)
+        # factor, (hdim, wdim), prob, (hcoordh, hcoordw), max_crop, max_crop_ix = custom_max2(rst_list)
         rect_dim = int(224 / factor)
         coordh = traslation(hcoordh)
         coordw = traslation(hcoordw)
@@ -183,7 +214,7 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
         # plt.show()
         img_classify_expandedim = np.expand_dims(img_classify, axis=0)
         img_classify_preprocessed = exc_preprocess(img_classify_expandedim)
-        clf = xception_notFCN.predict(img_classify_preprocessed).flatten()
+        clf = classifier.predict(img_classify_preprocessed).flatten()
         clf_cix = np.argmax(clf)
         clf_class = idx_to_class_name(clf_cix)
         clf_score = clf[clf_cix]
@@ -197,7 +228,7 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
         #       "heatmap cell", (hcoordh, hcoordw), "in range [" + str(hdim) + ", " + str(wdim) + "] ->",
         #       "relative img point", (coordh, coordw), "in range [" + str(img_localize.shape[0])+ ", " + str(img_localize.shape[1]) + "]")
 
-
+        # classificazione su crop
         img_crop = img_localize[coordh:coordh+rect_dim, coordw:coordw+rect_dim]
         img_crop = image.array_to_img(img_crop)
         img_crop = img_crop.resize((wtrain, htrain))
@@ -207,13 +238,14 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
         # plt.show()
         img_crop_expandedim = np.expand_dims(img_crop, axis=0)
         img_crop_preprocessed = exc_preprocess(img_crop_expandedim)
-        clf_crop = xception_notFCN.predict(img_crop_preprocessed).flatten()
+        clf_crop = classifier.predict(img_crop_preprocessed).flatten()
         crop_cix = np.argmax(clf_crop)
         crop_class = idx_to_class_name(crop_cix)
         crop_score = clf_crop[crop_cix]
         crop_true_label = clf_crop[class_name_to_idx(class_folder)]
         # print("Crop classified as", crop_class, "with score", crop_score)
 
+        # dumping dei dati
         data = dict(filename = str(filename),
             label = str(class_folder),
             scale_factor = float(factor),
