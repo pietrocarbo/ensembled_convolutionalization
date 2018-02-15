@@ -15,7 +15,8 @@ import numpy as np
 import matplotlib.patches as patches
 
 from PIL import Image
-from keras.applications.vgg16 import preprocess_input
+from keras.applications.vgg16 import preprocess_input as vgg_preprocess
+from keras.applications.xception import preprocess_input as exc_preprocess
 from keras.preprocessing import image
 
 def prepare_str_file_architecture_syntax(filepath):
@@ -113,7 +114,7 @@ def process_image(input_fn, input_ix):
             # ax.imshow(input_img / 255.)
             # plt.show()
             input_image_expandedim = np.expand_dims(input_img, axis=0)
-            input_preprocessed_image = preprocess_input(input_image_expandedim)
+            input_preprocessed_image = vgg_preprocess(input_image_expandedim)
 
             preds = VGG16FCN.predict(input_preprocessed_image)
             # print("input_img shape (height, width)", input_img.shape, "-> preds shape", preds.shape)
@@ -123,7 +124,11 @@ def process_image(input_fn, input_ix):
             max_coordinates = np.unravel_index(np.argmax(heatmaps_values, axis=None), heatmaps_values.shape)
             # print("max value", max_heatmap, "found at", max_coordinates)
 
-            results.append((upsampling_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates))
+            crop_heatmaps = preds[0, max_coordinates[0], max_coordinates[1], :]
+            max_crop = np.amax(crop_heatmaps)
+            max_crop_ix = np.argmax(crop_heatmaps)
+
+            results.append((upsampling_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates, max_crop, max_crop_ix))
 
             upsampling_factor *= upsampling_step
     else:
@@ -136,7 +141,7 @@ dump_list = []
 set = "test"
 class_folders = os.listdir("dataset-ethz101food/" + set)
 folder_to_scan = 101
-instances_per_folder = 5
+instances_per_folder = 20
 for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
     instances = os.listdir("dataset-ethz101food/" + set + "/" + class_folder)
     for i_instance, instance in enumerate(instances[0:instances_per_folder]):
@@ -144,7 +149,7 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
 
         # processamento immagine a varie scale
         rst_list = process_image(filename, class_name_to_idx(class_folder))
-        factor, (hdim, wdim), prob, (hcoordh, hcoordw) = max(rst_list, key=lambda x: x[2])
+        factor, (hdim, wdim), prob, (hcoordh, hcoordw), max_crop, max_crop_ix = max(rst_list, key=lambda x: x[2])
         rect_dim = int(224 / factor)
         coordh = traslation(hcoordh)
         coordw = traslation(hcoordw)
@@ -157,24 +162,20 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
         # ax.imshow(img_classify / 255.)
         # plt.show()
         img_classify_expandedim = np.expand_dims(img_classify, axis=0)
-        img_classify_preprocessed = preprocess_input(img_classify_expandedim)
+        img_classify_preprocessed = exc_preprocess(img_classify_expandedim)
         clf = xception_notFCN.predict(img_classify_preprocessed).flatten()
         clf_cix = np.argmax(clf)
         clf_class = idx_to_class_name(clf_cix)
         clf_score = clf[clf_cix]
+        clf_true_label = clf[class_name_to_idx(class_folder)]
         # print("\nImage classified as", clf_class, "with score", clf_score)
 
         # output localizzazione
         img_localize = image.load_img(filename)
         img_localize = image.img_to_array(img_localize)
-        # fig, ax = plt.subplots(1)
-        # ax.imshow(img_localize / 255.)
-        # rect = patches.Rectangle((coordw, coordh), rect_dim, rect_dim, linewidth=1, edgecolor='r', facecolor='none')
-        # ax.add_patch(rect)
         # print("Max confidence", prob, "found at scale factor", factor, " size [" + str(int(max(224, img_localize.shape[0] * factor))) + ", " +  str(int(max(224, img_localize.shape[1] * factor))) + "]:",
         #       "heatmap cell", (hcoordh, hcoordw), "in range [" + str(hdim) + ", " + str(wdim) + "] ->",
         #       "relative img point", (coordh, coordw), "in range [" + str(img_localize.shape[0])+ ", " + str(img_localize.shape[1]) + "]")
-        plt.show()
 
 
         img_crop = img_localize[coordh:coordh+rect_dim, coordw:coordw+rect_dim]
@@ -185,23 +186,56 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
         # ax.imshow(img_crop / 255.)
         # plt.show()
         img_crop_expandedim = np.expand_dims(img_crop, axis=0)
-        img_crop_preprocessed = preprocess_input(img_crop_expandedim)
+        img_crop_preprocessed = exc_preprocess(img_crop_expandedim)
         clf_crop = xception_notFCN.predict(img_crop_preprocessed).flatten()
         crop_cix = np.argmax(clf_crop)
         crop_class = idx_to_class_name(crop_cix)
         crop_score = clf_crop[crop_cix]
+        crop_true_label = clf_crop[class_name_to_idx(class_folder)]
         # print("Crop classified as", crop_class, "with score", crop_score)
 
-        dump_list.append(dict(filename = str(filename),
+        data = dict(filename = str(filename),
+            label = str(class_folder),
             scale_factor = float(factor),
             square_crop = dict(lower_left = (int(coordh), int(coordw)), side = int(rect_dim)),
-            scoreFCNtrainSize = float(rst_list[0][2]),
-            scoreFCNbestSize = float(prob),
-            scoreCLF = float(clf_score),
-            scoreCLFcrop = float(crop_score)))
-        print("added to dump list " + str(instances_per_folder * i_folder + i_instance) + "/" + str(instances_per_folder * folder_to_scan))
+            originalSize = dict(
+                vgg16 = dict(
+                    score = float(rst_list[0][2]),
+                    guessedLabel = str(idx_to_class_name(rst_list[0][5])),
+                    scoreGuessed = float(rst_list[0][4])
+                ),
+                xception = dict(
+                    score = float(clf_true_label),
+                    guessedLabel = str(clf_class),
+                    scoreGuessed = float(clf_score)
+                )
+            ),
+            croppedSize = dict(
+                vgg16 = dict(
+                    score = float(prob),
+                    guessedLabel = str(idx_to_class_name(max_crop_ix)),
+                    scoreGuessed = float(max_crop)
+                ),
+                xception=dict(
+                    score = float(crop_true_label),
+                    guessedLabel = str(crop_class),
+                    scoreGuessed = float(crop_score)
+                )
+            )
+        )
 
-with open("testSet.json", "w+") as file:
+        print("element: " + str(instances_per_folder * i_folder + i_instance + 1) + "/" + str(instances_per_folder * folder_to_scan))
+        # print(json.dumps(data, indent=2))
+        #
+        # fig, ax = plt.subplots(1)
+        # ax.imshow(img_localize / 255.)
+        # rect = patches.Rectangle((coordw, coordh), rect_dim, rect_dim, linewidth=1, edgecolor='r', facecolor='none')
+        # ax.add_patch(rect)
+        # plt.show()
+
+        dump_list.append(data)
+
+with open("dumpList" + set + "Set" + str(instances_per_folder * folder_to_scan) + ".json", "w+") as file:
     json.dump(dump_list, file, indent=2)
 # with open("testSet.pkl", "wb") as file:
 #     pickle.dump(dump_list, file)
