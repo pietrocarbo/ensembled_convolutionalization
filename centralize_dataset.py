@@ -18,7 +18,7 @@ import matplotlib.patches as patches
 
 from PIL import Image
 from keras.applications.vgg16 import preprocess_input as vgg_preprocess
-from keras.applications.xception import preprocess_input as exc_preprocess
+from keras.applications.xception import preprocess_input as inception_preprocess
 from keras.preprocessing import image
 
 def prepare_str_file_architecture_syntax(filepath):
@@ -166,14 +166,13 @@ def process_image(input_fn, input_ix):
     return results
 
 
-def custom_max(rst_list):  # threshold max
+def threshold_max(rst_list, threshold=0.5):
     for ix, rst in enumerate(rst_list):
-        if rst[2] > 0.5:
+        if rst[2] > threshold:
             return rst_list[ix]
     return rst_list[0]
 
-def custom_max2(rst_list):  # factor weighted max
-    weight = 1.25
+def factor_weighted_max(rst_list, weight=1.25):
     max_ix = 0
     max_score = 0
     for ix, rst in enumerate(rst_list):
@@ -199,8 +198,7 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
         # processamento immagine a varie scale
         rst_list = process_image(filename, class_name_to_idx(class_folder))
         # factor, (hdim, wdim), prob, (hcoordh, hcoordw), max_crop, max_crop_ix = max(rst_list, key=lambda x: x[2])
-        factor, (hdim, wdim), prob, (hcoordh, hcoordw), max_crop, max_crop_ix = custom_max(rst_list)
-        # factor, (hdim, wdim), prob, (hcoordh, hcoordw), max_crop, max_crop_ix = custom_max2(rst_list)
+        factor, (hdim, wdim), prob, (hcoordh, hcoordw), max_crop, max_crop_ix = threshold_max(rst_list)
         rect_dim = int(224 / factor)
         coordh = traslation(hcoordh)
         coordw = traslation(hcoordw)
@@ -213,7 +211,7 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
         # ax.imshow(img_classify / 255.)
         # plt.show()
         img_classify_expandedim = np.expand_dims(img_classify, axis=0)
-        img_classify_preprocessed = exc_preprocess(img_classify_expandedim)
+        img_classify_preprocessed = inception_preprocess(img_classify_expandedim)
         clf = classifier.predict(img_classify_preprocessed).flatten()
         clf_cix = np.argmax(clf)
         clf_class = idx_to_class_name(clf_cix)
@@ -221,12 +219,13 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
         clf_true_label = clf[class_name_to_idx(class_folder)]
         # print("\nImage classified as", clf_class, "with score", clf_score)
 
-        # output localizzazione
+        # localizzazione
         img_localize = image.load_img(filename)
         img_localize = image.img_to_array(img_localize)
         # print("Max confidence", prob, "found at scale factor", factor, " size [" + str(int(max(224, img_localize.shape[0] * factor))) + ", " +  str(int(max(224, img_localize.shape[1] * factor))) + "]:",
         #       "heatmap cell", (hcoordh, hcoordw), "in range [" + str(hdim) + ", " + str(wdim) + "] ->",
         #       "relative img point", (coordh, coordw), "in range [" + str(img_localize.shape[0])+ ", " + str(img_localize.shape[1]) + "]")
+
 
         # classificazione su crop
         img_crop = img_localize[coordh:coordh+rect_dim, coordw:coordw+rect_dim]
@@ -237,7 +236,7 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
         # ax.imshow(img_crop / 255.)
         # plt.show()
         img_crop_expandedim = np.expand_dims(img_crop, axis=0)
-        img_crop_preprocessed = exc_preprocess(img_crop_expandedim)
+        img_crop_preprocessed = inception_preprocess(img_crop_expandedim)
         clf_crop = classifier.predict(img_crop_preprocessed).flatten()
         crop_cix = np.argmax(clf_crop)
         crop_class = idx_to_class_name(crop_cix)
