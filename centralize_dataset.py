@@ -74,7 +74,7 @@ incresv2 = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=
 x = GlobalAveragePooling2D()(incresv2.output)
 out = Dense(101, activation='softmax', name='output_layer')(x)
 incresv2 = Model(inputs=incresv2.input, outputs=out)
-incresv2.load_weights("trained_models/REMOVED_top2_incresnetv2_acc79_2017-12-22/incv2resnet_ft_weights_acc0.79_e4_2017-12-21_09-02-16.hdf5")
+incresv2.load_weights("trained_models/top2_incresnetv2_acc79_2017-12-22/incv2resnet_ft_weights_acc0.79_e4_2017-12-21_09-02-16.hdf5")
 
 incv3 = keras.applications.inception_v3.InceptionV3(include_top=False, weights='imagenet', input_shape=(299, 299, 3))
 x = GlobalAveragePooling2D()(incv3.output)
@@ -88,7 +88,7 @@ x = BatchNormalization()(x)
 x = Dropout(0.5)(x)
 out = Dense(101, kernel_initializer='he_uniform', bias_initializer="he_uniform", activation='softmax', name='output_layer')(x)
 incv3 = Model(inputs=incv3.input, outputs=out)
-incv3.load_weights("trained_models/REMOVED_top3_inceptionv3_acc79_2017-12-27/inceptionv3_ft_weights_acc0.79_e10_2017-12-25_22-10-02.hdf5")
+incv3.load_weights("trained_models/top3_inceptionv3_acc79_2017-12-27/inceptionv3_ft_weights_acc0.79_e10_2017-12-25_22-10-02.hdf5")
 
 model_list = [xception, incresv2, incv3]
 ensemble_input = Input(shape=xception.input_shape[1:])
