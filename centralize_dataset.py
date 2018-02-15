@@ -136,6 +136,12 @@ def process_image(input_fn, input_ix):
     return results
 
 
+def custom_max(rst_list):
+    for ix, rst in enumerate(rst_list):
+        if rst[2] > 0.5:
+            return rst_list[ix]
+    return rst_list[0]
+
 # ciclo per un set di immagini
 dump_list = []
 set = "test"
@@ -149,7 +155,8 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
 
         # processamento immagine a varie scale
         rst_list = process_image(filename, class_name_to_idx(class_folder))
-        factor, (hdim, wdim), prob, (hcoordh, hcoordw), max_crop, max_crop_ix = max(rst_list, key=lambda x: x[2])
+        # factor, (hdim, wdim), prob, (hcoordh, hcoordw), max_crop, max_crop_ix = max(rst_list, key=lambda x: x[2])
+        factor, (hdim, wdim), prob, (hcoordh, hcoordw), max_crop, max_crop_ix = custom_max(rst_list)
         rect_dim = int(224 / factor)
         coordh = traslation(hcoordh)
         coordw = traslation(hcoordw)
