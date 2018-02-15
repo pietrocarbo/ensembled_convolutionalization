@@ -136,18 +136,24 @@ def process_image(input_fn, input_ix):
     return results
 
 
-def custom_max(rst_list):
+def custom_max(rst_list):  # threshold max
+    for ix, rst in enumerate(rst_list):
+        if rst[2] > 0.5:
+            return rst_list[ix]
+    return rst_list[0]
+
+def custom_max2(rst_list):  # factor weighted max
+    weight = 1.25
     max_ix = 0
     max_score = 0
     for ix, rst in enumerate(rst_list):
-        # if rst[2] > 0.5:  # threshold max
-        #     return rst_list[ix]
-        score = (1 / rst[0]) * rst[2]  # factor weighted max
+        score = (weight / rst[0]) * rst[2]
         # print("element", ix, " has factor: {:f}".format(rst[0]), ", prob: {:f}".format(rst[2]), "-> score {:f}".format(score))
         if score < max_score:
             max_score = score
             max_ix = ix
     return rst_list[max_ix]
+
 
 # ciclo per un set di immagini
 dump_list = []
@@ -163,7 +169,7 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
         # processamento immagine a varie scale
         rst_list = process_image(filename, class_name_to_idx(class_folder))
         # factor, (hdim, wdim), prob, (hcoordh, hcoordw), max_crop, max_crop_ix = max(rst_list, key=lambda x: x[2])
-        factor, (hdim, wdim), prob, (hcoordh, hcoordw), max_crop, max_crop_ix = custom_max(rst_list)
+        factor, (hdim, wdim), prob, (hcoordh, hcoordw), max_crop, max_crop_ix = custom_max2(rst_list)
         rect_dim = int(224 / factor)
         coordh = traslation(hcoordh)
         coordw = traslation(hcoordw)
@@ -240,7 +246,7 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
 
         print("element: " + str(instances_per_folder * i_folder + i_instance + 1) + "/" + str(instances_per_folder * folder_to_scan))
         # print(json.dumps(data, indent=2))
-        #
+
         # fig, ax = plt.subplots(1)
         # ax.imshow(img_localize / 255.)
         # rect = patches.Rectangle((coordw, coordh), rect_dim, rect_dim, linewidth=1, edgecolor='r', facecolor='none')
@@ -249,7 +255,7 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
 
         dump_list.append(data)
 
-with open("dumpList" + set + "Set" + str(instances_per_folder * folder_to_scan) + ".json", "w+") as file:
+with open(set + "Set" + str(instances_per_folder * folder_to_scan) + ".json", "w+") as file:
     json.dump(dump_list, file, indent=2)
 # with open("testSet.pkl", "wb") as file:
 #     pickle.dump(dump_list, file)
