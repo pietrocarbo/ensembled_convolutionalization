@@ -50,7 +50,8 @@ def process(filename):
 
 
         n_samples = len(dumps)
-        print("Accuracy VGG {}, {} Accuracy XCE {}, {}".format(vgg16_origAcc/n_samples, vgg16_cropAcc/n_samples, xce_origAcc/n_samples, xce_cropAcc/n_samples))
+        print("Total samples", n_samples)
+        print("Accuracy VGG {:f}, {:f} Accuracy XCE {:f}, {:f}".format(vgg16_origAcc/n_samples, vgg16_cropAcc/n_samples, xce_origAcc/n_samples, xce_cropAcc/n_samples))
         print("XCE missed",  len(missed_samples), "samples:", missed_samples)
         print("XCE corrected", len(corrected_samples), "samples:", corrected_samples)
 
@@ -58,5 +59,6 @@ def process(filename):
         show_samples(corrected_samples, dumps)
 
 
-process("dumpListtestSet2020.json")
 # process("dumpListtestSet10.json")
+# process("testSet2020.json")
+process("testSet2020cmax.json")

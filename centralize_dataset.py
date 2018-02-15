@@ -137,10 +137,17 @@ def process_image(input_fn, input_ix):
 
 
 def custom_max(rst_list):
+    max_ix = 0
+    max_score = 0
     for ix, rst in enumerate(rst_list):
-        if rst[2] > 0.5:
-            return rst_list[ix]
-    return rst_list[0]
+        # if rst[2] > 0.5:  # threshold max
+        #     return rst_list[ix]
+        score = (1 / rst[0]) * rst[2]  # factor weighted max
+        # print("element", ix, " has factor: {:f}".format(rst[0]), ", prob: {:f}".format(rst[2]), "-> score {:f}".format(score))
+        if score < max_score:
+            max_score = score
+            max_ix = ix
+    return rst_list[max_ix]
 
 # ciclo per un set di immagini
 dump_list = []
