@@ -7,9 +7,9 @@ from keras.preprocessing import image
 def show_samples(samples_ix, dumps):
     for ix in samples_ix:
         print("True label:", dumps[ix]["label"])
-        print("Original size label:", dumps[ix]["originalSize"]["xception"]["guessedLabel"],
+        print("Original size label:", dumps[ix]["originalSize"]["xception"]["labelGuessed"],
               ", confidence", dumps[ix]["originalSize"]["xception"]["scoreGuessed"])
-        print("Cropped size label:", dumps[ix]["croppedSize"]["xception"]["guessedLabel"],
+        print("Cropped size label:", dumps[ix]["croppedSize"]["xception"]["labelGuessed"],
               ", confidence", dumps[ix]["croppedSize"]["xception"]["scoreGuessed"], "\n")
 
         fig, ax = plt.subplots(1)
@@ -34,18 +34,18 @@ def process(filename):
         corrected_samples = []
         for ix, sample in enumerate(dumps):
             true_label = sample["label"]
-            if true_label == sample["originalSize"]["vgg16"]["guessedLabel"]:
+            if true_label == sample["originalSize"]["vgg16"]["labelGuessed"]:
                 vgg16_origAcc += 1
-            if true_label == sample["originalSize"]["xception"]["guessedLabel"]:
+            if true_label == sample["originalSize"]["xception"]["labelGuessed"]:
                 xce_origAcc += 1
-            if true_label == sample["croppedSize"]["vgg16"]["guessedLabel"]:
+            if true_label == sample["croppedSize"]["vgg16"]["labelGuessed"]:
                 vgg16_cropAcc += 1
-            if true_label == sample["croppedSize"]["xception"]["guessedLabel"]:
+            if true_label == sample["croppedSize"]["xception"]["labelGuessed"]:
                 xce_cropAcc += 1
 
-            if true_label == sample["originalSize"]["xception"]["guessedLabel"] and true_label != sample["croppedSize"]["xception"]["guessedLabel"]:
+            if true_label == sample["originalSize"]["xception"]["labelGuessed"] and true_label != sample["croppedSize"]["xception"]["labelGuessed"]:
                missed_samples.append(ix)
-            if true_label != sample["originalSize"]["xception"]["guessedLabel"] and true_label == sample["croppedSize"]["xception"]["guessedLabel"]:
+            if true_label != sample["originalSize"]["xception"]["labelGuessed"] and true_label == sample["croppedSize"]["xception"]["labelGuessed"]:
                corrected_samples.append(ix)
 
 
@@ -64,4 +64,4 @@ def process(filename):
 # process("testSet2020cmax05.json")
 # process("testSet2020cmaxWeighted.json")
 # process("testSet2020WeightedMore.json")
-process("testSet2020cmax05ensemble.json")
+process("testSet2020cmaxCropMAX.json")

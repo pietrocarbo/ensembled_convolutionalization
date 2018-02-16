@@ -147,17 +147,19 @@ def process_image(input_fn, input_ix):
             preds = VGG16FCN.predict(input_preprocessed_image)
             # print("input_img shape (height, width)", input_img.shape, "-> preds shape", preds.shape)
 
-            heatmaps_values = preds[0, :, :, :]
-            heatx, heaty, heatclass = np.unravel_index(np.argmax(heatmaps_values, axis=None), heatmaps_values.shape)
+            seg_map = np.argmax(preds[0], axis=2)
+            bool_map_ix = seg_map == input_ix
+            if np.any(bool_map_ix):
 
-            if input_ix == heatclass:   # stop quando input_ix ha il crop massimo
-                max_heatmap = preds[0, heatx, heaty, heatclass]
-                results.insert(0, (upsampling_factor, (preds.shape[1], preds.shape[2]),
-                                max_heatmap, (heatx, heaty), max_heatmap, heatclass))
-                # print("input_ix", ix_to_class_name(input_ix), "==", ix_to_class_name(heatclass), ". returning:\n", results)
+                heatmaps_values = preds[0, :, :, input_ix]
+                max_heatmap = np.amax(heatmaps_values)
+                max_coordinates = np.unravel_index(np.argmax(heatmaps_values, axis=None), heatmaps_values.shape)
+                # print("max value for input_ix found at", max_coordinates)
+
+                results.insert(0, (upsampling_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates, max_heatmap, input_ix))
                 break
 
-            elif results == []:   # default value
+            elif results == []:  # default value
                 heatmap_values = preds[0, :, :, input_ix]
                 max_heatmap = np.amax(heatmap_values)
                 max_coordinates = np.unravel_index(np.argmax(heatmap_values, axis=None), heatmap_values.shape)
@@ -166,10 +168,8 @@ def process_image(input_fn, input_ix):
                 max_crop = np.amax(crop_heatmaps)
                 max_crop_ix = np.argmax(crop_heatmaps)
 
-                results.append((upsampling_factor, (preds.shape[1], preds.shape[2]),
-                                max_heatmap, max_coordinates,  max_crop, max_crop_ix))
+                results.append((upsampling_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates, max_crop, max_crop_ix))
                 # print("adding default element:\n", results)
-
 
             # vecchia maniera senza stop
             # heatmaps_values = preds[0, :, :, input_ix]
