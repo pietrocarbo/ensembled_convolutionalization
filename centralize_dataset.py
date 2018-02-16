@@ -147,41 +147,42 @@ def process_image(input_fn, input_ix):
             preds = VGG16FCN.predict(input_preprocessed_image)
             # print("input_img shape (height, width)", input_img.shape, "-> preds shape", preds.shape)
 
-            seg_map = np.argmax(preds[0], axis=2)
-            bool_map_ix = seg_map == input_ix
-            if np.any(bool_map_ix):
+            # seg_map = np.argmax(preds[0], axis=2)
+            # bool_map_ix = seg_map == input_ix
+            # if np.any(bool_map_ix):
 
-                heatmaps_values = preds[0, :, :, input_ix]
-                max_heatmap = np.amax(heatmaps_values)
-                max_coordinates = np.unravel_index(np.argmax(heatmaps_values, axis=None), heatmaps_values.shape)
-                # print("max value for input_ix found at", max_coordinates)
-
-                results.insert(0, (upsampling_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates, max_heatmap, input_ix))
-                break
-
-            elif results == []:  # default value
-                heatmap_values = preds[0, :, :, input_ix]
-                max_heatmap = np.amax(heatmap_values)
-                max_coordinates = np.unravel_index(np.argmax(heatmap_values, axis=None), heatmap_values.shape)
-
-                crop_heatmaps = preds[0, max_coordinates[0], max_coordinates[1], :]
-                max_crop = np.amax(crop_heatmaps)
-                max_crop_ix = np.argmax(crop_heatmaps)
-
-                results.append((upsampling_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates, max_crop, max_crop_ix))
-                # print("adding default element:\n", results)
-
-            # vecchia maniera senza stop
-            # heatmaps_values = preds[0, :, :, input_ix]
-            # max_heatmap = np.amax(heatmaps_values)
-            # max_coordinates = np.unravel_index(np.argmax(heatmaps_values, axis=None), heatmaps_values.shape)
-            # # print("max value", max_heatmap, "found at", max_coordinates)
+            #     stop alla massimizazione del primo crop
+            #     heatmaps_values = preds[0, :, :, input_ix]
+            #     max_heatmap = np.amax(heatmaps_values)
+            #     max_coordinates = np.unravel_index(np.argmax(heatmaps_values, axis=None), heatmaps_values.shape)
+            #     # print("max value for input_ix found at", max_coordinates)
             #
-            # crop_heatmaps = preds[0, max_coordinates[0], max_coordinates[1], :]
-            # max_crop = np.amax(crop_heatmaps)
-            # max_crop_ix = np.argmax(crop_heatmaps)
+            #     results.insert(0, (upsampling_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates, max_heatmap, input_ix))
+            #     break
             #
-            # results.append((upsampling_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates, max_crop, max_crop_ix))
+            # elif results == []:  # default value
+            #     heatmap_values = preds[0, :, :, input_ix]
+            #     max_heatmap = np.amax(heatmap_values)
+            #     max_coordinates = np.unravel_index(np.argmax(heatmap_values, axis=None), heatmap_values.shape)
+            #
+            #     crop_heatmaps = preds[0, max_coordinates[0], max_coordinates[1], :]
+            #     max_crop = np.amax(crop_heatmaps)
+            #     max_crop_ix = np.argmax(crop_heatmaps)
+            #
+            #     results.append((upsampling_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates, max_crop, max_crop_ix))
+            #     print("adding default element:\n", results)
+
+            # produzione result ad ogni scala
+            heatmaps_values = preds[0, :, :, input_ix]
+            max_heatmap = np.amax(heatmaps_values)
+            max_coordinates = np.unravel_index(np.argmax(heatmaps_values, axis=None), heatmaps_values.shape)
+            # print("max value", max_heatmap, "found at", max_coordinates)
+
+            crop_heatmaps = preds[0, max_coordinates[0], max_coordinates[1], :]
+            max_crop = np.amax(crop_heatmaps)
+            max_crop_ix = np.argmax(crop_heatmaps)
+
+            results.append((upsampling_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates, max_crop, max_crop_ix))
 
             upsampling_factor *= upsampling_step
 
@@ -193,8 +194,8 @@ def process_image(input_fn, input_ix):
 def threshold_max(rst_list, threshold=0.5):
     for ix, rst in enumerate(rst_list):
         if rst[2] > threshold:
-            return rst_list[ix]
-    return rst_list[0]
+            return ix
+    return 0
 
 def factor_weighted_max(rst_list, weight=1.25):
     max_ix = 0
@@ -205,15 +206,15 @@ def factor_weighted_max(rst_list, weight=1.25):
         if score < max_score:
             max_score = score
             max_ix = ix
-    return rst_list[max_ix]
+    return max_ix
 
 
 # ciclo per un set di immagini
 dump_list = []
-set = "test"
+set = "images"
 class_folders = os.listdir("dataset-ethz101food/" + set)
 folder_to_scan = 101
-instances_per_folder = 20
+instances_per_folder = 1000
 for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
     instances = os.listdir("dataset-ethz101food/" + set + "/" + class_folder)
     for i_instance, instance in enumerate(instances[0:instances_per_folder]):
@@ -232,11 +233,11 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
         clf_true_label = clf[class_name_to_idx(class_folder)]
         # print("\nImage classified as", clf_class, "with score", clf_score)
 
-        # processamento a varie scale e selezione crop max
+        # processamento a varie scale e SELEZIONE MAX
         rst_list = process_image(filename, class_name_to_idx(class_folder))
-        baseSize_ix = len(rst_list) - 1
-        bestSize_ix = 0   # possibile usare custom_max()
-        factor, (hdim, wdim), prob, (hcoordh, hcoordw), max_crop, max_crop_ix = rst_list[0]
+        baseSize_ix = 0                         # len(rst_list) - 1
+        bestSize_ix = threshold_max(rst_list)   # 0
+        factor, (hdim, wdim), prob, (hcoordh, hcoordw), max_crop, max_crop_ix = rst_list[bestSize_ix]
         rect_dim = int(224 / factor)
         coordh = traslation(hcoordh)
         coordw = traslation(hcoordw)

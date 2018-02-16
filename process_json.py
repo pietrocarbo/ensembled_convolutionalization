@@ -58,10 +58,4 @@ def process(filename):
         # show_samples(missed_samples, dumps)
         show_samples(corrected_samples, dumps)
 
-
-# process("dumpListtestSet10.json")
-# process("testSet2020max.json")
-# process("testSet2020cmax05.json")
-# process("testSet2020cmaxWeighted.json")
-# process("testSet2020WeightedMore.json")
-process("testSet2020cmaxCropMAX.json")
+process("imagesSet101000cmaxMaxInputIX.json")
