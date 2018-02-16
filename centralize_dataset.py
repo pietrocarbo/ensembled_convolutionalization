@@ -221,6 +221,7 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
         filename = "dataset-ethz101food/" + set + "/" + class_folder + "/" + instance
 
         # classificazione
+
         wtrain, htrain = (299, 299)
         img_classify = image.load_img(filename, target_size=(wtrain, htrain))
         img_classify = image.img_to_array(img_classify)
@@ -230,8 +231,8 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
         clf_cix = np.argmax(clf)
         clf_class = ix_to_class_name(clf_cix)
         clf_score = clf[clf_cix]
-        clf_true_label = clf[class_name_to_idx(class_folder)]
         # print("\nImage classified as", clf_class, "with score", clf_score)
+        clf_true_label = clf[class_name_to_idx(class_folder)]
 
         # processamento a varie scale e SELEZIONE MAX
         rst_list = process_image(filename, class_name_to_idx(class_folder))
@@ -264,8 +265,8 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
         crop_cix = np.argmax(clf_crop)
         crop_class = ix_to_class_name(crop_cix)
         crop_score = clf_crop[crop_cix]
-        crop_true_label = clf_crop[class_name_to_idx(class_folder)]
         # print("Crop classified as", crop_class, "with score", crop_score)
+        crop_true_label = clf_crop[class_name_to_idx(class_folder)]
 
 
         # dumping dei dati
