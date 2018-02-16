@@ -299,13 +299,13 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
         )
 
         print("processed " + str(instances_per_folder * i_folder + i_instance + 1) + "/" + str(instances_per_folder * folder_to_scan))
-        print(json.dumps(data, indent=2))
-
-        fig, ax = plt.subplots(1)
-        ax.imshow(img / 255.)
-        rect = patches.Rectangle((coordw, coordh), rect_dim, rect_dim, linewidth=1, edgecolor='r', facecolor='none')
-        ax.add_patch(rect)
-        plt.show()
+        # print(json.dumps(data, indent=2))
+        #
+        # fig, ax = plt.subplots(1)
+        # ax.imshow(img / 255.)
+        # rect = patches.Rectangle((coordw, coordh), rect_dim, rect_dim, linewidth=1, edgecolor='r', facecolor='none')
+        # ax.add_patch(rect)
+        # plt.show()
 
         dump_list.append(data)
 
