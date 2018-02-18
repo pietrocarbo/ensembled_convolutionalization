@@ -70,34 +70,34 @@ VGG16FCN = Model(inputs=baseVGG16.input, outputs=x)
 xception = model_from_json(prepare_str_file_architecture_syntax("trained_models/top1_xception_acc80_2017-12-25/xception_architecture_2017-12-24_13-00-22.json"))
 xception.load_weights("trained_models/top1_xception_acc80_2017-12-25/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5")
 
-incresv2 = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet', input_shape=(299, 299, 3))
-x = GlobalAveragePooling2D()(incresv2.output)
-out = Dense(101, activation='softmax', name='output_layer')(x)
-incresv2 = Model(inputs=incresv2.input, outputs=out)
-incresv2.load_weights("trained_models/top2_incresnetv2_acc79_2017-12-22/incv2resnet_ft_weights_acc0.79_e4_2017-12-21_09-02-16.hdf5")
+# incresv2 = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet', input_shape=(299, 299, 3))
+# x = GlobalAveragePooling2D()(incresv2.output)
+# out = Dense(101, activation='softmax', name='output_layer')(x)
+# incresv2 = Model(inputs=incresv2.input, outputs=out)
+# incresv2.load_weights("trained_models/top2_incresnetv2_acc79_2017-12-22/incv2resnet_ft_weights_acc0.79_e4_2017-12-21_09-02-16.hdf5")
+#
+# incv3 = keras.applications.inception_v3.InceptionV3(include_top=False, weights='imagenet', input_shape=(299, 299, 3))
+# x = GlobalAveragePooling2D()(incv3.output)
+# x = Dense(1024, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005), bias_regularizer=l2(.0005))(x)
+# x = LeakyReLU()(x)
+# x = BatchNormalization()(x)
+# x = Dropout(0.5)(x)
+# x = Dense(512, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005), bias_regularizer=l2(.0005))(x)
+# x = LeakyReLU()(x)
+# x = BatchNormalization()(x)
+# x = Dropout(0.5)(x)
+# out = Dense(101, kernel_initializer='he_uniform', bias_initializer="he_uniform", activation='softmax', name='output_layer')(x)
+# incv3 = Model(inputs=incv3.input, outputs=out)
+# incv3.load_weights("trained_models/top3_inceptionv3_acc79_2017-12-27/inceptionv3_ft_weights_acc0.79_e10_2017-12-25_22-10-02.hdf5")
+#
+# model_list = [xception, incresv2, incv3]
+# ensemble_input = Input(shape=xception.input_shape[1:])
+# outputs = [model(ensemble_input) for model in model_list]
+# ensemble_output = keras.layers.average(outputs)
+# ensemble = Model(inputs=ensemble_input, outputs=ensemble_output)
+# ensemble.summary()
 
-incv3 = keras.applications.inception_v3.InceptionV3(include_top=False, weights='imagenet', input_shape=(299, 299, 3))
-x = GlobalAveragePooling2D()(incv3.output)
-x = Dense(1024, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005), bias_regularizer=l2(.0005))(x)
-x = LeakyReLU()(x)
-x = BatchNormalization()(x)
-x = Dropout(0.5)(x)
-x = Dense(512, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005), bias_regularizer=l2(.0005))(x)
-x = LeakyReLU()(x)
-x = BatchNormalization()(x)
-x = Dropout(0.5)(x)
-out = Dense(101, kernel_initializer='he_uniform', bias_initializer="he_uniform", activation='softmax', name='output_layer')(x)
-incv3 = Model(inputs=incv3.input, outputs=out)
-incv3.load_weights("trained_models/top3_inceptionv3_acc79_2017-12-27/inceptionv3_ft_weights_acc0.79_e10_2017-12-25_22-10-02.hdf5")
-
-model_list = [xception, incresv2, incv3]
-ensemble_input = Input(shape=xception.input_shape[1:])
-outputs = [model(ensemble_input) for model in model_list]
-ensemble_output = keras.layers.average(outputs)
-ensemble = Model(inputs=ensemble_input, outputs=ensemble_output)
-ensemble.summary()
-
-classifier = ensemble
+classifier = xception
 
 def ix_to_class_name(idx):
     with open("dataset-ethz101food/meta/classes.txt") as file:
@@ -210,10 +210,10 @@ def factor_weighted_max(rst_list, weight=1.25):
 
 # ciclo per un set di immagini
 dump_list = []
-set = "images"
+set = "test"
 class_folders = os.listdir("dataset-ethz101food/" + set)
 folder_to_scan = 101
-instances_per_folder = 1000
+instances_per_folder = 250
 for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
     instances = os.listdir("dataset-ethz101food/" + set + "/" + class_folder)
     for i_instance, instance in enumerate(instances[0:instances_per_folder]):
