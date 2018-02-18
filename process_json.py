@@ -58,4 +58,4 @@ def process(filename):
         # show_samples(missed_samples, dumps)
         show_samples(corrected_samples, dumps)
 
-process("imagesSet101000cmaxMaxInputIX.json")
+process("imagesSet101000cmax05.json")

@@ -70,34 +70,34 @@ VGG16FCN = Model(inputs=baseVGG16.input, outputs=x)
 xception = model_from_json(prepare_str_file_architecture_syntax("trained_models/top1_xception_acc80_2017-12-25/xception_architecture_2017-12-24_13-00-22.json"))
 xception.load_weights("trained_models/top1_xception_acc80_2017-12-25/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5")
 
-# incresv2 = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet', input_shape=(299, 299, 3))
-# x = GlobalAveragePooling2D()(incresv2.output)
-# out = Dense(101, activation='softmax', name='output_layer')(x)
-# incresv2 = Model(inputs=incresv2.input, outputs=out)
-# incresv2.load_weights("trained_models/top2_incresnetv2_acc79_2017-12-22/incv2resnet_ft_weights_acc0.79_e4_2017-12-21_09-02-16.hdf5")
-#
-# incv3 = keras.applications.inception_v3.InceptionV3(include_top=False, weights='imagenet', input_shape=(299, 299, 3))
-# x = GlobalAveragePooling2D()(incv3.output)
-# x = Dense(1024, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005), bias_regularizer=l2(.0005))(x)
-# x = LeakyReLU()(x)
-# x = BatchNormalization()(x)
-# x = Dropout(0.5)(x)
-# x = Dense(512, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005), bias_regularizer=l2(.0005))(x)
-# x = LeakyReLU()(x)
-# x = BatchNormalization()(x)
-# x = Dropout(0.5)(x)
-# out = Dense(101, kernel_initializer='he_uniform', bias_initializer="he_uniform", activation='softmax', name='output_layer')(x)
-# incv3 = Model(inputs=incv3.input, outputs=out)
-# incv3.load_weights("trained_models/top3_inceptionv3_acc79_2017-12-27/inceptionv3_ft_weights_acc0.79_e10_2017-12-25_22-10-02.hdf5")
-#
-# model_list = [xception, incresv2, incv3]
-# ensemble_input = Input(shape=xception.input_shape[1:])
-# outputs = [model(ensemble_input) for model in model_list]
-# ensemble_output = keras.layers.average(outputs)
-# ensemble = Model(inputs=ensemble_input, outputs=ensemble_output)
-# ensemble.summary()
+incresv2 = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet', input_shape=(299, 299, 3))
+x = GlobalAveragePooling2D()(incresv2.output)
+out = Dense(101, activation='softmax', name='output_layer')(x)
+incresv2 = Model(inputs=incresv2.input, outputs=out)
+incresv2.load_weights("trained_models/top2_incresnetv2_acc79_2017-12-22/incv2resnet_ft_weights_acc0.79_e4_2017-12-21_09-02-16.hdf5")
 
-classifier = xception
+incv3 = keras.applications.inception_v3.InceptionV3(include_top=False, weights='imagenet', input_shape=(299, 299, 3))
+x = GlobalAveragePooling2D()(incv3.output)
+x = Dense(1024, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005), bias_regularizer=l2(.0005))(x)
+x = LeakyReLU()(x)
+x = BatchNormalization()(x)
+x = Dropout(0.5)(x)
+x = Dense(512, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005), bias_regularizer=l2(.0005))(x)
+x = LeakyReLU()(x)
+x = BatchNormalization()(x)
+x = Dropout(0.5)(x)
+out = Dense(101, kernel_initializer='he_uniform', bias_initializer="he_uniform", activation='softmax', name='output_layer')(x)
+incv3 = Model(inputs=incv3.input, outputs=out)
+incv3.load_weights("trained_models/top3_inceptionv3_acc79_2017-12-27/inceptionv3_ft_weights_acc0.79_e10_2017-12-25_22-10-02.hdf5")
+
+model_list = [xception, incresv2, incv3]
+ensemble_input = Input(shape=xception.input_shape[1:])
+outputs = [model(ensemble_input) for model in model_list]
+ensemble_output = keras.layers.average(outputs)
+ensemble = Model(inputs=ensemble_input, outputs=ensemble_output)
+ensemble.summary()
+
+classifier = ensemble
 
 def ix_to_class_name(idx):
     with open("dataset-ethz101food/meta/classes.txt") as file:
@@ -147,42 +147,41 @@ def process_image(input_fn, input_ix):
             preds = VGG16FCN.predict(input_preprocessed_image)
             # print("input_img shape (height, width)", input_img.shape, "-> preds shape", preds.shape)
 
-            # seg_map = np.argmax(preds[0], axis=2)
-            # bool_map_ix = seg_map == input_ix
-            # if np.any(bool_map_ix):
+            # stop al primo crop che è massimo per la classe input_ix
+            seg_map = np.argmax(preds[0], axis=2)
+            bool_map_ix = seg_map == input_ix
+            if np.any(bool_map_ix):
+                heatmaps_values = preds[0, :, :, input_ix]
+                max_heatmap = np.amax(heatmaps_values)
+                max_coordinates = np.unravel_index(np.argmax(heatmaps_values, axis=None), heatmaps_values.shape)
+                # print("max value for input_ix found at", max_coordinates)
 
-            #     stop alla massimizazione del primo crop
-            #     heatmaps_values = preds[0, :, :, input_ix]
-            #     max_heatmap = np.amax(heatmaps_values)
-            #     max_coordinates = np.unravel_index(np.argmax(heatmaps_values, axis=None), heatmaps_values.shape)
-            #     # print("max value for input_ix found at", max_coordinates)
-            #
-            #     results.insert(0, (upsampling_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates, max_heatmap, input_ix))
-            #     break
-            #
-            # elif results == []:  # default value
-            #     heatmap_values = preds[0, :, :, input_ix]
-            #     max_heatmap = np.amax(heatmap_values)
-            #     max_coordinates = np.unravel_index(np.argmax(heatmap_values, axis=None), heatmap_values.shape)
-            #
-            #     crop_heatmaps = preds[0, max_coordinates[0], max_coordinates[1], :]
-            #     max_crop = np.amax(crop_heatmaps)
-            #     max_crop_ix = np.argmax(crop_heatmaps)
-            #
-            #     results.append((upsampling_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates, max_crop, max_crop_ix))
-            #     print("adding default element:\n", results)
+                results.append((upsampling_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates, max_heatmap, input_ix))
+                break
+
+            elif results == []:  # default value
+                heatmap_values = preds[0, :, :, input_ix]
+                max_heatmap = np.amax(heatmap_values)
+                max_coordinates = np.unravel_index(np.argmax(heatmap_values, axis=None), heatmap_values.shape)
+
+                crop_heatmaps = preds[0, max_coordinates[0], max_coordinates[1], :]
+                max_crop = np.amax(crop_heatmaps)
+                max_crop_ix = np.argmax(crop_heatmaps)
+
+                results.append((upsampling_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates, max_crop, max_crop_ix))
+                # print("adding default element:\n", results)
 
             # produzione result ad ogni scala
-            heatmaps_values = preds[0, :, :, input_ix]
-            max_heatmap = np.amax(heatmaps_values)
-            max_coordinates = np.unravel_index(np.argmax(heatmaps_values, axis=None), heatmaps_values.shape)
-            # print("max value", max_heatmap, "found at", max_coordinates)
-
-            crop_heatmaps = preds[0, max_coordinates[0], max_coordinates[1], :]
-            max_crop = np.amax(crop_heatmaps)
-            max_crop_ix = np.argmax(crop_heatmaps)
-
-            results.append((upsampling_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates, max_crop, max_crop_ix))
+            # heatmaps_values = preds[0, :, :, input_ix]
+            # max_heatmap = np.amax(heatmaps_values)
+            # max_coordinates = np.unravel_index(np.argmax(heatmaps_values, axis=None), heatmaps_values.shape)
+            # # print("max value", max_heatmap, "found at", max_coordinates)
+            #
+            # crop_heatmaps = preds[0, max_coordinates[0], max_coordinates[1], :]
+            # max_crop = np.amax(crop_heatmaps)
+            # max_crop_ix = np.argmax(crop_heatmaps)
+            #
+            # results.append((upsampling_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates, max_crop, max_crop_ix))
 
             upsampling_factor *= upsampling_step
 
@@ -221,7 +220,6 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
         filename = "dataset-ethz101food/" + set + "/" + class_folder + "/" + instance
 
         # classificazione
-
         wtrain, htrain = (299, 299)
         img_classify = image.load_img(filename, target_size=(wtrain, htrain))
         img_classify = image.img_to_array(img_classify)
@@ -234,10 +232,10 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
         # print("\nImage classified as", clf_class, "with score", clf_score)
         clf_true_label = clf[class_name_to_idx(class_folder)]
 
-        # processamento a varie scale e SELEZIONE MAX
+        # processamento a varie scale
         rst_list = process_image(filename, class_name_to_idx(class_folder))
-        baseSize_ix = 0                         # len(rst_list) - 1
-        bestSize_ix = threshold_max(rst_list)   # 0
+        baseSize_ix = 0
+        bestSize_ix = -1  # SELEZIONE MAX: last item of the list
         factor, (hdim, wdim), prob, (hcoordh, hcoordw), max_crop, max_crop_ix = rst_list[bestSize_ix]
         rect_dim = int(224 / factor)
         coordh = traslation(hcoordh)
