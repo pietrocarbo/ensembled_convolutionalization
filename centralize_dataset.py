@@ -67,8 +67,12 @@ x = Conv2D(101, (1, 1), strides=(1, 1), activation='softmax', padding='valid', w
 VGG16FCN = Model(inputs=baseVGG16.input, outputs=x)
 # VGG16FCN.summary()
 
-xception = model_from_json(prepare_str_file_architecture_syntax("trained_models/top1_xception_acc80_2017-12-25/xception_architecture_2017-12-24_13-00-22.json"))
-xception.load_weights("trained_models/top1_xception_acc80_2017-12-25/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5")
+vgg19 = model_from_json(prepare_str_file_architecture_syntax("trained_models/top4_vgg19_acc78_2017-12-23/vgg19_architecture_2017-12-22_23-55-53.json"))
+vgg19.load_weights("trained_models/top4_vgg19_acc78_2017-12-23/vgg19_ft_weights_acc0.78_e26_2017-12-22_23-55-53.hdf5")
+vgg19.summary()
+
+# xception = model_from_json(prepare_str_file_architecture_syntax("trained_models/top1_xception_acc80_2017-12-25/xception_architecture_2017-12-24_13-00-22.json"))
+# xception.load_weights("trained_models/top1_xception_acc80_2017-12-25/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5")
 
 # incresv2 = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet', input_shape=(299, 299, 3))
 # x = GlobalAveragePooling2D()(incresv2.output)
@@ -97,7 +101,8 @@ xception.load_weights("trained_models/top1_xception_acc80_2017-12-25/xception_ft
 # ensemble = Model(inputs=ensemble_input, outputs=ensemble_output)
 # ensemble.summary()
 
-classifier = xception
+wtrain, htrain = (224, 224)
+classifier = vgg19
 
 def ix_to_class_name(idx):
     with open("dataset-ethz101food/meta/classes.txt") as file:
@@ -148,40 +153,40 @@ def process_image(input_fn, input_ix):
             # print("input_img shape (height, width)", input_img.shape, "-> preds shape", preds.shape)
 
             # stop al primo crop che è massimo per la classe input_ix
-            # seg_map = np.argmax(preds[0], axis=2)
-            # bool_map_ix = seg_map == input_ix
-            # if np.any(bool_map_ix):
-            #     heatmaps_values = preds[0, :, :, input_ix]
-            #     max_heatmap = np.amax(heatmaps_values)
-            #     max_coordinates = np.unravel_index(np.argmax(heatmaps_values, axis=None), heatmaps_values.shape)
-            #     # print("max value for input_ix found at", max_coordinates)
-            #
-            #     results.append((upsampling_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates, max_heatmap, input_ix))
-            #     break
-            #
-            # elif results == []:  # default value
-            #     heatmap_values = preds[0, :, :, input_ix]
-            #     max_heatmap = np.amax(heatmap_values)
-            #     max_coordinates = np.unravel_index(np.argmax(heatmap_values, axis=None), heatmap_values.shape)
-            #
-            #     crop_heatmaps = preds[0, max_coordinates[0], max_coordinates[1], :]
-            #     max_crop = np.amax(crop_heatmaps)
-            #     max_crop_ix = np.argmax(crop_heatmaps)
-            #
-            #     results.append((upsampling_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates, max_crop, max_crop_ix))
+            seg_map = np.argmax(preds[0], axis=2)
+            bool_map_ix = seg_map == input_ix
+            if np.any(bool_map_ix):
+                heatmaps_values = preds[0, :, :, input_ix]
+                max_heatmap = np.amax(heatmaps_values)
+                max_coordinates = np.unravel_index(np.argmax(heatmaps_values, axis=None), heatmaps_values.shape)
+                # print("max value for input_ix found at", max_coordinates)
+
+                results.append((upsampling_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates, max_heatmap, input_ix))
+                break
+
+            elif results == []:  # default value
+                heatmap_values = preds[0, :, :, input_ix]
+                max_heatmap = np.amax(heatmap_values)
+                max_coordinates = np.unravel_index(np.argmax(heatmap_values, axis=None), heatmap_values.shape)
+
+                crop_heatmaps = preds[0, max_coordinates[0], max_coordinates[1], :]
+                max_crop = np.amax(crop_heatmaps)
+                max_crop_ix = np.argmax(crop_heatmaps)
+
+                results.append((upsampling_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates, max_crop, max_crop_ix))
                 # print("adding default element:\n", results)
 
             # produzione result ad ogni scala
-            heatmaps_values = preds[0, :, :, input_ix]
-            max_heatmap = np.amax(heatmaps_values)
-            max_coordinates = np.unravel_index(np.argmax(heatmaps_values, axis=None), heatmaps_values.shape)
-            # print("max value", max_heatmap, "found at", max_coordinates)
-
-            crop_heatmaps = preds[0, max_coordinates[0], max_coordinates[1], :]
-            max_crop = np.amax(crop_heatmaps)
-            max_crop_ix = np.argmax(crop_heatmaps)
-
-            results.append((upsampling_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates, max_crop, max_crop_ix))
+            # heatmaps_values = preds[0, :, :, input_ix]
+            # max_heatmap = np.amax(heatmaps_values)
+            # max_coordinates = np.unravel_index(np.argmax(heatmaps_values, axis=None), heatmaps_values.shape)
+            # # print("max value", max_heatmap, "found at", max_coordinates)
+            #
+            # crop_heatmaps = preds[0, max_coordinates[0], max_coordinates[1], :]
+            # max_crop = np.amax(crop_heatmaps)
+            # max_crop_ix = np.argmax(crop_heatmaps)
+            #
+            # results.append((upsampling_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates, max_crop, max_crop_ix))
 
             upsampling_factor *= upsampling_step
 
@@ -220,7 +225,6 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
         filename = "dataset-ethz101food/" + set + "/" + class_folder + "/" + instance
 
         # classificazione
-        wtrain, htrain = (299, 299)
         img_classify = image.load_img(filename, target_size=(wtrain, htrain))
         img_classify = image.img_to_array(img_classify)
         img_classify_expandedim = np.expand_dims(img_classify, axis=0)
