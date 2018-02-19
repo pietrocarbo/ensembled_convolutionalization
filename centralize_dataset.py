@@ -17,9 +17,22 @@ import numpy as np
 import matplotlib.patches as patches
 
 from PIL import Image
-from keras.applications.vgg16 import preprocess_input as vgg_preprocess
-from keras.applications.xception import preprocess_input as inception_preprocess
 from keras.preprocessing import image
+
+def ix_to_class_name(idx):
+    with open("dataset-ethz101food/meta/classes.txt") as file:
+        class_labels = [line.strip('\n') for line in file.readlines()]
+    return class_labels[idx]
+
+def class_name_to_idx(name):
+    with open("dataset-ethz101food/meta/classes.txt") as file:
+        class_labels = [line.strip('\n') for line in file.readlines()]
+        for i, label_name in enumerate(class_labels):
+            if label_name == name:
+                return i
+        else:
+            print("class idx not found!")
+            exit(-1)
 
 def prepare_str_file_architecture_syntax(filepath):
     model_str = str(json.load(open(filepath, "r")))
@@ -61,15 +74,24 @@ def load_VGG16(architecture_path, weigths_path, debug=False):
 
     return model, last_layer, W, b
 
+# -----------------------------------
+# FCNs
 baseVGG16, last_layer, W, b = load_VGG16("trained_models/top5_vgg16_acc77_2017-12-24/vgg16_architecture_2017-12-23_22-53-03.json", "trained_models/top5_vgg16_acc77_2017-12-24/vgg16_ft_weights_acc0.78_e15_2017-12-23_22-53-03.hdf5")
 x = AveragePooling2D(pool_size=(7, 7), strides=(1, 1))(last_layer.output)
 x = Conv2D(101, (1, 1), strides=(1, 1), activation='softmax', padding='valid', weights=[W, b])(x)
-VGG16FCN = Model(inputs=baseVGG16.input, outputs=x)
+vgg16FCN = Model(inputs=baseVGG16.input, outputs=x)
 # VGG16FCN.summary()
 
+# xceptionFCN = model_from_json(prepare_str_file_architecture_syntax("trained_models/xception_architecture_2017-12-24_13-00-22.json"))
+# xceptionFCN.load_weights("trained_models/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5")
+# xceptionFCN.summary()
+
+
+# -----------------------------------
+# CLASSIFIERS
 vgg19 = model_from_json(prepare_str_file_architecture_syntax("trained_models/top4_vgg19_acc78_2017-12-23/vgg19_architecture_2017-12-22_23-55-53.json"))
 vgg19.load_weights("trained_models/top4_vgg19_acc78_2017-12-23/vgg19_ft_weights_acc0.78_e26_2017-12-22_23-55-53.hdf5")
-vgg19.summary()
+# vgg19.summary()
 
 # xception = model_from_json(prepare_str_file_architecture_syntax("trained_models/top1_xception_acc80_2017-12-25/xception_architecture_2017-12-24_13-00-22.json"))
 # xception.load_weights("trained_models/top1_xception_acc80_2017-12-25/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5")
@@ -101,70 +123,43 @@ vgg19.summary()
 # ensemble = Model(inputs=ensemble_input, outputs=ensemble_output)
 # ensemble.summary()
 
+CLF = vgg19
 wtrain, htrain = (224, 224)
-classifier = vgg19
+from keras.applications.vgg19 import preprocess_input as clf_preprocess
 
-def ix_to_class_name(idx):
-    with open("dataset-ethz101food/meta/classes.txt") as file:
-        class_labels = [line.strip('\n') for line in file.readlines()]
-    return class_labels[idx]
+FCN = vgg16FCN
+from keras.applications.vgg16 import preprocess_input as fcn_preprocess
 
-def class_name_to_idx(name):
-    with open("dataset-ethz101food/meta/classes.txt") as file:
-        class_labels = [line.strip('\n') for line in file.readlines()]
-        for i, label_name in enumerate(class_labels):
-            if label_name == name:
-                return i
-        else:
-            print("class idx not found!")
-            exit(-1)
+set = "test"
+class_folders = os.listdir("dataset-ethz101food/" + set)
+folder_to_scan = 101
+instances_per_folder = 250
 
-def traslation(heat_coord):
-    return(int(32 * heat_coord / factor)) #32 is the stride of the whole convolutive net
-
-
+max_scale_factor = 3
 upsampling_step = 1.2
-max_upsampling_factor = 3
+crop_selection_policy = "max_input_ix"  # "input_ix>=0.5"
 
-def process_image(input_fn, input_ix):
+
+def process_image(input_img_reference, input_fn, input_ix, crop_policy):
     results = []
     if (os.path.exists(input_fn)):
-        input_img_reference = image.load_img(input_fn)
-        input_img_reference = image.img_to_array(input_img_reference)
-        # print("image", input_fn, "has shape", input_img_reference.shape)
-        min_dim = min(input_img_reference.shape[0], input_img_reference.shape[1])
-        # print("mdim = {}\n".format(min_dim))
+        scale_factor = 224. / min(input_img_reference.shape[0], input_img_reference.shape[1])
+        # print("starting scale = {}\n".format(scale_factor))
 
-        min_upsampling_factor = 224. / min_dim
-        upsampling_factor = min_upsampling_factor
-
-        while upsampling_factor < max_upsampling_factor:
+        while scale_factor < max_scale_factor:
             # print("\nupsampling factor", upsampling_factor)
 
-            img_size = (int(max(224, input_img_reference.shape[0] * upsampling_factor)), int(max(224, input_img_reference.shape[1] * upsampling_factor)))
+            img_size = (int(max(224, input_img_reference.shape[0] * scale_factor)),
+                        int(max(224, input_img_reference.shape[1] * scale_factor)))
             input_img = image.load_img(input_fn, target_size=img_size)
             input_img = image.img_to_array(input_img)
-            # fig, ax = plt.subplots(1)
-            # ax.imshow(input_img / 255.)
-            # plt.show()
             input_image_expandedim = np.expand_dims(input_img, axis=0)
-            input_preprocessed_image = vgg_preprocess(input_image_expandedim)
-            preds = VGG16FCN.predict(input_preprocessed_image)
+            input_preprocessed_image = fcn_preprocess(input_image_expandedim)
+            preds = FCN.predict(input_preprocessed_image)
             # print("input_img shape (height, width)", input_img.shape, "-> preds shape", preds.shape)
 
-            # stop al primo crop che è massimo per la classe input_ix
-            seg_map = np.argmax(preds[0], axis=2)
-            bool_map_ix = seg_map == input_ix
-            if np.any(bool_map_ix):
-                heatmaps_values = preds[0, :, :, input_ix]
-                max_heatmap = np.amax(heatmaps_values)
-                max_coordinates = np.unravel_index(np.argmax(heatmaps_values, axis=None), heatmaps_values.shape)
-                # print("max value for input_ix found at", max_coordinates)
-
-                results.append((upsampling_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates, max_heatmap, input_ix))
-                break
-
-            elif results == []:  # default value
+            # default min_scale return value
+            if results == []:
                 heatmap_values = preds[0, :, :, input_ix]
                 max_heatmap = np.amax(heatmap_values)
                 max_coordinates = np.unravel_index(np.argmax(heatmap_values, axis=None), heatmap_values.shape)
@@ -173,25 +168,44 @@ def process_image(input_fn, input_ix):
                 max_crop = np.amax(crop_heatmaps)
                 max_crop_ix = np.argmax(crop_heatmaps)
 
-                results.append((upsampling_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates, max_crop, max_crop_ix))
-                # print("adding default element:\n", results)
+                results.append((scale_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates,
+                                max_crop, max_crop_ix))
 
-            # produzione result ad ogni scala
-            # heatmaps_values = preds[0, :, :, input_ix]
-            # max_heatmap = np.amax(heatmaps_values)
-            # max_coordinates = np.unravel_index(np.argmax(heatmaps_values, axis=None), heatmaps_values.shape)
-            # # print("max value", max_heatmap, "found at", max_coordinates)
-            #
-            # crop_heatmaps = preds[0, max_coordinates[0], max_coordinates[1], :]
-            # max_crop = np.amax(crop_heatmaps)
-            # max_crop_ix = np.argmax(crop_heatmaps)
-            #
-            # results.append((upsampling_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates, max_crop, max_crop_ix))
+            # stop al primo crop che è massimo per la classe input_ix
+            if crop_policy == "max_input_ix":
+                seg_map = np.argmax(preds[0], axis=2)
+                bool_map_ix = seg_map == input_ix
+                if np.any(bool_map_ix):
+                    heatmaps_values = preds[0, :, :, input_ix]
+                    max_heatmap = np.amax(heatmaps_values)
+                    max_coordinates = np.unravel_index(np.argmax(heatmaps_values, axis=None), heatmaps_values.shape)
 
-            upsampling_factor *= upsampling_step
+                    results.append((scale_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates,
+                                    max_heatmap, input_ix))
+                    break
 
+            # stop al primo crop >= 0.5 per la classe input_ix
+            elif crop_policy == "input_ix>=0.5":
+                heatmaps_values = preds[0, :, :, input_ix]
+                max_heatmap = np.amax(heatmaps_values)
+                if max_heatmap >= 0.5:
+                    max_coordinates = np.unravel_index(np.argmax(heatmaps_values, axis=None), heatmaps_values.shape)
+
+                    crop_heatmaps = preds[0, max_coordinates[0], max_coordinates[1], :]
+                    max_crop = np.amax(crop_heatmaps)
+                    max_crop_ix = np.argmax(crop_heatmaps)
+
+                    results.append((scale_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates,
+                                    max_crop, max_crop_ix))
+
+            else:
+                print("Unspecified crop policy. Exiting.")
+                exit(-1)
+
+            scale_factor *= upsampling_step
     else:
         print ("The specified image " + input_fn + " does not exist")
+
     return results
 
 
@@ -212,13 +226,11 @@ def factor_weighted_max(rst_list, weight=1.25):
             max_ix = ix
     return max_ix
 
+def traslation(heat_coord):
+    return(int(32 * heat_coord / factor)) #32 is the stride of the whole convolutive net
 
 # ciclo per un set di immagini
 dump_list = []
-set = "test"
-class_folders = os.listdir("dataset-ethz101food/" + set)
-folder_to_scan = 101
-instances_per_folder = 250
 for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
     instances = os.listdir("dataset-ethz101food/" + set + "/" + class_folder)
     for i_instance, instance in enumerate(instances[0:instances_per_folder]):
@@ -228,19 +240,18 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
         img_classify = image.load_img(filename, target_size=(wtrain, htrain))
         img_classify = image.img_to_array(img_classify)
         img_classify_expandedim = np.expand_dims(img_classify, axis=0)
-        img_classify_preprocessed = inception_preprocess(img_classify_expandedim)
-        clf = classifier.predict(img_classify_preprocessed).flatten()
+        img_classify_preprocessed = clf_preprocess(img_classify_expandedim)
+        clf = CLF.predict(img_classify_preprocessed).flatten()
         clf_cix = np.argmax(clf)
         clf_class = ix_to_class_name(clf_cix)
         clf_score = clf[clf_cix]
-        # print("\nImage classified as", clf_class, "with score", clf_score)
         clf_true_label = clf[class_name_to_idx(class_folder)]
 
         # processamento a varie scale
-        rst_list = process_image(filename, class_name_to_idx(class_folder))
-        baseSize_ix = 0
-        bestSize_ix = threshold_max(rst_list)  # SELEZIONE MAX: last item of the list / cmax(list)
-        factor, (hdim, wdim), prob, (hcoordh, hcoordw), max_crop, max_crop_ix = rst_list[bestSize_ix]
+        img = image.load_img(filename)
+        img = image.img_to_array(img)
+        rst_list = process_image(img, filename, class_name_to_idx(class_folder), crop_selection_policy)
+        factor, (hdim, wdim), prob, (hcoordh, hcoordw), max_crop, max_crop_ix = rst_list[-1]
         rect_dim = int(224 / factor)
         coordh = traslation(hcoordh)
         coordw = traslation(hcoordw)
@@ -250,24 +261,17 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
         #       "heatmap cell", (hcoordh, hcoordw), "in range [" + str(hdim) + ", " + str(wdim) + "] ->",
         #       "relative img point", (coordh, coordw), "in range [" + str(img_localize.shape[0])+ ", " + str(img_localize.shape[1]) + "]")
 
-
-        # classificazione su crop
-        img = image.load_img(filename)
-        img = image.img_to_array(img)
+        # classificazione sul crop
         img_crop = img[coordh:coordh+rect_dim, coordw:coordw+rect_dim]
         img_crop = image.array_to_img(img_crop)
         img_crop = img_crop.resize((wtrain, htrain))
         img_crop = image.img_to_array(img_crop)
-        # fig, ax = plt.subplots(1)  # mostra il crop
-        # ax.imshow(img_crop / 255.)
-        # plt.show()
         img_crop_expandedim = np.expand_dims(img_crop, axis=0)
-        img_crop_preprocessed = inception_preprocess(img_crop_expandedim)
-        clf_crop = classifier.predict(img_crop_preprocessed).flatten()
+        img_crop_preprocessed = clf_preprocess(img_crop_expandedim)
+        clf_crop = CLF.predict(img_crop_preprocessed).flatten()
         crop_cix = np.argmax(clf_crop)
         crop_class = ix_to_class_name(crop_cix)
         crop_score = clf_crop[crop_cix]
-        # print("Crop classified as", crop_class, "with score", crop_score)
         crop_true_label = clf_crop[class_name_to_idx(class_folder)]
 
 
@@ -278,9 +282,9 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
             square_crop = dict(lower_left = (int(coordh), int(coordw)), side = int(rect_dim)),
             originalSize = dict(
                 vgg16 = dict(
-                    score = float(rst_list[baseSize_ix][2]),
-                    labelGuessed = str(ix_to_class_name(rst_list[baseSize_ix][5])),
-                    scoreGuessed = float(rst_list[baseSize_ix][4])
+                    score = float(rst_list[0][2]),
+                    labelGuessed = str(ix_to_class_name(rst_list[0][5])),
+                    scoreGuessed = float(rst_list[0][4])
                 ),
                 xception = dict(
                     score = float(clf_true_label),
@@ -301,9 +305,11 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
                 )
             )
         )
+        dump_list.append(data)
 
+        # stampa dei risultati
         print("processed " + str(instances_per_folder * i_folder + i_instance + 1) + "/" + str(instances_per_folder * folder_to_scan))
-        # print(json.dumps(data, indent=2))
+        # print(json.dumps(data, indent=2, sort_keys=True))
         #
         # fig, ax = plt.subplots(1)
         # ax.imshow(img / 255.)
@@ -311,9 +317,8 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
         # ax.add_patch(rect)
         # plt.show()
 
-        dump_list.append(data)
 
 with open(set + "Set" + str(instances_per_folder * folder_to_scan) + ".json", "w+") as file:
-    json.dump(dump_list, file, indent=2)
+    json.dump(dump_list, file, indent=2, sort_keys=True)
 # with open("testSet.pkl", "wb") as file:
 #     pickle.dump(dump_list, file)

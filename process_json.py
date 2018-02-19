@@ -22,6 +22,8 @@ def show_samples(samples_ix, dumps):
         ax.add_patch(rect)
         plt.show()
 
+name_clf = "classifier"
+name_fcn = "fcn"
 
 def process(filename):
     with open(filename, "r") as json_file:
@@ -58,4 +60,4 @@ def process(filename):
         # show_samples(missed_samples, dumps)
         show_samples(corrected_samples, dumps)
 
-process("testSet25250cmax05.json")
+process("testSet25250cmaxMaxInputIX_VGG19.json")
