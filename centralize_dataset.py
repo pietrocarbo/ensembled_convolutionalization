@@ -74,6 +74,8 @@ def load_VGG16(architecture_path, weigths_path, debug=False):
 
     return model, last_layer, W, b
 
+
+
 # -----------------------------------
 # FCNs
 baseVGG16, last_layer, W, b = load_VGG16("trained_models/top5_vgg16_acc77_2017-12-24/vgg16_architecture_2017-12-23_22-53-03.json", "trained_models/top5_vgg16_acc77_2017-12-24/vgg16_ft_weights_acc0.78_e15_2017-12-23_22-53-03.hdf5")
@@ -82,10 +84,26 @@ x = Conv2D(101, (1, 1), strides=(1, 1), activation='softmax', padding='valid', w
 vgg16FCN = Model(inputs=baseVGG16.input, outputs=x)
 # VGG16FCN.summary()
 
-# xceptionFCN = model_from_json(prepare_str_file_architecture_syntax("trained_models/xception_architecture_2017-12-24_13-00-22.json"))
-# xceptionFCN.load_weights("trained_models/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5")
+xceptionFCN = model_from_json(prepare_str_file_architecture_syntax("trained_models/xception_architecture_2017-12-24_13-00-22.json"))
+xceptionFCN.load_weights("trained_models/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5")
 # xceptionFCN.summary()
 
+gap_dim = xceptionFCN.get_layer("global_average_pooling2d_1").input_shape
+out_dim = xceptionFCN.get_layer("output_layer").get_weights()[1].shape[0]
+W, b = xceptionFCN.get_layer("output_layer").get_weights()
+
+weights_shape = (1, 1, gap_dim[3], out_dim)
+W = W.reshape(weights_shape)
+
+last_layer = xceptionFCN.get_layer("block14_sepconv2_act")
+last_layer.outbound_nodes = []
+xceptionFCN.layers.pop()
+xceptionFCN.layers.pop()
+
+x = AveragePooling2D(pool_size=(10, 10), strides=(1, 1))(last_layer.output)
+x = Conv2D(101, (1, 1), strides=(1, 1), activation='softmax', padding='valid', weights=[W, b], name="conv2d_fcn")(x)
+xceptionFCN = Model(inputs=xceptionFCN.input, outputs=x)
+# xceptionFCN.summary()
 
 # -----------------------------------
 # CLASSIFIERS
@@ -127,8 +145,9 @@ CLF = vgg19
 wtrain, htrain = (224, 224)
 from keras.applications.vgg19 import preprocess_input as clf_preprocess
 
-FCN = vgg16FCN
-from keras.applications.vgg16 import preprocess_input as fcn_preprocess
+fcn_window = 299
+FCN = xceptionFCN
+from keras.applications.xception import preprocess_input as fcn_preprocess
 
 set = "test"
 class_folders = os.listdir("dataset-ethz101food/" + set)
@@ -143,22 +162,20 @@ crop_selection_policy = "max_input_ix"  # "input_ix>=0.5"
 def process_image(input_img_reference, input_fn, input_ix, crop_policy):
     results = []
     if (os.path.exists(input_fn)):
-        scale_factor = 224. / min(input_img_reference.shape[0], input_img_reference.shape[1])
+        scale_factor = float(fcn_window) / min(input_img_reference.shape[0], input_img_reference.shape[1])
         # print("starting scale = {}\n".format(scale_factor))
 
         while scale_factor < max_scale_factor:
-            # print("\nupsampling factor", upsampling_factor)
-
-            img_size = (int(max(224, input_img_reference.shape[0] * scale_factor)),
-                        int(max(224, input_img_reference.shape[1] * scale_factor)))
+            img_size = (int(max(fcn_window, input_img_reference.shape[0] * scale_factor)),
+                        int(max(fcn_window, input_img_reference.shape[1] * scale_factor)))
             input_img = image.load_img(input_fn, target_size=img_size)
             input_img = image.img_to_array(input_img)
             input_image_expandedim = np.expand_dims(input_img, axis=0)
             input_preprocessed_image = fcn_preprocess(input_image_expandedim)
             preds = FCN.predict(input_preprocessed_image)
-            # print("input_img shape (height, width)", input_img.shape, "-> preds shape", preds.shape)
+            # print("scale:", scale_factor, "input_img shape (height, width)", input_img.shape, "-> preds shape", preds.shape)
 
-            # default min_scale return value
+            # valore default alla scala di base
             if results == []:
                 heatmap_values = preds[0, :, :, input_ix]
                 max_heatmap = np.amax(heatmap_values)
@@ -197,6 +214,7 @@ def process_image(input_img_reference, input_fn, input_ix, crop_policy):
 
                     results.append((scale_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates,
                                     max_crop, max_crop_ix))
+                    break
 
             else:
                 print("Unspecified crop policy. Exiting.")
@@ -252,7 +270,7 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
         img = image.img_to_array(img)
         rst_list = process_image(img, filename, class_name_to_idx(class_folder), crop_selection_policy)
         factor, (hdim, wdim), prob, (hcoordh, hcoordw), max_crop, max_crop_ix = rst_list[-1]
-        rect_dim = int(224 / factor)
+        rect_dim = int(fcn_window / factor)
         coordh = traslation(hcoordh)
         coordw = traslation(hcoordw)
         # img_localize = image.load_img(filename)
