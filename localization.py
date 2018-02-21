@@ -242,8 +242,8 @@ def get_random_crop(x, random_crop_size, sync_seed=None):
     # print("img shape", x.shape, "crop_dim", rect_dim, "crop: H", offseth, ":", offseth+random_crop_size, ", W", offsetw, ":", offsetw+random_crop_size)
     return x[offseth:offseth+random_crop_size, offsetw:offsetw+random_crop_size]
 
-count = 0
-value = 0.
+countCnb = 0
+factorCnb = 0.
 
 # ciclo per un set di immagini
 for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
@@ -269,8 +269,8 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
         rst_list = process_image(img, filename, class_name_to_idx(class_folder), crop_selection_policy)
         factor, (hdim, wdim), prob, (hcoordh, hcoordw), max_crop, max_crop_ix = rst_list[-1]
         if hdim > 1 or wdim > 1:
-            count +=1
-            value += rst_list[-1][0]
+            countCnb +=1
+            factorCnb += rst_list[-1][0]
             # print("n.", count, "img:", filename, "rst_list (len", len(rst_list), ")", rst_list)
         rect_dim = int(fcn_window / factor)
         coordh = traslation(hcoordh, factor)
@@ -358,8 +358,8 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
 
         # stampa dei risultati
         if i_instance == 0:
-            print("processed " + str(instances_per_folder * i_folder + i_instance + 1) + "/" + str(instances_per_folder * folder_to_scan))
-            print("#imgs cropped at non-original size", count, ", avg factor", factor / count)
+            print("processing " + str(instances_per_folder * i_folder + i_instance + 1) + "/" + str(instances_per_folder * folder_to_scan))
+            print("#imgs cropped at non-original size", countCnb, ", avg factor", factorCnb / countCnb)
         # print(json.dumps(data, indent=2, sort_keys=True))
         #
         # fig, (ax0, ax1, ax2) = plt.subplots(1, 3) #, figsize=(8, 8))
