@@ -166,7 +166,6 @@ def process_image(input_img_reference, input_fn, input_ix, crop_policy):
     results = []
     if (os.path.exists(input_fn)):
         scale_factor = float(fcn_window) / min(input_img_reference.shape[0], input_img_reference.shape[1])
-        # print("starting scale = {}\n".format(scale_factor))
 
         while scale_factor < max_scale_factor:
             img_size = (int(max(fcn_window, input_img_reference.shape[0] * scale_factor)),
@@ -202,7 +201,7 @@ def process_image(input_img_reference, input_fn, input_ix, crop_policy):
 
                     results.append((scale_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates,
                                     max_heatmap, input_ix))
-                    print("crop max_input_ix found:", results[-1])
+                    # print("crop max_input_ix found:", results[-1])
                     break
 
             # stop al primo crop >= 0.5 per la classe input_ix
@@ -218,7 +217,7 @@ def process_image(input_img_reference, input_fn, input_ix, crop_policy):
 
                     results.append((scale_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates,
                                     max_crop, max_crop_ix))
-                    print("crop input_ix>=0.5 found:", results[-1])
+                    # print("crop input_ix>=0.5 found:", results[-1])
                     break
 
             else:
@@ -229,8 +228,8 @@ def process_image(input_img_reference, input_fn, input_ix, crop_policy):
     else:
         print ("The specified image " + input_fn + " does not exist")
 
-    if len(results) == 1:
-        print("crop default", results[0])
+    # if len(results) == 1:
+    #     print("crop default", results[0])
     return results
 
 def get_random_crop(x, random_crop_size, sync_seed=None):
@@ -240,9 +239,10 @@ def get_random_crop(x, random_crop_size, sync_seed=None):
     rangew = (w - random_crop_size) // 2
     offseth = 0 if rangeh == 0 else np.random.randint(rangeh)
     offsetw = 0 if rangew == 0 else np.random.randint(rangew)
-    print("img shape", x.shape, "crop_dim", rect_dim, "crop: H", offseth, ":", offseth+random_crop_size, ", W", offsetw, ":", offsetw+random_crop_size)
+    # print("img shape", x.shape, "crop_dim", rect_dim, "crop: H", offseth, ":", offseth+random_crop_size, ", W", offsetw, ":", offsetw+random_crop_size)
     return x[offseth:offseth+random_crop_size, offsetw:offsetw+random_crop_size]
 
+count = 0
 # ciclo per un set di immagini
 for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
     instances = os.listdir("dataset-ethz101food/" + set + "/" + class_folder)
@@ -261,11 +261,14 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
         # clf_score = clf[clf_cix]
         # clf_true_label = clf[class_name_to_idx(class_folder)]
 
-        # estrazion best crop
+        # estrazione best crop
         img = image.load_img(filename)
         img = image.img_to_array(img)
         rst_list = process_image(img, filename, class_name_to_idx(class_folder), crop_selection_policy)
         factor, (hdim, wdim), prob, (hcoordh, hcoordw), max_crop, max_crop_ix = rst_list[-1]
+        if hdim > 1 or wdim > 1:
+            count +=1
+            print("n.", count, "img:", filename, "rst_list (len", len(rst_list), ")", rst_list)
         rect_dim = int(fcn_window / factor)
         coordh = traslation(hcoordh)
         coordw = traslation(hcoordw)
@@ -351,7 +354,8 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
         dump_list.append(data)
 
         # stampa dei risultati
-        print("processed " + str(instances_per_folder * i_folder + i_instance + 1) + "/" + str(instances_per_folder * folder_to_scan))
+        if instances_per_folder * i_folder + i_instance + 1 % instances_per_folder == 0:
+            print("processed " + str(instances_per_folder * i_folder + i_instance + 1) + "/" + str(instances_per_folder * folder_to_scan))
         # print(json.dumps(data, indent=2, sort_keys=True))
         #
         # fig, (ax0, ax1, ax2) = plt.subplots(1, 3) #, figsize=(8, 8))
