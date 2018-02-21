@@ -155,7 +155,7 @@ instances_per_folder = 250
 
 max_scale_factor = 3
 upsampling_step = 1.2
-crop_selection_policy = "input_ix>=0.5"
+crop_selection_policy = "max_input_ix"    #  "input_ix>=0.5"
 
 dump_list = []
 
