@@ -23,7 +23,6 @@ def ix_to_class_name(idx):
     with open("dataset-ethz101food/meta/classes.txt") as file:
         class_labels = [line.strip('\n') for line in file.readlines()]
     return class_labels[idx]
-
 def class_name_to_idx(name):
     with open("dataset-ethz101food/meta/classes.txt") as file:
         class_labels = [line.strip('\n') for line in file.readlines()]
@@ -33,7 +32,21 @@ def class_name_to_idx(name):
         else:
             print("class idx not found!")
             exit(-1)
-
+def threshold_max(rst_list, threshold=0.5):
+    for ix, rst in enumerate(rst_list):
+        if rst[2] > threshold:
+            return ix
+    return 0
+def factor_weighted_max(rst_list, weight=1.25):
+    max_ix = 0
+    max_score = 0
+    for ix, rst in enumerate(rst_list):
+        score = (weight / rst[0]) * rst[2]
+        # print("element", ix, " has factor: {:f}".format(rst[0]), ", prob: {:f}".format(rst[2]), "-> score {:f}".format(score))
+        if score < max_score:
+            max_score = score
+            max_ix = ix
+    return max_ix
 def prepare_str_file_architecture_syntax(filepath):
     model_str = str(json.load(open(filepath, "r")))
     model_str = model_str.replace("'", '"')
@@ -43,7 +56,7 @@ def prepare_str_file_architecture_syntax(filepath):
     return model_str
 
 
-def load_VGG16(architecture_path, weigths_path, debug=False):
+def convolutionalize_net(architecture_path, weigths_path, last_layer_name, pool_size, debug=False):
     model = model_from_json(prepare_str_file_architecture_syntax(architecture_path))
     model.load_weights(weigths_path)
     if debug:
@@ -68,51 +81,38 @@ def load_VGG16(architecture_path, weigths_path, debug=False):
     model.layers.pop()
     model.layers.pop()
 
-    if debug:
-        for i, l in enumerate(model.layers):
-            print(i, ":", l.name)
+    x = AveragePooling2D(pool_size=(pool_size, pool_size), strides=(1, 1))(last_layer.output)
+    x = Conv2D(101, (1, 1), strides=(1, 1), activation='softmax', padding='valid', weights=[W, b], name="conv2d_fcn")(x)
+    model = Model(inputs=model.input, outputs=x)
 
-    return model, last_layer, W, b
+    if debug:
+        print("CONVOLUTIONALIZED MODEL")
+        model.summary()
+
+    return model
 
 
 
 # -----------------------------------
 # FCNs
-baseVGG16, last_layer, W, b = load_VGG16("trained_models/top5_vgg16_acc77_2017-12-24/vgg16_architecture_2017-12-23_22-53-03.json", "trained_models/top5_vgg16_acc77_2017-12-24/vgg16_ft_weights_acc0.78_e15_2017-12-23_22-53-03.hdf5")
-x = AveragePooling2D(pool_size=(7, 7), strides=(1, 1))(last_layer.output)
-x = Conv2D(101, (1, 1), strides=(1, 1), activation='softmax', padding='valid', weights=[W, b])(x)
-vgg16FCN = Model(inputs=baseVGG16.input, outputs=x)
-# VGG16FCN.summary()
 
-xceptionFCN = model_from_json(prepare_str_file_architecture_syntax("trained_models/xception_architecture_2017-12-24_13-00-22.json"))
-xceptionFCN.load_weights("trained_models/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5")
-# xceptionFCN.summary()
+vgg16FCN = convolutionalize_net(architecture_path="trained_models/top5_vgg16_acc77_2017-12-24/vgg16_architecture_2017-12-23_22-53-03.json",
+                                weigths_path="trained_models/top5_vgg16_acc77_2017-12-24/vgg16_ft_weights_acc0.78_e15_2017-12-23_22-53-03.hdf5",
+                                last_layer_name="block5_pool",
+                                pool_size=7)
 
-gap_dim = xceptionFCN.get_layer("global_average_pooling2d_1").input_shape
-out_dim = xceptionFCN.get_layer("output_layer").get_weights()[1].shape[0]
-W, b = xceptionFCN.get_layer("output_layer").get_weights()
-
-weights_shape = (1, 1, gap_dim[3], out_dim)
-W = W.reshape(weights_shape)
-
-last_layer = xceptionFCN.get_layer("block14_sepconv2_act")
-last_layer.outbound_nodes = []
-xceptionFCN.layers.pop()
-xceptionFCN.layers.pop()
-
-x = AveragePooling2D(pool_size=(10, 10), strides=(1, 1))(last_layer.output)
-x = Conv2D(101, (1, 1), strides=(1, 1), activation='softmax', padding='valid', weights=[W, b], name="conv2d_fcn")(x)
-xceptionFCN = Model(inputs=xceptionFCN.input, outputs=x)
-# xceptionFCN.summary()
+# xceptionFCN = convolutionalize_net(architecture_path="trained_models/xception_architecture_2017-12-24_13-00-22.json",
+#                                    weigths_path="trained_models/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5",
+#                                    last_layer_name="block14_sepconv2_act",
+#                                    pool_size=10)
 
 # -----------------------------------
 # CLASSIFIERS
-vgg19 = model_from_json(prepare_str_file_architecture_syntax("trained_models/top4_vgg19_acc78_2017-12-23/vgg19_architecture_2017-12-22_23-55-53.json"))
-vgg19.load_weights("trained_models/top4_vgg19_acc78_2017-12-23/vgg19_ft_weights_acc0.78_e26_2017-12-22_23-55-53.hdf5")
-# vgg19.summary()
+# vgg19 = model_from_json(prepare_str_file_architecture_syntax("trained_models/top4_vgg19_acc78_2017-12-23/vgg19_architecture_2017-12-22_23-55-53.json"))
+# vgg19.load_weights("trained_models/top4_vgg19_acc78_2017-12-23/vgg19_ft_weights_acc0.78_e26_2017-12-22_23-55-53.hdf5")
 
-# xception = model_from_json(prepare_str_file_architecture_syntax("trained_models/top1_xception_acc80_2017-12-25/xception_architecture_2017-12-24_13-00-22.json"))
-# xception.load_weights("trained_models/top1_xception_acc80_2017-12-25/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5")
+xception = model_from_json(prepare_str_file_architecture_syntax("trained_models/top1_xception_acc80_2017-12-25/xception_architecture_2017-12-24_13-00-22.json"))
+xception.load_weights("trained_models/top1_xception_acc80_2017-12-25/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5")
 
 # incresv2 = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet', input_shape=(299, 299, 3))
 # x = GlobalAveragePooling2D()(incresv2.output)
@@ -139,15 +139,14 @@ vgg19.load_weights("trained_models/top4_vgg19_acc78_2017-12-23/vgg19_ft_weights_
 # outputs = [model(ensemble_input) for model in model_list]
 # ensemble_output = keras.layers.average(outputs)
 # ensemble = Model(inputs=ensemble_input, outputs=ensemble_output)
-# ensemble.summary()
 
-CLF = vgg19
-wtrain, htrain = (224, 224)
-from keras.applications.vgg19 import preprocess_input as clf_preprocess
+CLF = xception
+wtrain, htrain = (299, 299)
+from keras.applications.xception import preprocess_input as clf_preprocess
 
-fcn_window = 299
-FCN = xceptionFCN
-from keras.applications.xception import preprocess_input as fcn_preprocess
+fcn_window = 224
+FCN = vgg16FCN
+from keras.applications.vgg16 import preprocess_input as fcn_preprocess
 
 set = "test"
 class_folders = os.listdir("dataset-ethz101food/" + set)
@@ -156,8 +155,12 @@ instances_per_folder = 250
 
 max_scale_factor = 3
 upsampling_step = 1.2
-crop_selection_policy = "max_input_ix"  # "input_ix>=0.5"
+crop_selection_policy = "input_ix>=0.5"
 
+dump_list = []
+
+def traslation(heat_coord, fcn_stride=32):
+    return(int(fcn_stride * heat_coord / factor))
 
 def process_image(input_img_reference, input_fn, input_ix, crop_policy):
     results = []
@@ -199,6 +202,7 @@ def process_image(input_img_reference, input_fn, input_ix, crop_policy):
 
                     results.append((scale_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates,
                                     max_heatmap, input_ix))
+                    print("crop max_input_ix found:", results[-1])
                     break
 
             # stop al primo crop >= 0.5 per la classe input_ix
@@ -214,6 +218,7 @@ def process_image(input_img_reference, input_fn, input_ix, crop_policy):
 
                     results.append((scale_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates,
                                     max_crop, max_crop_ix))
+                    print("crop input_ix>=0.5 found:", results[-1])
                     break
 
             else:
@@ -224,48 +229,39 @@ def process_image(input_img_reference, input_fn, input_ix, crop_policy):
     else:
         print ("The specified image " + input_fn + " does not exist")
 
+    if len(results) == 1:
+        print("crop default", results[0])
     return results
 
-
-def threshold_max(rst_list, threshold=0.5):
-    for ix, rst in enumerate(rst_list):
-        if rst[2] > threshold:
-            return ix
-    return 0
-
-def factor_weighted_max(rst_list, weight=1.25):
-    max_ix = 0
-    max_score = 0
-    for ix, rst in enumerate(rst_list):
-        score = (weight / rst[0]) * rst[2]
-        # print("element", ix, " has factor: {:f}".format(rst[0]), ", prob: {:f}".format(rst[2]), "-> score {:f}".format(score))
-        if score < max_score:
-            max_score = score
-            max_ix = ix
-    return max_ix
-
-def traslation(heat_coord):
-    return(int(32 * heat_coord / factor)) #32 is the stride of the whole convolutive net
+def get_random_crop(x, random_crop_size, sync_seed=None):
+    np.random.seed(sync_seed)
+    h, w = x.shape[0], x.shape[1]
+    rangeh = (h - random_crop_size) // 2
+    rangew = (w - random_crop_size) // 2
+    offseth = 0 if rangeh == 0 else np.random.randint(rangeh)
+    offsetw = 0 if rangew == 0 else np.random.randint(rangew)
+    print("img shape", x.shape, "crop_dim", rect_dim, "crop: H", offseth, ":", offseth+random_crop_size, ", W", offsetw, ":", offsetw+random_crop_size)
+    return x[offseth:offseth+random_crop_size, offsetw:offsetw+random_crop_size]
 
 # ciclo per un set di immagini
-dump_list = []
 for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
     instances = os.listdir("dataset-ethz101food/" + set + "/" + class_folder)
     for i_instance, instance in enumerate(instances[0:instances_per_folder]):
         filename = "dataset-ethz101food/" + set + "/" + class_folder + "/" + instance
+        # filename = "dataset-ethz101food/train/cup_cakes/46500.jpg"
 
-        # classificazione
-        img_classify = image.load_img(filename, target_size=(wtrain, htrain))
-        img_classify = image.img_to_array(img_classify)
-        img_classify_expandedim = np.expand_dims(img_classify, axis=0)
-        img_classify_preprocessed = clf_preprocess(img_classify_expandedim)
-        clf = CLF.predict(img_classify_preprocessed).flatten()
-        clf_cix = np.argmax(clf)
-        clf_class = ix_to_class_name(clf_cix)
-        clf_score = clf[clf_cix]
-        clf_true_label = clf[class_name_to_idx(class_folder)]
+        # classificazione immagine originale
+        # img_classify = image.load_img(filename, target_size=(wtrain, htrain))
+        # img_classify = image.img_to_array(img_classify)
+        # img_classify_expandedim = np.expand_dims(img_classify, axis=0)
+        # img_classify_preprocessed = clf_preprocess(img_classify_expandedim)
+        # clf = CLF.predict(img_classify_preprocessed).flatten()
+        # clf_cix = np.argmax(clf)
+        # clf_class = ix_to_class_name(clf_cix)
+        # clf_score = clf[clf_cix]
+        # clf_true_label = clf[class_name_to_idx(class_folder)]
 
-        # processamento a varie scale
+        # estrazion best crop
         img = image.load_img(filename)
         img = image.img_to_array(img)
         rst_list = process_image(img, filename, class_name_to_idx(class_folder), crop_selection_policy)
@@ -279,47 +275,76 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
         #       "heatmap cell", (hcoordh, hcoordw), "in range [" + str(hdim) + ", " + str(wdim) + "] ->",
         #       "relative img point", (coordh, coordw), "in range [" + str(img_localize.shape[0])+ ", " + str(img_localize.shape[1]) + "]")
 
-        # classificazione sul crop
-        img_crop = img[coordh:coordh+rect_dim, coordw:coordw+rect_dim]
-        img_crop = image.array_to_img(img_crop)
-        img_crop = img_crop.resize((wtrain, htrain))
-        img_crop = image.img_to_array(img_crop)
-        img_crop_expandedim = np.expand_dims(img_crop, axis=0)
-        img_crop_preprocessed = clf_preprocess(img_crop_expandedim)
-        clf_crop = CLF.predict(img_crop_preprocessed).flatten()
-        crop_cix = np.argmax(clf_crop)
+        # classificazione sul best crop
+        crop = img[coordh:coordh + rect_dim, coordw:coordw + rect_dim]
+        crop = image.array_to_img(crop)
+        crop = crop.resize((wtrain, htrain))
+        crop = image.img_to_array(crop)
+        crop_expandedim = np.expand_dims(crop, axis=0)
+        crop_preprocessed = clf_preprocess(crop_expandedim)
+        crop_clf = CLF.predict(crop_preprocessed).flatten()
+        crop_cix = np.argmax(crop_clf)
         crop_class = ix_to_class_name(crop_cix)
-        crop_score = clf_crop[crop_cix]
-        crop_true_label = clf_crop[class_name_to_idx(class_folder)]
+        crop_score = crop_clf[crop_cix]
+        true_label = crop_clf[class_name_to_idx(class_folder)]
 
+
+        # classificazione su random crop
+        random_crop = get_random_crop(img, rect_dim)
+        random_crop = image.array_to_img(random_crop)
+        random_crop = random_crop.resize((wtrain, htrain))
+        random_crop = image.img_to_array(random_crop)
+        random_crop_expandedim = np.expand_dims(random_crop, axis=0)
+        random_crop_preprocessed = clf_preprocess(random_crop_expandedim)
+        random_crop_clf = CLF.predict(random_crop_preprocessed).flatten()
+        random_crop_cix = np.argmax(random_crop_clf)
+        random_crop_class = ix_to_class_name(crop_cix)
+        random_crop_score = random_crop_clf[crop_cix]
 
         # dumping dei dati
-        data = dict(filename = str(filename),
-            label = str(class_folder),
-            scale_factor = float(factor),
-            square_crop = dict(lower_left = (int(coordh), int(coordw)), side = int(rect_dim)),
-            originalSize = dict(
-                vgg16 = dict(
-                    score = float(rst_list[0][2]),
-                    labelGuessed = str(ix_to_class_name(rst_list[0][5])),
-                    scoreGuessed = float(rst_list[0][4])
+        # data = dict(filename = str(filename),
+        #     label = str(class_folder),
+        #     scale_factor = float(factor),
+        #     square_crop = dict(lower_left = (int(coordh), int(coordw)), side = int(rect_dim)),
+        #     originalSize = dict(
+        #         vgg16 = dict(
+        #             score = float(rst_list[0][2]),
+        #             labelGuessed = str(ix_to_class_name(rst_list[0][5])),
+        #             scoreGuessed = float(rst_list[0][4])
+        #         ),
+        #         xception = dict(
+        #             score = float(clf_true_label),
+        #             labelGuessed = str(clf_class),
+        #             scoreGuessed = float(clf_score)
+        #         )
+        #     ),
+        #     croppedSize = dict(
+        #         vgg16 = dict(
+        #             score = float(prob),
+        #             labelGuessed = str(ix_to_class_name(max_crop_ix)),
+        #             scoreGuessed = float(max_crop)
+        #         ),
+        #         xception=dict(
+        #             score = float(crop_true_label),
+        #             labelGuessed = str(crop_class),
+        #             scoreGuessed = float(crop_score)
+        #         )
+        #     )
+        # )
+        data = dict(filename=str(filename),
+            label=str(class_folder),
+            scale_factor=float(factor),
+            square_crop=dict(lower_left=(int(coordh), int(coordw)), side=int(rect_dim)),
+            predictions=dict(
+                randomCrop=dict(
+                    scoreTrueLabel=float(random_crop_clf[class_name_to_idx(class_folder)]),
+                    labelGuessed=str(ix_to_class_name(random_crop_cix)),
+                    scoreGuessed=float(random_crop_clf[random_crop_cix])
                 ),
-                xception = dict(
-                    score = float(clf_true_label),
-                    labelGuessed = str(clf_class),
-                    scoreGuessed = float(clf_score)
-                )
-            ),
-            croppedSize = dict(
-                vgg16 = dict(
-                    score = float(prob),
-                    labelGuessed = str(ix_to_class_name(max_crop_ix)),
-                    scoreGuessed = float(max_crop)
-                ),
-                xception=dict(
-                    score = float(crop_true_label),
-                    labelGuessed = str(crop_class),
-                    scoreGuessed = float(crop_score)
+                cropFcn=dict(
+                    scoreTrueLabel=float(crop_clf[class_name_to_idx(class_folder)]),
+                    labelGuessed=str(ix_to_class_name(crop_cix)),
+                    scoreGuessed=float(crop_clf[crop_cix])
                 )
             )
         )
@@ -329,14 +354,19 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
         print("processed " + str(instances_per_folder * i_folder + i_instance + 1) + "/" + str(instances_per_folder * folder_to_scan))
         # print(json.dumps(data, indent=2, sort_keys=True))
         #
-        # fig, ax = plt.subplots(1)
-        # ax.imshow(img / 255.)
+        # fig, (ax0, ax1, ax2) = plt.subplots(1, 3) #, figsize=(8, 8))
+        # ax0.set_title("FCN crop")
+        # ax0.imshow((crop + 1) / 2)
+        #
+        # ax1.set_title("Random crop")
+        # ax1.imshow((random_crop + 1) / 2)
+        #
+        # ax2.set_title("Img + FCN crop")
+        # ax2.imshow(img / 255.)
         # rect = patches.Rectangle((coordw, coordh), rect_dim, rect_dim, linewidth=1, edgecolor='r', facecolor='none')
-        # ax.add_patch(rect)
+        # ax2.add_patch(rect)
+        #
         # plt.show()
 
-
-with open(set + "Set" + str(instances_per_folder * folder_to_scan) + ".json", "w+") as file:
+with open(set + "Set" + str(instances_per_folder * folder_to_scan) + "_Crop-RandomCrop-CLF" + ".json", "w+") as file:
     json.dump(dump_list, file, indent=2, sort_keys=True)
-# with open("testSet.pkl", "wb") as file:
-#     pickle.dump(dump_list, file)

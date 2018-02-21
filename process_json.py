@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from keras.preprocessing import image
 
-
 def show_samples(samples_ix, dumps):
     for ix in samples_ix:
         print("True label:", dumps[ix]["label"])
@@ -22,10 +21,7 @@ def show_samples(samples_ix, dumps):
         ax.add_patch(rect)
         plt.show()
 
-name_clf = "classifier"
-name_fcn = "fcn"
-
-def process(filename):
+def process_v1(filename):
     with open(filename, "r") as json_file:
         dumps = json.load(json_file)
         vgg16_origAcc = 0.
@@ -60,4 +56,5 @@ def process(filename):
         # show_samples(missed_samples, dumps)
         show_samples(corrected_samples, dumps)
 
-process("testSet25250cmaxMaxInputIX_VGG19.json")
+def process_v2(filename):
+    pass
