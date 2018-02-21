@@ -159,7 +159,7 @@ crop_selection_policy = "max_input_ix"    #  "input_ix>=0.5"
 
 dump_list = []
 
-def traslation(heat_coord, fcn_stride=32):
+def traslation(heat_coord, factor, fcn_stride=32):
     return(int(fcn_stride * heat_coord / factor))
 
 def process_image(input_img_reference, input_fn, input_ix, crop_policy):
@@ -243,35 +243,38 @@ def get_random_crop(x, random_crop_size, sync_seed=None):
     return x[offseth:offseth+random_crop_size, offsetw:offsetw+random_crop_size]
 
 count = 0
+value = 0.
+
 # ciclo per un set di immagini
 for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
     instances = os.listdir("dataset-ethz101food/" + set + "/" + class_folder)
     for i_instance, instance in enumerate(instances[0:instances_per_folder]):
         filename = "dataset-ethz101food/" + set + "/" + class_folder + "/" + instance
-        # filename = "dataset-ethz101food/train/cup_cakes/46500.jpg"
-
-        # classificazione immagine originale
-        # img_classify = image.load_img(filename, target_size=(wtrain, htrain))
-        # img_classify = image.img_to_array(img_classify)
-        # img_classify_expandedim = np.expand_dims(img_classify, axis=0)
-        # img_classify_preprocessed = clf_preprocess(img_classify_expandedim)
-        # clf = CLF.predict(img_classify_preprocessed).flatten()
-        # clf_cix = np.argmax(clf)
-        # clf_class = ix_to_class_name(clf_cix)
-        # clf_score = clf[clf_cix]
-        # clf_true_label = clf[class_name_to_idx(class_folder)]
-
-        # estrazione best crop
+        # # filename = "dataset-ethz101food/train/cup_cakes/46500.jpg"
+        #
+        # # classificazione immagine originale
+        # # img_classify = image.load_img(filename, target_size=(wtrain, htrain))
+        # # img_classify = image.img_to_array(img_classify)
+        # # img_classify_expandedim = np.expand_dims(img_classify, axis=0)
+        # # img_classify_preprocessed = clf_preprocess(img_classify_expandedim)
+        # # clf = CLF.predict(img_classify_preprocessed).flatten()
+        # # clf_cix = np.argmax(clf)
+        # # clf_class = ix_to_class_name(clf_cix)
+        # # clf_score = clf[clf_cix]
+        # # clf_true_label = clf[class_name_to_idx(class_folder)]
+        #
+        # # estrazione best crop
         img = image.load_img(filename)
         img = image.img_to_array(img)
         rst_list = process_image(img, filename, class_name_to_idx(class_folder), crop_selection_policy)
         factor, (hdim, wdim), prob, (hcoordh, hcoordw), max_crop, max_crop_ix = rst_list[-1]
         if hdim > 1 or wdim > 1:
             count +=1
-            print("n.", count, "img:", filename, "rst_list (len", len(rst_list), ")", rst_list)
+            value += rst_list[-1][0]
+            # print("n.", count, "img:", filename, "rst_list (len", len(rst_list), ")", rst_list)
         rect_dim = int(fcn_window / factor)
-        coordh = traslation(hcoordh)
-        coordw = traslation(hcoordw)
+        coordh = traslation(hcoordh, factor)
+        coordw = traslation(hcoordw, factor)
         # img_localize = image.load_img(filename)
         # img_localize = image.img_to_array(img_localize)
         # print("Max confidence", prob, "found at scale factor", factor, " size [" + str(int(max(224, img_localize.shape[0] * factor))) + ", " +  str(int(max(224, img_localize.shape[1] * factor))) + "]:",
@@ -354,8 +357,9 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
         dump_list.append(data)
 
         # stampa dei risultati
-        if instances_per_folder * i_folder + i_instance + 1 % instances_per_folder == 0:
+        if i_instance == 0:
             print("processed " + str(instances_per_folder * i_folder + i_instance + 1) + "/" + str(instances_per_folder * folder_to_scan))
+            print("#imgs cropped at non-original size", count, ", avg factor", factor / count)
         # print(json.dumps(data, indent=2, sort_keys=True))
         #
         # fig, (ax0, ax1, ax2) = plt.subplots(1, 3) #, figsize=(8, 8))
