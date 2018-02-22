@@ -112,7 +112,7 @@ xceptionFCN = convolutionalize_net(architecture_path="trained_models/xception_ar
 
 # -----------------------------------
 # CLASSIFIERS
-wclf, hclf = (224, 224)
+wclf, hclf = (256, 256)
 # vgg19 = model_from_json(prepare_str_file_architecture_syntax("trained_models/top4_vgg19_acc78_2017-12-23/vgg19_architecture_2017-12-22_23-55-53.json"))
 # vgg19.load_weights("trained_models/top4_vgg19_acc78_2017-12-23/vgg19_ft_weights_acc0.78_e26_2017-12-22_23-55-53.hdf5")
 
@@ -299,7 +299,7 @@ for key in classifiers:
         acc = acc,
         top5acc = top5acc
     ))
-with open("inceptions224testSet.json", "w+") as file:
+with open("inceptions256testSet.json", "w+") as file:
     json.dump(dump_list, file, indent=2, sort_keys=True)
 
 
