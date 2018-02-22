@@ -57,4 +57,19 @@ def process_v1(filename):
         show_samples(corrected_samples, dumps)
 
 def process_v2(filename):
-    pass
+    with open(filename, "r") as json_file:
+        dumps = json.load(json_file)
+        cropAcc = 0.
+        cropRandomAcc = 0.
+        for ix, sample in enumerate(dumps):
+            true_label = sample["label"]
+            if true_label == sample["predictions"]["randomCrop"]["labelGuessed"]:
+                cropRandomAcc+= 1
+            if true_label == sample["predictions"]["cropFcn"]["labelGuessed"]:
+                cropAcc += 1
+
+        n_samples = len(dumps)
+        print("Total samples", n_samples)
+        print("Accuracy random crop {:f}, crop FCN {:f}".format(cropAcc/n_samples, cropRandomAcc/n_samples))
+
+process_v2("testSet25250_Crop-RandomCrop-CLF.json")

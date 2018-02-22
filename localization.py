@@ -3,6 +3,7 @@ from keras.models import Model
 from keras.models import model_from_json
 from keras.regularizers import l2
 import keras
+import keras.backend as K
 
 import shutil
 import matplotlib
@@ -16,8 +17,10 @@ import os
 import numpy as np
 import matplotlib.patches as patches
 
+import PIL
 from PIL import Image
 from keras.preprocessing import image
+from keras.preprocessing.image import ImageDataGenerator
 
 def ix_to_class_name(idx):
     with open("dataset-ethz101food/meta/classes.txt") as file:
@@ -76,7 +79,7 @@ def convolutionalize_net(architecture_path, weigths_path, last_layer_name, pool_
 
     W = W.reshape(weights_shape)
 
-    last_layer = model.get_layer("block5_pool")
+    last_layer = model.get_layer(last_layer_name)
     last_layer.outbound_nodes = []
     model.layers.pop()
     model.layers.pop()
@@ -92,61 +95,68 @@ def convolutionalize_net(architecture_path, weigths_path, last_layer_name, pool_
     return model
 
 
+# K.clear_session()
 
 # -----------------------------------
 # FCNs
 
-vgg16FCN = convolutionalize_net(architecture_path="trained_models/top5_vgg16_acc77_2017-12-24/vgg16_architecture_2017-12-23_22-53-03.json",
-                                weigths_path="trained_models/top5_vgg16_acc77_2017-12-24/vgg16_ft_weights_acc0.78_e15_2017-12-23_22-53-03.hdf5",
-                                last_layer_name="block5_pool",
-                                pool_size=7)
+# vgg16FCN = convolutionalize_net(architecture_path="trained_models/top5_vgg16_acc77_2017-12-24/vgg16_architecture_2017-12-23_22-53-03.json",
+#                                 weigths_path="trained_models/top5_vgg16_acc77_2017-12-24/vgg16_ft_weights_acc0.78_e15_2017-12-23_22-53-03.hdf5",
+#                                 last_layer_name="block5_pool",
+#                                 pool_size=7)
 
-# xceptionFCN = convolutionalize_net(architecture_path="trained_models/xception_architecture_2017-12-24_13-00-22.json",
-#                                    weigths_path="trained_models/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5",
-#                                    last_layer_name="block14_sepconv2_act",
-#                                    pool_size=10)
+xceptionFCN = convolutionalize_net(architecture_path="trained_models/xception_architecture_2017-12-24_13-00-22.json",
+                                   weigths_path="trained_models/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5",
+                                   last_layer_name="block14_sepconv2_act",
+                                   pool_size=10)
 
 # -----------------------------------
 # CLASSIFIERS
+wclf, hclf = (224, 224)
 # vgg19 = model_from_json(prepare_str_file_architecture_syntax("trained_models/top4_vgg19_acc78_2017-12-23/vgg19_architecture_2017-12-22_23-55-53.json"))
 # vgg19.load_weights("trained_models/top4_vgg19_acc78_2017-12-23/vgg19_ft_weights_acc0.78_e26_2017-12-22_23-55-53.hdf5")
 
-xception = model_from_json(prepare_str_file_architecture_syntax("trained_models/top1_xception_acc80_2017-12-25/xception_architecture_2017-12-24_13-00-22.json"))
+# xception = model_from_json(prepare_str_file_architecture_syntax("trained_models/top1_xception_acc80_2017-12-25/xception_architecture_2017-12-24_13-00-22.json"))
+# xception = model_from_json(prepare_str_file_architecture_syntax("trained_models/xception_architecture_2017-12-24_13-00-22.json"))
+xception = keras.applications.xception.Xception(include_top=False, weights='imagenet', input_shape=(wclf, hclf, 3))
+x = GlobalAveragePooling2D()(xception.output)
+out = Dense(101, activation='softmax', name='output_layer')(x)
+xception = Model(inputs=xception.input, outputs=out)
 xception.load_weights("trained_models/top1_xception_acc80_2017-12-25/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5")
 
-# incresv2 = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet', input_shape=(299, 299, 3))
-# x = GlobalAveragePooling2D()(incresv2.output)
-# out = Dense(101, activation='softmax', name='output_layer')(x)
-# incresv2 = Model(inputs=incresv2.input, outputs=out)
-# incresv2.load_weights("trained_models/top2_incresnetv2_acc79_2017-12-22/incv2resnet_ft_weights_acc0.79_e4_2017-12-21_09-02-16.hdf5")
-#
-# incv3 = keras.applications.inception_v3.InceptionV3(include_top=False, weights='imagenet', input_shape=(299, 299, 3))
-# x = GlobalAveragePooling2D()(incv3.output)
-# x = Dense(1024, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005), bias_regularizer=l2(.0005))(x)
-# x = LeakyReLU()(x)
-# x = BatchNormalization()(x)
-# x = Dropout(0.5)(x)
-# x = Dense(512, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005), bias_regularizer=l2(.0005))(x)
-# x = LeakyReLU()(x)
-# x = BatchNormalization()(x)
-# x = Dropout(0.5)(x)
-# out = Dense(101, kernel_initializer='he_uniform', bias_initializer="he_uniform", activation='softmax', name='output_layer')(x)
-# incv3 = Model(inputs=incv3.input, outputs=out)
-# incv3.load_weights("trained_models/top3_inceptionv3_acc79_2017-12-27/inceptionv3_ft_weights_acc0.79_e10_2017-12-25_22-10-02.hdf5")
-#
+incresv2 = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet', input_shape=(wclf, hclf, 3))
+x = GlobalAveragePooling2D()(incresv2.output)
+out = Dense(101, activation='softmax', name='output_layer')(x)
+incresv2 = Model(inputs=incresv2.input, outputs=out)
+incresv2.load_weights("trained_models/top2_incresnetv2_acc79_2017-12-22/incv2resnet_ft_weights_acc0.79_e4_2017-12-21_09-02-16.hdf5")
+
+incv3 = keras.applications.inception_v3.InceptionV3(include_top=False, weights='imagenet', input_shape=(wclf, hclf, 3))
+x = GlobalAveragePooling2D()(incv3.output)
+x = Dense(1024, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005), bias_regularizer=l2(.0005))(x)
+x = LeakyReLU()(x)
+x = BatchNormalization()(x)
+x = Dropout(0.5)(x)
+x = Dense(512, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005), bias_regularizer=l2(.0005))(x)
+x = LeakyReLU()(x)
+x = BatchNormalization()(x)
+x = Dropout(0.5)(x)
+out = Dense(101, kernel_initializer='he_uniform', bias_initializer="he_uniform", activation='softmax', name='output_layer')(x)
+incv3 = Model(inputs=incv3.input, outputs=out)
+incv3.load_weights("trained_models/top3_inceptionv3_acc79_2017-12-27/inceptionv3_ft_weights_acc0.79_e10_2017-12-25_22-10-02.hdf5")
+
 # model_list = [xception, incresv2, incv3]
 # ensemble_input = Input(shape=xception.input_shape[1:])
 # outputs = [model(ensemble_input) for model in model_list]
 # ensemble_output = keras.layers.average(outputs)
 # ensemble = Model(inputs=ensemble_input, outputs=ensemble_output)
 
-CLF = xception
-wtrain, htrain = (299, 299)
+classifiers = {"xception": xception, "incresv2": incresv2, "incv3": incv3}
+# CLF = xception
 from keras.applications.xception import preprocess_input as clf_preprocess
 
-fcn_window = 224
-FCN = vgg16FCN
-from keras.applications.vgg16 import preprocess_input as fcn_preprocess
+FCN = xceptionFCN
+fcn_window = 299
+from keras.applications.xception import preprocess_input as fcn_preprocess
 
 set = "test"
 class_folders = os.listdir("dataset-ethz101food/" + set)
@@ -242,70 +252,112 @@ def get_random_crop(x, random_crop_size, sync_seed=None):
     # print("img shape", x.shape, "crop_dim", rect_dim, "crop: H", offseth, ":", offseth+random_crop_size, ", W", offsetw, ":", offsetw+random_crop_size)
     return x[offseth:offseth+random_crop_size, offsetw:offsetw+random_crop_size]
 
-countCnb = 0
-factorCnb = 0.
+
+def classify(classifier, filename, custom_size=None, input_classix=None):
+    if custom_size:
+        img = image.load_img(filename, target_size=(custom_size[0], custom_size[1]))
+    else:
+        img = image.load_img(filename)
+
+    img_array = image.img_to_array(img)
+    img_array_expandedim = np.expand_dims(img_array, axis=0)
+    img_array_preprocessed = clf_preprocess(img_array_expandedim)
+    clf = classifier.predict(img_array_preprocessed).flatten()
+    clf_ixmax = np.argmax(clf)
+    clf_labelmax = ix_to_class_name(clf_ixmax)
+    clf_scoremax = clf[clf_ixmax]
+
+    if input_classix:
+        clf_scoreinputix = clf[class_name_to_idx(input_classix)]
+        return (clf_ixmax, clf_labelmax, clf_scoremax, clf_scoreinputix)
+    else:
+        return (clf_ixmax, clf_labelmax, clf_scoremax)
+
+def resize_arrayimg(imgarray, new_width, new_height):
+    imgarray = image.array_to_img(imgarray)
+    imgarray = imgarray.resize((new_width, new_height), PIL.Image.BILINEAR)
+    imgarray = image.img_to_array(imgarray)
+    return imgarray
+
+
+for key in classifiers:
+    print("Validating model", key, "at", classifiers[key])
+    classifiers[key].summary()
+    dict_augmentation = dict(preprocessing_function=clf_preprocess)
+    test_datagen = ImageDataGenerator(**dict_augmentation)
+    validation_generator = test_datagen.flow_from_directory(
+        'dataset-ethz101food/test',
+        target_size=(wclf, hclf),
+        batch_size=32,
+        class_mode='categorical')
+    classifiers[key].compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['categorical_accuracy', 'top_k_categorical_accuracy'])
+    (loss, acc) = classifiers[key].evaluate_generator(validation_generator, (instances_per_folder * folder_to_scan) // 32)
+    print("[Model", key, "] test-set: loss={:.4f}, top-1 accuracy={:.4f}%".format(loss, acc * 100))
+    dump_list.append(dict(
+        model = key,
+        loss = loss,
+        acc = acc
+    ))
+with open("inceptions224testSet.json", "w+") as file:
+    json.dump(dump_list, file, indent=2, sort_keys=True)
 
 # ciclo per un set di immagini
-for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
-    instances = os.listdir("dataset-ethz101food/" + set + "/" + class_folder)
-    for i_instance, instance in enumerate(instances[0:instances_per_folder]):
-        filename = "dataset-ethz101food/" + set + "/" + class_folder + "/" + instance
-        # # filename = "dataset-ethz101food/train/cup_cakes/46500.jpg"
-        #
-        # # classificazione immagine originale
-        # # img_classify = image.load_img(filename, target_size=(wtrain, htrain))
-        # # img_classify = image.img_to_array(img_classify)
-        # # img_classify_expandedim = np.expand_dims(img_classify, axis=0)
-        # # img_classify_preprocessed = clf_preprocess(img_classify_expandedim)
-        # # clf = CLF.predict(img_classify_preprocessed).flatten()
-        # # clf_cix = np.argmax(clf)
-        # # clf_class = ix_to_class_name(clf_cix)
-        # # clf_score = clf[clf_cix]
-        # # clf_true_label = clf[class_name_to_idx(class_folder)]
-        #
-        # # estrazione best crop
-        img = image.load_img(filename)
-        img = image.img_to_array(img)
-        rst_list = process_image(img, filename, class_name_to_idx(class_folder), crop_selection_policy)
-        factor, (hdim, wdim), prob, (hcoordh, hcoordw), max_crop, max_crop_ix = rst_list[-1]
-        if hdim > 1 or wdim > 1:
-            countCnb +=1
-            factorCnb += rst_list[-1][0]
-            # print("n.", count, "img:", filename, "rst_list (len", len(rst_list), ")", rst_list)
-        rect_dim = int(fcn_window / factor)
-        coordh = traslation(hcoordh, factor)
-        coordw = traslation(hcoordw, factor)
-        # img_localize = image.load_img(filename)
+# for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
+#     instances = os.listdir("dataset-ethz101food/" + set + "/" + class_folder)
+#     for i_instance, instance in enumerate(instances[0:instances_per_folder]):
+#         filename = "dataset-ethz101food/" + set + "/" + class_folder + "/" + instance
+
+        # img_classify = image.img_to_array(img_classify)
+        # img_classify_expandedim = np.expand_dims(img_classify, axis=0)
+        # img_classify_preprocessed = clf_preprocess(img_classify_expandedim)
+        # clf = CLF.predict(img_classify_preprocessed).flatten()
+        # clf_cix = np.argmax(clf)
+        # clf_class = ix_to_class_name(clf_cix)
+        # clf_score = clf[clf_cix]
+        # clf_true_label = clf[class_name_to_idx(class_folder)]
+
+        # estrazione best crop
+        # img = image.load_img(filename)
+        # img = image.img_to_array(img)
+        # rst_list = process_image(img, filename, class_name_to_idx(class_folder), crop_selection_policy)
+        # factor, (hdim, wdim), prob, (hcoordh, hcoordw), max_crop, max_crop_ix = rst_list[-1]
+        # # if hdim > 1 or wdim > 1:
+        # #     countCnb +=1
+        # #     factorCnb += rst_list[-1][0]
+        # #     print("n.", count, "img:", filename, "rst_list (len", len(rst_list), ")", rst_list)
+        # rect_dim = int(fcn_window / factor)
+        # coordh = traslation(hcoordh, factor)
+        # coordw = traslation(hcoordw, factor)
+        # # img_localize = image.load_img(filename)
         # img_localize = image.img_to_array(img_localize)
         # print("Max confidence", prob, "found at scale factor", factor, " size [" + str(int(max(224, img_localize.shape[0] * factor))) + ", " +  str(int(max(224, img_localize.shape[1] * factor))) + "]:",
         #       "heatmap cell", (hcoordh, hcoordw), "in range [" + str(hdim) + ", " + str(wdim) + "] ->",
         #       "relative img point", (coordh, coordw), "in range [" + str(img_localize.shape[0])+ ", " + str(img_localize.shape[1]) + "]")
 
         # classificazione sul best crop
-        crop = img[coordh:coordh + rect_dim, coordw:coordw + rect_dim]
-        crop = image.array_to_img(crop)
-        crop = crop.resize((wtrain, htrain))
-        crop = image.img_to_array(crop)
-        crop_expandedim = np.expand_dims(crop, axis=0)
-        crop_preprocessed = clf_preprocess(crop_expandedim)
-        crop_clf = CLF.predict(crop_preprocessed).flatten()
-        crop_cix = np.argmax(crop_clf)
-        crop_class = ix_to_class_name(crop_cix)
-        crop_score = crop_clf[crop_cix]
-        true_label = crop_clf[class_name_to_idx(class_folder)]
+        # crop = img[coordh:coordh + rect_dim, coordw:coordw + rect_dim]
+        # crop = image.array_to_img(crop)
+        # crop = crop.resize((wtrain, htrain))
+        # crop = image.img_to_array(crop)
+        # crop_expandedim = np.expand_dims(crop, axis=0)
+        # crop_preprocessed = clf_preprocess(crop_expandedim)
+        # crop_clf = CLF.predict(crop_preprocessed).flatten()
+        # crop_cix = np.argmax(crop_clf)
+        # crop_class = ix_to_class_name(crop_cix)
+        # crop_score = crop_clf[crop_cix]
 
 
         # classificazione su random crop
-        random_crop = get_random_crop(img, rect_dim)
-        random_crop = image.array_to_img(random_crop)
-        random_crop = random_crop.resize((wtrain, htrain))
-        random_crop = image.img_to_array(random_crop)
-        random_crop_expandedim = np.expand_dims(random_crop, axis=0)
-        random_crop_preprocessed = clf_preprocess(random_crop_expandedim)
-        random_crop_clf = CLF.predict(random_crop_preprocessed).flatten()
-        random_crop_cix = np.argmax(random_crop_clf)
-        random_crop_class = ix_to_class_name(crop_cix)
-        random_crop_score = random_crop_clf[crop_cix]
+        # random_crop = get_random_crop(img, rect_dim)
+        # random_crop = image.array_to_img(random_crop)
+        # random_crop = random_crop.resize((wtrain, htrain))
+        # random_crop = image.img_to_array(random_crop)
+        # random_crop_expandedim = np.expand_dims(random_crop, axis=0)
+        # random_crop_preprocessed = clf_preprocess(random_crop_expandedim)
+        # random_crop_clf = CLF.predict(random_crop_preprocessed).flatten()
+        # random_crop_cix = np.argmax(random_crop_clf)
+        # random_crop_class = ix_to_class_name(crop_cix)
+        # random_crop_score = random_crop_clf[crop_cix]
 
         # dumping dei dati
         # data = dict(filename = str(filename),
@@ -337,29 +389,29 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
         #         )
         #     )
         # )
-        data = dict(filename=str(filename),
-            label=str(class_folder),
-            scale_factor=float(factor),
-            square_crop=dict(lower_left=(int(coordh), int(coordw)), side=int(rect_dim)),
-            predictions=dict(
-                randomCrop=dict(
-                    scoreTrueLabel=float(random_crop_clf[class_name_to_idx(class_folder)]),
-                    labelGuessed=str(ix_to_class_name(random_crop_cix)),
-                    scoreGuessed=float(random_crop_clf[random_crop_cix])
-                ),
-                cropFcn=dict(
-                    scoreTrueLabel=float(crop_clf[class_name_to_idx(class_folder)]),
-                    labelGuessed=str(ix_to_class_name(crop_cix)),
-                    scoreGuessed=float(crop_clf[crop_cix])
-                )
-            )
-        )
-        dump_list.append(data)
-
-        # stampa dei risultati
-        if i_instance == 0:
-            print("processing " + str(instances_per_folder * i_folder + i_instance + 1) + "/" + str(instances_per_folder * folder_to_scan))
-            print("#imgs cropped at non-original size", countCnb, ", avg factor", factorCnb / countCnb)
+        # data = dict(filename=str(filename),
+        #     label=str(class_folder),
+        #     scale_factor=float(factor),
+        #     square_crop=dict(lower_left=(int(coordh), int(coordw)), side=int(rect_dim)),
+        #     predictions=dict(
+        #         randomCrop=dict(
+        #             scoreTrueLabel=float(random_crop_clf[class_name_to_idx(class_folder)]),
+        #             labelGuessed=str(ix_to_class_name(random_crop_cix)),
+        #             scoreGuessed=float(random_crop_clf[random_crop_cix])
+        #         ),
+        #         cropFcn=dict(
+        #             scoreTrueLabel=float(crop_clf[class_name_to_idx(class_folder)]),
+        #             labelGuessed=str(ix_to_class_name(crop_cix)),
+        #             scoreGuessed=float(crop_clf[crop_cix])
+        #         )
+        #     )
+        # )
+        # dump_list.append(data)
+        #
+        # # stampa dei risultati
+        # # if i_instance == 0:
+        # #     print("processing " + str(instances_per_folder * i_folder + i_instance + 1) + "/" + str(instances_per_folder * folder_to_scan))
+        # #     print("#imgs cropped at non-original size", countCnb, ", avg factor", factorCnb / countCnb)
         # print(json.dumps(data, indent=2, sort_keys=True))
         #
         # fig, (ax0, ax1, ax2) = plt.subplots(1, 3) #, figsize=(8, 8))
@@ -376,5 +428,5 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
         #
         # plt.show()
 
-with open(set + "Set" + str(instances_per_folder * folder_to_scan) + "_Crop-RandomCrop-CLF" + ".json", "w+") as file:
-    json.dump(dump_list, file, indent=2, sort_keys=True)
+# with open(set + "Set" + str(instances_per_folder * folder_to_scan) + "_Crop-RandomCrop-CLF" + ".json", "w+") as file:
+#     json.dump(dump_list, file, indent=2, sort_keys=True)
