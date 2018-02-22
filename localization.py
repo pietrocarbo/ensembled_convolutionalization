@@ -112,7 +112,7 @@ dump_list = []
 
 # -----------------------------------
 # CLASSIFIERS
-for input_size in [232, 238, 244]:
+for input_size in [232, 235, 238]:
 
                    # INCRESV2 steps:
                    # XCEPTION steps: 224, (+7) 231, (+32) 263, (+32) 295, (+32) 327, (+32) 359, (+32) 391, (+32) 423,
