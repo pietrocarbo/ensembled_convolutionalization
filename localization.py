@@ -112,13 +112,35 @@ dump_list = []
 
 # -----------------------------------
 # CLASSIFIERS
-for input_size in [224, 224+32, 224+32*2, 224+32*3, 224+32*4, 224+32*5, 224+32*6]:
-    wclf, hclf = (input_size, input_size)
-    # vgg19 = model_from_json(prepare_str_file_architecture_syntax("trained_models/top4_vgg19_acc78_2017-12-23/vgg19_architecture_2017-12-22_23-55-53.json"))
-    # vgg19.load_weights("trained_models/top4_vgg19_acc78_2017-12-23/vgg19_ft_weights_acc0.78_e26_2017-12-22_23-55-53.hdf5")
+for input_size in [224,
 
-    # xception = model_from_json(prepare_str_file_architecture_syntax("trained_models/top1_xception_acc80_2017-12-25/xception_architecture_2017-12-24_13-00-22.json"))
-    # xception = model_from_json(prepare_str_file_architecture_syntax("trained_models/xception_architecture_2017-12-24_13-00-22.json"))
+                   224+32-1,
+                   224+32,
+                   224+32+1,
+
+                   224+32*2-1,
+                   224+32*2,
+                   224+32*2+1,
+
+                   224+32*3-1,
+                   224+32*3,
+                   224+32*3+1,
+
+                   224+32*4-1,
+                   224+32*4,
+                   224+32*4+1,
+
+                   224+32*5-1,
+                   224+32*5,
+                   224+32*5+1]:
+    wclf, hclf = (input_size, input_size)
+
+    vgg19 = keras.applications.vgg19.VGG19(include_top=False, weights='imagenet', input_shape=(wclf, hclf, 3))
+    x = GlobalAveragePooling2D()(vgg19.output)
+    out = Dense(101, activation='softmax', name='output_layer')(x)
+    vgg19 = Model(inputs=vgg19.input, outputs=out)
+    vgg19.load_weights("trained_models/top4_vgg19_acc78_2017-12-23/vgg19_ft_weights_acc0.78_e26_2017-12-22_23-55-53.hdf5")
+
     xception = keras.applications.xception.Xception(include_top=False, weights='imagenet', input_shape=(wclf, hclf, 3))
     x = GlobalAveragePooling2D()(xception.output)
     out = Dense(101, activation='softmax', name='output_layer')(x)
@@ -152,6 +174,7 @@ for input_size in [224, 224+32, 224+32*2, 224+32*3, 224+32*4, 224+32*5, 224+32*6
     # ensemble = Model(inputs=ensemble_input, outputs=ensemble_output)
 
     print("INPUT SIZE", input_size)
+    print("vgg19 gap input shape", vgg19.get_layer("block5_pool").output_shape)
     print("xce gap input shape", xception.get_layer("block14_sepconv2_act").output_shape)
     print("incv3 gap input shape", incv3.get_layer("mixed10").output_shape)
     print("incresv2 gap input shape", incresv2.get_layer("conv_7b_ac").output_shape , "\n")
