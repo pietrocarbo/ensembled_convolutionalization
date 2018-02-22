@@ -94,7 +94,7 @@ def convolutionalize_net(architecture_path, weigths_path, last_layer_name, pool_
 
     return model
 
-
+dump_list = []
 # K.clear_session()
 
 # -----------------------------------
@@ -105,58 +105,64 @@ def convolutionalize_net(architecture_path, weigths_path, last_layer_name, pool_
 #                                 last_layer_name="block5_pool",
 #                                 pool_size=7)
 
-xceptionFCN = convolutionalize_net(architecture_path="trained_models/xception_architecture_2017-12-24_13-00-22.json",
-                                   weigths_path="trained_models/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5",
-                                   last_layer_name="block14_sepconv2_act",
-                                   pool_size=10)
+# xceptionFCN = convolutionalize_net(architecture_path="trained_models/xception_architecture_2017-12-24_13-00-22.json",
+#                                    weigths_path="trained_models/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5",
+#                                    last_layer_name="block14_sepconv2_act",
+#                                    pool_size=10)
 
 # -----------------------------------
 # CLASSIFIERS
-wclf, hclf = (256, 256)
-# vgg19 = model_from_json(prepare_str_file_architecture_syntax("trained_models/top4_vgg19_acc78_2017-12-23/vgg19_architecture_2017-12-22_23-55-53.json"))
-# vgg19.load_weights("trained_models/top4_vgg19_acc78_2017-12-23/vgg19_ft_weights_acc0.78_e26_2017-12-22_23-55-53.hdf5")
+for input_size in [224, 224+32, 224+32*2, 224+32*3, 224+32*4, 224+32*5, 224+32*6]:
+    wclf, hclf = (input_size, input_size)
+    # vgg19 = model_from_json(prepare_str_file_architecture_syntax("trained_models/top4_vgg19_acc78_2017-12-23/vgg19_architecture_2017-12-22_23-55-53.json"))
+    # vgg19.load_weights("trained_models/top4_vgg19_acc78_2017-12-23/vgg19_ft_weights_acc0.78_e26_2017-12-22_23-55-53.hdf5")
 
-# xception = model_from_json(prepare_str_file_architecture_syntax("trained_models/top1_xception_acc80_2017-12-25/xception_architecture_2017-12-24_13-00-22.json"))
-# xception = model_from_json(prepare_str_file_architecture_syntax("trained_models/xception_architecture_2017-12-24_13-00-22.json"))
-xception = keras.applications.xception.Xception(include_top=False, weights='imagenet', input_shape=(wclf, hclf, 3))
-x = GlobalAveragePooling2D()(xception.output)
-out = Dense(101, activation='softmax', name='output_layer')(x)
-xception = Model(inputs=xception.input, outputs=out)
-xception.load_weights("trained_models/top1_xception_acc80_2017-12-25/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5")
+    # xception = model_from_json(prepare_str_file_architecture_syntax("trained_models/top1_xception_acc80_2017-12-25/xception_architecture_2017-12-24_13-00-22.json"))
+    # xception = model_from_json(prepare_str_file_architecture_syntax("trained_models/xception_architecture_2017-12-24_13-00-22.json"))
+    xception = keras.applications.xception.Xception(include_top=False, weights='imagenet', input_shape=(wclf, hclf, 3))
+    x = GlobalAveragePooling2D()(xception.output)
+    out = Dense(101, activation='softmax', name='output_layer')(x)
+    xception = Model(inputs=xception.input, outputs=out)
+    xception.load_weights("trained_models/top1_xception_acc80_2017-12-25/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5")
 
-incresv2 = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet', input_shape=(wclf, hclf, 3))
-x = GlobalAveragePooling2D()(incresv2.output)
-out = Dense(101, activation='softmax', name='output_layer')(x)
-incresv2 = Model(inputs=incresv2.input, outputs=out)
-incresv2.load_weights("trained_models/top2_incresnetv2_acc79_2017-12-22/incv2resnet_ft_weights_acc0.79_e4_2017-12-21_09-02-16.hdf5")
+    incresv2 = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet', input_shape=(wclf, hclf, 3))
+    x = GlobalAveragePooling2D()(incresv2.output)
+    out = Dense(101, activation='softmax', name='output_layer')(x)
+    incresv2 = Model(inputs=incresv2.input, outputs=out)
+    incresv2.load_weights("trained_models/top2_incresnetv2_acc79_2017-12-22/incv2resnet_ft_weights_acc0.79_e4_2017-12-21_09-02-16.hdf5")
 
-incv3 = keras.applications.inception_v3.InceptionV3(include_top=False, weights='imagenet', input_shape=(wclf, hclf, 3))
-x = GlobalAveragePooling2D()(incv3.output)
-x = Dense(1024, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005), bias_regularizer=l2(.0005))(x)
-x = LeakyReLU()(x)
-x = BatchNormalization()(x)
-x = Dropout(0.5)(x)
-x = Dense(512, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005), bias_regularizer=l2(.0005))(x)
-x = LeakyReLU()(x)
-x = BatchNormalization()(x)
-x = Dropout(0.5)(x)
-out = Dense(101, kernel_initializer='he_uniform', bias_initializer="he_uniform", activation='softmax', name='output_layer')(x)
-incv3 = Model(inputs=incv3.input, outputs=out)
-incv3.load_weights("trained_models/top3_inceptionv3_acc79_2017-12-27/inceptionv3_ft_weights_acc0.79_e10_2017-12-25_22-10-02.hdf5")
+    incv3 = keras.applications.inception_v3.InceptionV3(include_top=False, weights='imagenet', input_shape=(wclf, hclf, 3))
+    x = GlobalAveragePooling2D()(incv3.output)
+    x = Dense(1024, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005), bias_regularizer=l2(.0005))(x)
+    x = LeakyReLU()(x)
+    x = BatchNormalization()(x)
+    x = Dropout(0.5)(x)
+    x = Dense(512, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005), bias_regularizer=l2(.0005))(x)
+    x = LeakyReLU()(x)
+    x = BatchNormalization()(x)
+    x = Dropout(0.5)(x)
+    out = Dense(101, kernel_initializer='he_uniform', bias_initializer="he_uniform", activation='softmax', name='output_layer')(x)
+    incv3 = Model(inputs=incv3.input, outputs=out)
+    incv3.load_weights("trained_models/top3_inceptionv3_acc79_2017-12-27/inceptionv3_ft_weights_acc0.79_e10_2017-12-25_22-10-02.hdf5")
 
-# model_list = [xception, incresv2, incv3]
-# ensemble_input = Input(shape=xception.input_shape[1:])
-# outputs = [model(ensemble_input) for model in model_list]
-# ensemble_output = keras.layers.average(outputs)
-# ensemble = Model(inputs=ensemble_input, outputs=ensemble_output)
+    # model_list = [xception, incresv2, incv3]
+    # ensemble_input = Input(shape=xception.input_shape[1:])
+    # outputs = [model(ensemble_input) for model in model_list]
+    # ensemble_output = keras.layers.average(outputs)
+    # ensemble = Model(inputs=ensemble_input, outputs=ensemble_output)
+
+    print("INPUT SIZE", input_size)
+    print("xce gap input shape", xception.get_layer("block14_sepconv2_act").output_shape)
+    print("incv3 gap input shape", incv3.get_layer("mixed10").output_shape)
+    print("incresv2 gap input shape", incresv2.get_layer("conv_7b_ac").output_shape , "\n")
 
 classifiers = {"xception": xception, "incresv2": incresv2, "incv3": incv3}
 # CLF = xception
 from keras.applications.xception import preprocess_input as clf_preprocess
 
-FCN = xceptionFCN
-fcn_window = 299
-from keras.applications.xception import preprocess_input as fcn_preprocess
+# FCN = xceptionFCN
+# fcn_window = 299
+# from keras.applications.xception import preprocess_input as fcn_preprocess
 
 set = "test"
 class_folders = os.listdir("dataset-ethz101food/" + set)
@@ -167,80 +173,78 @@ max_scale_factor = 3
 upsampling_step = 1.2
 crop_selection_policy = "max_input_ix"    #  "input_ix>=0.5"
 
-dump_list = []
-
 def traslation(heat_coord, factor, fcn_stride=32):
     return(int(fcn_stride * heat_coord / factor))
 
-def process_image(input_img_reference, input_fn, input_ix, crop_policy):
-    results = []
-    if (os.path.exists(input_fn)):
-        scale_factor = float(fcn_window) / min(input_img_reference.shape[0], input_img_reference.shape[1])
-
-        while scale_factor < max_scale_factor:
-            img_size = (int(max(fcn_window, input_img_reference.shape[0] * scale_factor)),
-                        int(max(fcn_window, input_img_reference.shape[1] * scale_factor)))
-            input_img = image.load_img(input_fn, target_size=img_size)
-            input_img = image.img_to_array(input_img)
-            input_image_expandedim = np.expand_dims(input_img, axis=0)
-            input_preprocessed_image = fcn_preprocess(input_image_expandedim)
-            preds = FCN.predict(input_preprocessed_image)
-            # print("scale:", scale_factor, "input_img shape (height, width)", input_img.shape, "-> preds shape", preds.shape)
-
-            # valore default alla scala di base
-            if results == []:
-                heatmap_values = preds[0, :, :, input_ix]
-                max_heatmap = np.amax(heatmap_values)
-                max_coordinates = np.unravel_index(np.argmax(heatmap_values, axis=None), heatmap_values.shape)
-
-                crop_heatmaps = preds[0, max_coordinates[0], max_coordinates[1], :]
-                max_crop = np.amax(crop_heatmaps)
-                max_crop_ix = np.argmax(crop_heatmaps)
-
-                results.append((scale_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates,
-                                max_crop, max_crop_ix))
-
-            # stop al primo crop che è massimo per la classe input_ix
-            if crop_policy == "max_input_ix":
-                seg_map = np.argmax(preds[0], axis=2)
-                bool_map_ix = seg_map == input_ix
-                if np.any(bool_map_ix):
-                    heatmaps_values = preds[0, :, :, input_ix]
-                    max_heatmap = np.amax(heatmaps_values)
-                    max_coordinates = np.unravel_index(np.argmax(heatmaps_values, axis=None), heatmaps_values.shape)
-
-                    results.append((scale_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates,
-                                    max_heatmap, input_ix))
-                    # print("crop max_input_ix found:", results[-1])
-                    break
-
-            # stop al primo crop >= 0.5 per la classe input_ix
-            elif crop_policy == "input_ix>=0.5":
-                heatmaps_values = preds[0, :, :, input_ix]
-                max_heatmap = np.amax(heatmaps_values)
-                if max_heatmap >= 0.5:
-                    max_coordinates = np.unravel_index(np.argmax(heatmaps_values, axis=None), heatmaps_values.shape)
-
-                    crop_heatmaps = preds[0, max_coordinates[0], max_coordinates[1], :]
-                    max_crop = np.amax(crop_heatmaps)
-                    max_crop_ix = np.argmax(crop_heatmaps)
-
-                    results.append((scale_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates,
-                                    max_crop, max_crop_ix))
-                    # print("crop input_ix>=0.5 found:", results[-1])
-                    break
-
-            else:
-                print("Unspecified crop policy. Exiting.")
-                exit(-1)
-
-            scale_factor *= upsampling_step
-    else:
-        print ("The specified image " + input_fn + " does not exist")
-
-    # if len(results) == 1:
-    #     print("crop default", results[0])
-    return results
+# def process_image(input_img_reference, input_fn, input_ix, crop_policy):
+#     results = []
+#     if (os.path.exists(input_fn)):
+#         scale_factor = float(fcn_window) / min(input_img_reference.shape[0], input_img_reference.shape[1])
+#
+#         while scale_factor < max_scale_factor:
+#             img_size = (int(max(fcn_window, input_img_reference.shape[0] * scale_factor)),
+#                         int(max(fcn_window, input_img_reference.shape[1] * scale_factor)))
+#             input_img = image.load_img(input_fn, target_size=img_size)
+#             input_img = image.img_to_array(input_img)
+#             input_image_expandedim = np.expand_dims(input_img, axis=0)
+#             input_preprocessed_image = fcn_preprocess(input_image_expandedim)
+#             preds = FCN.predict(input_preprocessed_image)
+#             # print("scale:", scale_factor, "input_img shape (height, width)", input_img.shape, "-> preds shape", preds.shape)
+#
+#             # valore default alla scala di base
+#             if results == []:
+#                 heatmap_values = preds[0, :, :, input_ix]
+#                 max_heatmap = np.amax(heatmap_values)
+#                 max_coordinates = np.unravel_index(np.argmax(heatmap_values, axis=None), heatmap_values.shape)
+#
+#                 crop_heatmaps = preds[0, max_coordinates[0], max_coordinates[1], :]
+#                 max_crop = np.amax(crop_heatmaps)
+#                 max_crop_ix = np.argmax(crop_heatmaps)
+#
+#                 results.append((scale_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates,
+#                                 max_crop, max_crop_ix))
+#
+#             # stop al primo crop che è massimo per la classe input_ix
+#             if crop_policy == "max_input_ix":
+#                 seg_map = np.argmax(preds[0], axis=2)
+#                 bool_map_ix = seg_map == input_ix
+#                 if np.any(bool_map_ix):
+#                     heatmaps_values = preds[0, :, :, input_ix]
+#                     max_heatmap = np.amax(heatmaps_values)
+#                     max_coordinates = np.unravel_index(np.argmax(heatmaps_values, axis=None), heatmaps_values.shape)
+#
+#                     results.append((scale_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates,
+#                                     max_heatmap, input_ix))
+#                     # print("crop max_input_ix found:", results[-1])
+#                     break
+#
+#             # stop al primo crop >= 0.5 per la classe input_ix
+#             elif crop_policy == "input_ix>=0.5":
+#                 heatmaps_values = preds[0, :, :, input_ix]
+#                 max_heatmap = np.amax(heatmaps_values)
+#                 if max_heatmap >= 0.5:
+#                     max_coordinates = np.unravel_index(np.argmax(heatmaps_values, axis=None), heatmaps_values.shape)
+#
+#                     crop_heatmaps = preds[0, max_coordinates[0], max_coordinates[1], :]
+#                     max_crop = np.amax(crop_heatmaps)
+#                     max_crop_ix = np.argmax(crop_heatmaps)
+#
+#                     results.append((scale_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates,
+#                                     max_crop, max_crop_ix))
+#                     # print("crop input_ix>=0.5 found:", results[-1])
+#                     break
+#
+#             else:
+#                 print("Unspecified crop policy. Exiting.")
+#                 exit(-1)
+#
+#             scale_factor *= upsampling_step
+#     else:
+#         print ("The specified image " + input_fn + " does not exist")
+#
+#     # if len(results) == 1:
+#     #     print("crop default", results[0])
+#     return results
 
 def get_random_crop(x, random_crop_size, sync_seed=None):
     np.random.seed(sync_seed)
@@ -280,28 +284,28 @@ def resize_arrayimg(imgarray, new_width, new_height):
     return imgarray
 
 
-for key in classifiers:
-    print("Validating model", key, "at", classifiers[key])
-    classifiers[key].summary()
-    dict_augmentation = dict(preprocessing_function=clf_preprocess)
-    test_datagen = ImageDataGenerator(**dict_augmentation)
-    validation_generator = test_datagen.flow_from_directory(
-        'dataset-ethz101food/test',
-        target_size=(wclf, hclf),
-        batch_size=32,
-        class_mode='categorical')
-    classifiers[key].compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['categorical_accuracy', 'top_k_categorical_accuracy'])
-    (loss, acc, top5acc) = classifiers[key].evaluate_generator(validation_generator, (instances_per_folder * folder_to_scan) // 32)
-    print("[Model", key, "] test-set: loss={:.4f}, top-1 acc={:.4f}%, top-5 acc={:.4f}%".format(loss, acc * 100, top5acc * 100))
-    dump_list.append(dict(
-        model = key,
-        loss = loss,
-        acc = acc,
-        top5acc = top5acc
-    ))
-with open("inceptions256testSet.json", "w+") as file:
-    json.dump(dump_list, file, indent=2, sort_keys=True)
-
+# for key in classifiers:
+#     print("Validating model", key, "at", classifiers[key])
+#     classifiers[key].summary()
+#     dict_augmentation = dict(preprocessing_function=clf_preprocess)
+#     test_datagen = ImageDataGenerator(**dict_augmentation)
+#     validation_generator = test_datagen.flow_from_directory(
+#         'dataset-ethz101food/test',
+#         target_size=(wclf, hclf),
+#         batch_size=32,
+#         class_mode='categorical')
+#     classifiers[key].compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['categorical_accuracy', 'top_k_categorical_accuracy'])
+#     (loss, acc, top5acc) = classifiers[key].evaluate_generator(validation_generator, (instances_per_folder * folder_to_scan) // 32)
+#     print("[Model", key, "] test-set: loss={:.4f}, top-1 acc={:.4f}%, top-5 acc={:.4f}%".format(loss, acc * 100, top5acc * 100))
+#     dump_list.append(dict(
+#         model = key,
+#         loss = loss,
+#         acc = acc,
+#         top5acc = top5acc
+#     ))
+# with open("inceptions256testSet.json", "w+") as file:
+#     json.dump(dump_list, file, indent=2, sort_keys=True)
+#
 
 
 # ciclo per un set di immagini
