@@ -291,15 +291,18 @@ for key in classifiers:
         batch_size=32,
         class_mode='categorical')
     classifiers[key].compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['categorical_accuracy', 'top_k_categorical_accuracy'])
-    (loss, acc) = classifiers[key].evaluate_generator(validation_generator, (instances_per_folder * folder_to_scan) // 32)
-    print("[Model", key, "] test-set: loss={:.4f}, top-1 accuracy={:.4f}%".format(loss, acc * 100))
+    (loss, acc, top5acc) = classifiers[key].evaluate_generator(validation_generator, (instances_per_folder * folder_to_scan) // 32)
+    print("[Model", key, "] test-set: loss={:.4f}, top-1 acc={:.4f}%, top-5 acc={:.4f}%".format(loss, acc * 100, top5acc * 100))
     dump_list.append(dict(
         model = key,
         loss = loss,
-        acc = acc
+        acc = acc,
+        top5acc = top5acc
     ))
 with open("inceptions224testSet.json", "w+") as file:
     json.dump(dump_list, file, indent=2, sort_keys=True)
+
+
 
 # ciclo per un set di immagini
 # for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
