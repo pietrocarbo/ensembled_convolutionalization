@@ -112,41 +112,24 @@ dump_list = []
 
 # -----------------------------------
 # CLASSIFIERS
-for input_size in [224,
-                   224+1,
+for input_size in [232, 244, 255]:
 
-                   224+32-1,
-                   224+32,
-                   224+32+1,
-
-                   224+32*2-1,
-                   224+32*2,
-                   224+32*2+1,
-
-                   224+32*3-1,
-                   224+32*3,
-                   224+32*3+1,
-
-                   224+32*4-1,
-                   224+32*4,
-                   224+32*4+1,
-
-                   224+32*5-1,
-                   224+32*5,
-                   224+32*5+1]:
+                   # INCRESV2 steps:
+                   # XCEPTION steps: 224, (+7) 231, (+32) 263, (+32) 295, (+32) 327, (+32) 359, (+32) 391, (+32) 423,
+                   # VGG steps: 224, 224+32, 224+32*2, 224+32*3, 224+32*4, 224+32*5, 224+32*8, 224+32*7,
     wclf, hclf = (input_size, input_size)
 
-    vgg19 = keras.applications.vgg19.VGG19(include_top=False, weights='imagenet', input_shape=(wclf, hclf, 3))
-    x = GlobalAveragePooling2D()(vgg19.output)
-    out = Dense(101, activation='softmax', name='output_layer')(x)
-    vgg19 = Model(inputs=vgg19.input, outputs=out)
-    vgg19.load_weights("trained_models/top4_vgg19_acc78_2017-12-23/vgg19_ft_weights_acc0.78_e26_2017-12-22_23-55-53.hdf5")
+    # vgg19 = keras.applications.vgg19.VGG19(include_top=False, weights='imagenet', input_shape=(wclf, hclf, 3))
+    # x = GlobalAveragePooling2D()(vgg19.output)
+    # out = Dense(101, activation='softmax', name='output_layer')(x)
+    # vgg19 = Model(inputs=vgg19.input, outputs=out)
+    # vgg19.load_weights("trained_models/top4_vgg19_acc78_2017-12-23/vgg19_ft_weights_acc0.78_e26_2017-12-22_23-55-53.hdf5")
 
-    xception = keras.applications.xception.Xception(include_top=False, weights='imagenet', input_shape=(wclf, hclf, 3))
-    x = GlobalAveragePooling2D()(xception.output)
-    out = Dense(101, activation='softmax', name='output_layer')(x)
-    xception = Model(inputs=xception.input, outputs=out)
-    xception.load_weights("trained_models/top1_xception_acc80_2017-12-25/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5")
+    # xception = keras.applications.xception.Xception(include_top=False, weights='imagenet', input_shape=(wclf, hclf, 3))
+    # x = GlobalAveragePooling2D()(xception.output)
+    # out = Dense(101, activation='softmax', name='output_layer')(x)
+    # xception = Model(inputs=xception.input, outputs=out)
+    # xception.load_weights("trained_models/top1_xception_acc80_2017-12-25/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5")
 
     incresv2 = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet', input_shape=(wclf, hclf, 3))
     x = GlobalAveragePooling2D()(incresv2.output)
@@ -154,19 +137,19 @@ for input_size in [224,
     incresv2 = Model(inputs=incresv2.input, outputs=out)
     incresv2.load_weights("trained_models/top2_incresnetv2_acc79_2017-12-22/incv2resnet_ft_weights_acc0.79_e4_2017-12-21_09-02-16.hdf5")
 
-    incv3 = keras.applications.inception_v3.InceptionV3(include_top=False, weights='imagenet', input_shape=(wclf, hclf, 3))
-    x = GlobalAveragePooling2D()(incv3.output)
-    x = Dense(1024, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005), bias_regularizer=l2(.0005))(x)
-    x = LeakyReLU()(x)
-    x = BatchNormalization()(x)
-    x = Dropout(0.5)(x)
-    x = Dense(512, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005), bias_regularizer=l2(.0005))(x)
-    x = LeakyReLU()(x)
-    x = BatchNormalization()(x)
-    x = Dropout(0.5)(x)
-    out = Dense(101, kernel_initializer='he_uniform', bias_initializer="he_uniform", activation='softmax', name='output_layer')(x)
-    incv3 = Model(inputs=incv3.input, outputs=out)
-    incv3.load_weights("trained_models/top3_inceptionv3_acc79_2017-12-27/inceptionv3_ft_weights_acc0.79_e10_2017-12-25_22-10-02.hdf5")
+    # incv3 = keras.applications.inception_v3.InceptionV3(include_top=False, weights='imagenet', input_shape=(wclf, hclf, 3))
+    # x = GlobalAveragePooling2D()(incv3.output)
+    # x = Dense(1024, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005), bias_regularizer=l2(.0005))(x)
+    # x = LeakyReLU()(x)
+    # x = BatchNormalization()(x)
+    # x = Dropout(0.5)(x)
+    # x = Dense(512, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005), bias_regularizer=l2(.0005))(x)
+    # x = LeakyReLU()(x)
+    # x = BatchNormalization()(x)
+    # x = Dropout(0.5)(x)
+    # out = Dense(101, kernel_initializer='he_uniform', bias_initializer="he_uniform", activation='softmax', name='output_layer')(x)
+    # incv3 = Model(inputs=incv3.input, outputs=out)
+    # incv3.load_weights("trained_models/top3_inceptionv3_acc79_2017-12-27/inceptionv3_ft_weights_acc0.79_e10_2017-12-25_22-10-02.hdf5")
 
     # model_list = [xception, incresv2, incv3]
     # ensemble_input = Input(shape=xception.input_shape[1:])
@@ -175,12 +158,12 @@ for input_size in [224,
     # ensemble = Model(inputs=ensemble_input, outputs=ensemble_output)
 
     print("INPUT SIZE", input_size)
-    print("vgg19 gap input shape", vgg19.get_layer("block5_pool").output_shape)
-    print("xce gap input shape", xception.get_layer("block14_sepconv2_act").output_shape)
-    print("incv3 gap input shape", incv3.get_layer("mixed10").output_shape)
+    # print("vgg19 gap input shape", vgg19.get_layer("block5_pool").output_shape)
+    # print("xce gap input shape", xception.get_layer("block14_sepconv2_act").output_shape)
+    # print("incv3 gap input shape", incv3.get_layer("mixed10").output_shape)
     print("incresv2 gap input shape", incresv2.get_layer("conv_7b_ac").output_shape , "\n")
 
-classifiers = {"xception": xception, "incresv2": incresv2, "incv3": incv3}
+# classifiers = {"xception": xception, "incresv2": incresv2, "incv3": incv3}
 # CLF = xception
 from keras.applications.xception import preprocess_input as clf_preprocess
 
