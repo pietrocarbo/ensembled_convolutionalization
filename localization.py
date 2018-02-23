@@ -10,6 +10,7 @@ import matplotlib
 # matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 plt.style.use('seaborn-bright')
+import matplotlib.ticker as plticker
 
 import json
 import pickle
@@ -58,7 +59,6 @@ def prepare_str_file_architecture_syntax(filepath):
     model_str = model_str.replace("None", "null")
     return model_str
 
-
 def convolutionalize_net(architecture_path, weigths_path, last_layer_name, pool_size, debug=False):
     model = model_from_json(prepare_str_file_architecture_syntax(architecture_path))
     model.load_weights(weigths_path)
@@ -94,7 +94,85 @@ def convolutionalize_net(architecture_path, weigths_path, last_layer_name, pool_
 
     return model
 
-dump_list = []
+
+def convolutionalize_incresv2():
+    incresv2 = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet',
+                                                                        input_shape=(None, None, 3))
+    x = GlobalAveragePooling2D()(incresv2.output)
+    out = Dense(101, activation='softmax', name='output_layer')(x)
+    incresv2 = Model(inputs=incresv2.input, outputs=out)
+    incresv2.load_weights(
+        "trained_models/top2_incresnetv2_acc79_2017-12-22/incv2resnet_ft_weights_acc0.79_e4_2017-12-21_09-02-16.hdf5")
+    # incresv2.summary()
+
+    out_dim = incresv2.get_layer("output_layer").get_weights()[1].shape[0]
+    p_dim = incresv2.get_layer("global_average_pooling2d_1").input_shape
+    W, b = incresv2.get_layer("output_layer").get_weights()
+    weights_shape = (1, 1, p_dim[3], out_dim)
+    W = W.reshape(weights_shape)
+    last_layer = incresv2.get_layer("conv_7b_ac")
+    last_layer.outbound_nodes = []
+    incresv2.layers.pop()
+    incresv2.layers.pop()
+    x = AveragePooling2D(pool_size=(8, 8), strides=(1, 1))(last_layer.output)
+    x = Conv2D(101, (1, 1), strides=(1, 1), activation='softmax', padding='valid', weights=[W, b], name="conv2d_fcn")(x)
+    incresv2 = Model(inputs=incresv2.input, outputs=x)
+    return incresv2
+
+
+def convolutionalize_incv3():
+    incv3 = keras.applications.inception_v3.InceptionV3(include_top=False, weights='imagenet',
+                                                        input_shape=(None, None, 3))
+    x = GlobalAveragePooling2D()(incv3.output)
+    x = Dense(1024, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005),
+              bias_regularizer=l2(.0005))(x)
+    x = LeakyReLU()(x)
+    x = BatchNormalization()(x)
+    x = Dropout(0.5)(x)
+    x = Dense(512, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005),
+              bias_regularizer=l2(.0005))(x)
+    x = LeakyReLU()(x)
+    x = BatchNormalization()(x)
+    x = Dropout(0.5)(x)
+    out = Dense(101, kernel_initializer='he_uniform', bias_initializer="he_uniform", activation='softmax',
+                name='output_layer')(x)
+    incv3 = Model(inputs=incv3.input, outputs=out)
+    incv3.load_weights(
+        "trained_models/top3_inceptionv3_acc79_2017-12-27/inceptionv3_ft_weights_acc0.79_e10_2017-12-25_22-10-02.hdf5")
+    # incv3.summary()
+
+    W1, b1 = incv3.get_layer("dense_1").get_weights()
+    W2, b2 = incv3.get_layer("dense_2").get_weights()
+    W3, b3 = incv3.get_layer("output_layer").get_weights()
+
+    W1 = W1.reshape((1, 1, 2048, 1024))
+    W2 = W2.reshape((1, 1, 1024, 512))
+    W3 = W3.reshape((1, 1, 512, 101))
+
+    last_layer = incv3.get_layer("mixed10")
+    last_layer.outbound_nodes = []
+    for i in range(10):
+        incv3.layers.pop()
+
+    x = AveragePooling2D(pool_size=(8, 8), strides=(1, 1))(last_layer.output)
+
+    x = Conv2D(1024, (1, 1), strides=(1, 1), activation='softmax', padding='valid', weights=[W1, b1],
+               name="conv2d_fcn1")(x)
+    x = LeakyReLU()(x)
+    x = BatchNormalization()(x)
+    x = Dropout(0.5)(x)
+
+    x = Conv2D(512, (1, 1), strides=(1, 1), activation='softmax', padding='valid', weights=[W2, b2],
+               name="conv2d_fcn2")(x)
+    x = LeakyReLU()(x)
+    x = BatchNormalization()(x)
+    x = Dropout(0.5)(x)
+
+    x = Conv2D(101, (1, 1), strides=(1, 1), activation='softmax', padding='valid', weights=[W3, b3],
+               name="conv2d_fcn3")(x)
+    incv3 = Model(inputs=incv3.input, outputs=x)
+    return incv3
+
 # K.clear_session()
 
 # -----------------------------------
@@ -103,89 +181,173 @@ dump_list = []
 # vgg16FCN = convolutionalize_net(architecture_path="trained_models/top5_vgg16_acc77_2017-12-24/vgg16_architecture_2017-12-23_22-53-03.json",
 #                                 weigths_path="trained_models/top5_vgg16_acc77_2017-12-24/vgg16_ft_weights_acc0.78_e15_2017-12-23_22-53-03.hdf5",
 #                                 last_layer_name="block5_pool",
-#                                 pool_size=7)
+#                                 pool_size=8)  # 7 default
+# vgg16FCN.summary()
 
 # xceptionFCN = convolutionalize_net(architecture_path="trained_models/xception_architecture_2017-12-24_13-00-22.json",
 #                                    weigths_path="trained_models/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5",
 #                                    last_layer_name="block14_sepconv2_act",
 #                                    pool_size=10)
+# xceptionFCN.summary()
+
+
+# incresv2FCN = convolutionalize_incresv2()
+# incresv2FCN.summary()
+
+# incv3FCN = convolutionalize_incv3()
+# incv3FCN.summary()
+
+# model_list = [xceptionFCN, incresv2FCN, incv3FCN]
+# ensemble_input = Input(shape=(None, None, 3))
+# outputs = [model(ensemble_input) for model in model_list]
+# ensemble_output = keras.layers.average(outputs)
+# ensemble = Model(inputs=ensemble_input, outputs=ensemble_output)
+# ensemble.summary()
+
 
 # -----------------------------------
 # CLASSIFIERS
-for input_size in [266, 267, 268,
-                   298, 299, 300,
-                   301, 302, 303,
-                   330, 331, 332,
-                   362, 363, 364,
-                   394, 395, 396,
-                   426, 427, 428]:
+# for input_size in [166, 167, 168]:
+# wclf, hclf = (None, None)
 
-                   # INCEPIV3 steps: 224,
-                   # INCRESV2 steps: 224, (+11) 235, (+32) 267, (+32) 299, (+32) 331, (+32) 363, (+32) 395, (+32) 427
-                   # XCEPTION steps: 224, (+7) 231, (+32) 263, (+32) 295, (+32) 327, (+32) 359, (+32) 391, (+32) 423
-                   # VGG steps: 224, 224+32, 224+32*2, 224+32*3, 224+32*4, 224+32*5, 224+32*8, 224+32*7
-    wclf, hclf = (input_size, input_size)
+# vgg19 = keras.applications.vgg19.VGG19(include_top=False, weights='imagenet', input_shape=(wclf, hclf, 3))
+# x = GlobalAveragePooling2D()(vgg19.output)
+# out = Dense(101, activation='softmax', name='output_layer')(x)
+# vgg19 = Model(inputs=vgg19.input, outputs=out)
+# vgg19.load_weights("trained_models/top4_vgg19_acc78_2017-12-23/vgg19_ft_weights_acc0.78_e26_2017-12-22_23-55-53.hdf5")
 
-    # vgg19 = keras.applications.vgg19.VGG19(include_top=False, weights='imagenet', input_shape=(wclf, hclf, 3))
-    # x = GlobalAveragePooling2D()(vgg19.output)
-    # out = Dense(101, activation='softmax', name='output_layer')(x)
-    # vgg19 = Model(inputs=vgg19.input, outputs=out)
-    # vgg19.load_weights("trained_models/top4_vgg19_acc78_2017-12-23/vgg19_ft_weights_acc0.78_e26_2017-12-22_23-55-53.hdf5")
+# xception = keras.applications.xception.Xception(include_top=False, weights='imagenet', input_shape=(wclf, hclf, 3))
+# x = GlobalAveragePooling2D()(xception.output)
+# out = Dense(101, activation='softmax', name='output_layer')(x)
+# xception = Model(inputs=xception.input, outputs=out)
+# xception.load_weights("trained_models/top1_xception_acc80_2017-12-25/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5")
 
-    # xception = keras.applications.xception.Xception(include_top=False, weights='imagenet', input_shape=(wclf, hclf, 3))
-    # x = GlobalAveragePooling2D()(xception.output)
-    # out = Dense(101, activation='softmax', name='output_layer')(x)
-    # xception = Model(inputs=xception.input, outputs=out)
-    # xception.load_weights("trained_models/top1_xception_acc80_2017-12-25/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5")
+# incresv2 = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet', input_shape=(wclf, hclf, 3))
+# x = GlobalAveragePooling2D()(incresv2.output)
+# out = Dense(101, activation='softmax', name='output_layer')(x)
+# incresv2 = Model(inputs=incresv2.input, outputs=out)
+# incresv2.load_weights("trained_models/top2_incresnetv2_acc79_2017-12-22/incv2resnet_ft_weights_acc0.79_e4_2017-12-21_09-02-16.hdf5")
 
-    incresv2 = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet', input_shape=(wclf, hclf, 3))
-    x = GlobalAveragePooling2D()(incresv2.output)
-    out = Dense(101, activation='softmax', name='output_layer')(x)
-    incresv2 = Model(inputs=incresv2.input, outputs=out)
-    incresv2.load_weights("trained_models/top2_incresnetv2_acc79_2017-12-22/incv2resnet_ft_weights_acc0.79_e4_2017-12-21_09-02-16.hdf5")
+# incv3 = keras.applications.inception_v3.InceptionV3(include_top=False, weights='imagenet', input_shape=(wclf, hclf, 3))
+# x = GlobalAveragePooling2D()(incv3.output)
+# x = Dense(1024, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005), bias_regularizer=l2(.0005))(x)
+# x = LeakyReLU()(x)
+# x = BatchNormalization()(x)
+# x = Dropout(0.5)(x)
+# x = Dense(512, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005), bias_regularizer=l2(.0005))(x)
+# x = LeakyReLU()(x)
+# x = BatchNormalization()(x)
+# x = Dropout(0.5)(x)
+# out = Dense(101, kernel_initializer='he_uniform', bias_initializer="he_uniform", activation='softmax', name='output_layer')(x)
+# incv3 = Model(inputs=incv3.input, outputs=out)
+# incv3.load_weights("trained_models/top3_inceptionv3_acc79_2017-12-27/inceptionv3_ft_weights_acc0.79_e10_2017-12-25_22-10-02.hdf5")
 
-    # incv3 = keras.applications.inception_v3.InceptionV3(include_top=False, weights='imagenet', input_shape=(wclf, hclf, 3))
-    # x = GlobalAveragePooling2D()(incv3.output)
-    # x = Dense(1024, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005), bias_regularizer=l2(.0005))(x)
-    # x = LeakyReLU()(x)
-    # x = BatchNormalization()(x)
-    # x = Dropout(0.5)(x)
-    # x = Dense(512, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005), bias_regularizer=l2(.0005))(x)
-    # x = LeakyReLU()(x)
-    # x = BatchNormalization()(x)
-    # x = Dropout(0.5)(x)
-    # out = Dense(101, kernel_initializer='he_uniform', bias_initializer="he_uniform", activation='softmax', name='output_layer')(x)
-    # incv3 = Model(inputs=incv3.input, outputs=out)
-    # incv3.load_weights("trained_models/top3_inceptionv3_acc79_2017-12-27/inceptionv3_ft_weights_acc0.79_e10_2017-12-25_22-10-02.hdf5")
+# model_list = [xception, incresv2, incv3]
+# ensemble_input = Input(shape=xception.input_shape[1:])
+# outputs = [model(ensemble_input) for model in model_list]
+# ensemble_output = keras.layers.average(outputs)
+# ensemble = Model(inputs=ensemble_input, outputs=ensemble_output)
 
-    # model_list = [xception, incresv2, incv3]
-    # ensemble_input = Input(shape=xception.input_shape[1:])
-    # outputs = [model(ensemble_input) for model in model_list]
-    # ensemble_output = keras.layers.average(outputs)
-    # ensemble = Model(inputs=ensemble_input, outputs=ensemble_output)
-
-    print("INPUT SIZE", input_size)
-    # print("vgg19 gap input shape", vgg19.get_layer("block5_pool").output_shape)
-    # print("xce gap input shape", xception.get_layer("block14_sepconv2_act").output_shape)
-    # print("incv3 gap input shape", incv3.get_layer("mixed10").output_shape)
-    print("incresv2 gap input shape", incresv2.get_layer("conv_7b_ac").output_shape , "\n")
-
-# classifiers = {"xception": xception, "incresv2": incresv2, "incv3": incv3}
-# CLF = xception
-from keras.applications.xception import preprocess_input as clf_preprocess
-
-# FCN = xceptionFCN
-# fcn_window = 299
-# from keras.applications.xception import preprocess_input as fcn_preprocess
+# print("INPUT SIZE", input_size)
+# print("vgg19 gap input shape", vgg19.get_layer("block5_pool").output_shape)
+# print("xce gap input shape", xception.get_layer("block14_sepconv2_act").output_shape)
+# print("incv3 gap input shape", incv3.get_layer("mixed10").output_shape)
+# print("incresv2 gap input shape", incresv2.get_layer("conv_7b_ac").output_shape , "\n")
 
 set = "test"
 class_folders = os.listdir("dataset-ethz101food/" + set)
 folder_to_scan = 101
 instances_per_folder = 250
 
+from keras.applications.vgg16 import preprocess_input as clf_preprocess
+
+vgg16 = keras.applications.vgg16.VGG16(include_top=False, weights='imagenet', input_shape=(256, 256, 3))
+x = GlobalAveragePooling2D()(vgg16.output)
+out = Dense(101, activation='softmax', name='output_layer')(x)
+vgg16 = Model(inputs=vgg16.input, outputs=out)
+vgg16.load_weights("trained_models/top5_vgg16_acc77_2017-12-24/vgg16_ft_weights_acc0.78_e15_2017-12-23_22-53-03.hdf5")
+
+dict_augmentation = dict(preprocessing_function=clf_preprocess)
+test_datagen = ImageDataGenerator(**dict_augmentation)
+validation_generator = test_datagen.flow_from_directory(
+    'dataset-ethz101food/test',
+    target_size=(256, 256),
+    batch_size=32,
+    class_mode='categorical')
+vgg16.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['categorical_accuracy', 'top_k_categorical_accuracy'])
+(loss, acc, top5acc) = vgg16.evaluate_generator(validation_generator, (instances_per_folder * folder_to_scan) // 32)
+print("[Model VGG16] test-set: loss={:.4f}, top-1 acc={:.4f}%, top-5 acc={:.4f}%".format(loss, acc * 100, top5acc * 100))
+
+
+# FCN = [xceptionFCN, incresv2FCN, incv3FCN]
+# fcn_window = 299
+from keras.applications.vgg16 import preprocess_input as fcn_preprocess
+
 max_scale_factor = 3
 upsampling_step = 1.2
 crop_selection_policy = "max_input_ix"    #  "input_ix>=0.5"
+
+results = []
+dump_list = []
+filename = "dataset-ethz101food/train/cup_cakes/46500.jpg"
+
+def predict(model, input_size):
+    input_img = image.load_img(filename, target_size=(input_size, input_size))
+    input_img = image.img_to_array(input_img)
+    input_image_expandedim = np.expand_dims(input_img, axis=0)
+    input_preprocessed_image = fcn_preprocess(input_image_expandedim)
+    preds = model.predict(input_preprocessed_image)
+    return preds
+
+# input_size = 224
+# preds = predict(vgg16FCN, input_size)
+# print("VGG16: input_img shape (height, width)", input_size, "-> preds shape", preds.shape)
+
+# input_size = 256  # 224,
+# preds = predict(vgg16FCN, input_size)
+# print("VGG16: input_img shape (height, width)", input_size, "-> preds shape", preds.shape)
+
+# input_size = 327  # 295
+# preds = predict(xceptionFCN, input_size)
+# print("Xception: input_img shape (height, width)", input_size, "-> preds shape", preds.shape)
+#
+# input_size = 331  # 299
+# preds = predict(incresv2FCN, input_size)
+# print("IncResNetV2: input_img shape (height, width)", input_size, "-> preds shape", preds.shape)
+#
+# input_size = 331  # 299
+# preds = predict(incv3FCN, input_size)
+# print("InceptionV3: input_img shape (height, width)", input_size, "-> preds shape", preds.shape)
+#
+
+# fig, (ax0, ax1, ax2) = plt.subplots(1, 3) #, figsize=(8, 8))
+# ax0.set_title("FCN crop")
+# ax0.imshow((crop + 1) / 2)
+#
+# ax1.set_title("Random crop")
+# ax1.imshow((random_crop + 1) / 2)
+#
+# ax2.set_title("Img + FCN crop")
+# ax2.imshow(img / 255.)
+# rect = patches.Rectangle((coordw, coordh), rect_dim, rect_dim, linewidth=1, edgecolor='r', facecolor='none')
+# ax2.add_patch(rect)
+#
+# plt.show()
+
+def save_map(heatmap, resultfname, input_size, tick_interval=None, is_input_img=False):
+
+    pixels = 255 * (1.0 - heatmap)
+    image = Image.fromarray(pixels.astype(np.uint8), mode='L')
+    image = image.resize(input_size, Image.NEAREST)
+    imgarray = np.asarray(image)
+
+    fig = plt.figure()
+    ax = fig.add_subplot(1, 1, 1)
+
+    ax.imshow(imgarray, cmap='Greys_r', interpolation='none')
+
+    fig.savefig(resultfname)
+    plt.close()
 
 def traslation(heat_coord, factor, fcn_stride=32):
     return(int(fcn_stride * heat_coord / factor))
@@ -260,67 +422,42 @@ def traslation(heat_coord, factor, fcn_stride=32):
 #     #     print("crop default", results[0])
 #     return results
 
-def get_random_crop(x, random_crop_size, sync_seed=None):
-    np.random.seed(sync_seed)
-    h, w = x.shape[0], x.shape[1]
-    rangeh = (h - random_crop_size) // 2
-    rangew = (w - random_crop_size) // 2
-    offseth = 0 if rangeh == 0 else np.random.randint(rangeh)
-    offsetw = 0 if rangew == 0 else np.random.randint(rangew)
-    # print("img shape", x.shape, "crop_dim", rect_dim, "crop: H", offseth, ":", offseth+random_crop_size, ", W", offsetw, ":", offsetw+random_crop_size)
-    return x[offseth:offseth+random_crop_size, offsetw:offsetw+random_crop_size]
-
-
-def classify(classifier, filename, custom_size=None, input_classix=None):
-    if custom_size:
-        img = image.load_img(filename, target_size=(custom_size[0], custom_size[1]))
-    else:
-        img = image.load_img(filename)
-
-    img_array = image.img_to_array(img)
-    img_array_expandedim = np.expand_dims(img_array, axis=0)
-    img_array_preprocessed = clf_preprocess(img_array_expandedim)
-    clf = classifier.predict(img_array_preprocessed).flatten()
-    clf_ixmax = np.argmax(clf)
-    clf_labelmax = ix_to_class_name(clf_ixmax)
-    clf_scoremax = clf[clf_ixmax]
-
-    if input_classix:
-        clf_scoreinputix = clf[class_name_to_idx(input_classix)]
-        return (clf_ixmax, clf_labelmax, clf_scoremax, clf_scoreinputix)
-    else:
-        return (clf_ixmax, clf_labelmax, clf_scoremax)
-
-def resize_arrayimg(imgarray, new_width, new_height):
-    imgarray = image.array_to_img(imgarray)
-    imgarray = imgarray.resize((new_width, new_height), PIL.Image.BILINEAR)
-    imgarray = image.img_to_array(imgarray)
-    return imgarray
-
-
-# for key in classifiers:
-#     print("Validating model", key, "at", classifiers[key])
-#     classifiers[key].summary()
-#     dict_augmentation = dict(preprocessing_function=clf_preprocess)
-#     test_datagen = ImageDataGenerator(**dict_augmentation)
-#     validation_generator = test_datagen.flow_from_directory(
-#         'dataset-ethz101food/test',
-#         target_size=(wclf, hclf),
-#         batch_size=32,
-#         class_mode='categorical')
-#     classifiers[key].compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['categorical_accuracy', 'top_k_categorical_accuracy'])
-#     (loss, acc, top5acc) = classifiers[key].evaluate_generator(validation_generator, (instances_per_folder * folder_to_scan) // 32)
-#     print("[Model", key, "] test-set: loss={:.4f}, top-1 acc={:.4f}%, top-5 acc={:.4f}%".format(loss, acc * 100, top5acc * 100))
-#     dump_list.append(dict(
-#         model = key,
-#         loss = loss,
-#         acc = acc,
-#         top5acc = top5acc
-#     ))
-# with open("inceptions256testSet.json", "w+") as file:
-#     json.dump(dump_list, file, indent=2, sort_keys=True)
+# def get_random_crop(x, random_crop_size, sync_seed=None):
+#     np.random.seed(sync_seed)
+#     h, w = x.shape[0], x.shape[1]
+#     rangeh = (h - random_crop_size) // 2
+#     rangew = (w - random_crop_size) // 2
+#     offseth = 0 if rangeh == 0 else np.random.randint(rangeh)
+#     offsetw = 0 if rangew == 0 else np.random.randint(rangew)
+#     # print("img shape", x.shape, "crop_dim", rect_dim, "crop: H", offseth, ":", offseth+random_crop_size, ", W", offsetw, ":", offsetw+random_crop_size)
+#     return x[offseth:offseth+random_crop_size, offsetw:offsetw+random_crop_size]
 #
-
+#
+# def classify(classifier, filename, custom_size=None, input_classix=None):
+#     if custom_size:
+#         img = image.load_img(filename, target_size=(custom_size[0], custom_size[1]))
+#     else:
+#         img = image.load_img(filename)
+#
+#     img_array = image.img_to_array(img)
+#     img_array_expandedim = np.expand_dims(img_array, axis=0)
+#     img_array_preprocessed = clf_preprocess(img_array_expandedim)
+#     clf = classifier.predict(img_array_preprocessed).flatten()
+#     clf_ixmax = np.argmax(clf)
+#     clf_labelmax = ix_to_class_name(clf_ixmax)
+#     clf_scoremax = clf[clf_ixmax]
+#
+#     if input_classix:
+#         clf_scoreinputix = clf[class_name_to_idx(input_classix)]
+#         return (clf_ixmax, clf_labelmax, clf_scoremax, clf_scoreinputix)
+#     else:
+#         return (clf_ixmax, clf_labelmax, clf_scoremax)
+#
+# def resize_arrayimg(imgarray, new_width, new_height):
+#     imgarray = image.array_to_img(imgarray)
+#     imgarray = imgarray.resize((new_width, new_height), PIL.Image.BILINEAR)
+#     imgarray = image.img_to_array(imgarray)
+#     return imgarray
 
 # ciclo per un set di immagini
 # for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
