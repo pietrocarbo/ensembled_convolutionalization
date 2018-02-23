@@ -259,24 +259,44 @@ class_folders = os.listdir("dataset-ethz101food/" + set)
 folder_to_scan = 101
 instances_per_folder = 250
 
-from keras.applications.vgg16 import preprocess_input as clf_preprocess
+# from keras.applications.vgg16 import preprocess_input as clf_preprocess
+#
+# vgg16 = keras.applications.vgg16.VGG16(include_top=False, weights='imagenet', input_shape=(256, 256, 3))
+# x = GlobalAveragePooling2D()(vgg16.output)
+# out = Dense(101, activation='softmax', name='output_layer')(x)
+# vgg16 = Model(inputs=vgg16.input, outputs=out)
+# vgg16.load_weights("trained_models/top5_vgg16_acc77_2017-12-24/vgg16_ft_weights_acc0.78_e15_2017-12-23_22-53-03.hdf5")
+#
+# dict_augmentation = dict(preprocessing_function=clf_preprocess)
+# test_datagen = ImageDataGenerator(**dict_augmentation)
+# validation_generator = test_datagen.flow_from_directory(
+#     'dataset-ethz101food/test',
+#     target_size=(256, 256),
+#     batch_size=32,
+#     class_mode='categorical')
+# vgg16.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['categorical_accuracy', 'top_k_categorical_accuracy'])
+# (loss, acc, top5acc) = vgg16.evaluate_generator(validation_generator, (instances_per_folder * folder_to_scan) // 32)
+# print("[Model VGG16] test-set: loss={:.4f}, top-1 acc={:.4f}%, top-5 acc={:.4f}%".format(loss, acc * 100, top5acc * 100))
 
-vgg16 = keras.applications.vgg16.VGG16(include_top=False, weights='imagenet', input_shape=(256, 256, 3))
-x = GlobalAveragePooling2D()(vgg16.output)
+from keras.applications.xception import preprocess_input as clf_preprocess
+
+xception = keras.applications.xception.Xception(include_top=False, weights='imagenet', input_shape=(231, 231, 3))
+x = GlobalAveragePooling2D()(xception.output)
 out = Dense(101, activation='softmax', name='output_layer')(x)
-vgg16 = Model(inputs=vgg16.input, outputs=out)
-vgg16.load_weights("trained_models/top5_vgg16_acc77_2017-12-24/vgg16_ft_weights_acc0.78_e15_2017-12-23_22-53-03.hdf5")
+xception = Model(inputs=xception.input, outputs=out)
+xception.load_weights("trained_models/top1_xception_acc80_2017-12-25/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5")
 
 dict_augmentation = dict(preprocessing_function=clf_preprocess)
 test_datagen = ImageDataGenerator(**dict_augmentation)
 validation_generator = test_datagen.flow_from_directory(
     'dataset-ethz101food/test',
-    target_size=(256, 256),
+    target_size=(231, 231),
     batch_size=32,
     class_mode='categorical')
-vgg16.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['categorical_accuracy', 'top_k_categorical_accuracy'])
-(loss, acc, top5acc) = vgg16.evaluate_generator(validation_generator, (instances_per_folder * folder_to_scan) // 32)
-print("[Model VGG16] test-set: loss={:.4f}, top-1 acc={:.4f}%, top-5 acc={:.4f}%".format(loss, acc * 100, top5acc * 100))
+xception.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['categorical_accuracy', 'top_k_categorical_accuracy'])
+(loss, acc, top5acc) = xception.evaluate_generator(validation_generator, (instances_per_folder * folder_to_scan) // 32)
+print("[Model Xception] test-set: loss={:.4f}, top-1 acc={:.4f}%, top-5 acc={:.4f}%".format(loss, acc * 100, top5acc * 100))
+
 
 
 # FCN = [xceptionFCN, incresv2FCN, incv3FCN]
