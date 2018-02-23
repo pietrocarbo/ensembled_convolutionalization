@@ -178,23 +178,23 @@ def convolutionalize_incv3():
 # -----------------------------------
 # FCNs
 
-# vgg16FCN = convolutionalize_net(architecture_path="trained_models/top5_vgg16_acc77_2017-12-24/vgg16_architecture_2017-12-23_22-53-03.json",
-#                                 weigths_path="trained_models/top5_vgg16_acc77_2017-12-24/vgg16_ft_weights_acc0.78_e15_2017-12-23_22-53-03.hdf5",
-#                                 last_layer_name="block5_pool",
-#                                 pool_size=8)  # 7 default
+vgg16FCN = convolutionalize_net(architecture_path="trained_models/top5_vgg16_acc77_2017-12-24/vgg16_architecture_2017-12-23_22-53-03.json",
+                                weigths_path="trained_models/top5_vgg16_acc77_2017-12-24/vgg16_ft_weights_acc0.78_e15_2017-12-23_22-53-03.hdf5",
+                                last_layer_name="block5_pool",
+                                pool_size=7)
 # vgg16FCN.summary()
 
-# xceptionFCN = convolutionalize_net(architecture_path="trained_models/xception_architecture_2017-12-24_13-00-22.json",
-#                                    weigths_path="trained_models/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5",
-#                                    last_layer_name="block14_sepconv2_act",
-#                                    pool_size=10)
+xceptionFCN = convolutionalize_net(architecture_path="trained_models/xception_architecture_2017-12-24_13-00-22.json",
+                                   weigths_path="trained_models/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5",
+                                   last_layer_name="block14_sepconv2_act",
+                                   pool_size=10)
 # xceptionFCN.summary()
 
 
-# incresv2FCN = convolutionalize_incresv2()
+incresv2FCN = convolutionalize_incresv2()
 # incresv2FCN.summary()
 
-# incv3FCN = convolutionalize_incv3()
+incv3FCN = convolutionalize_incv3()
 # incv3FCN.summary()
 
 # model_list = [xceptionFCN, incresv2FCN, incv3FCN]
@@ -207,8 +207,8 @@ def convolutionalize_incv3():
 
 # -----------------------------------
 # CLASSIFIERS
-# for input_size in [166, 167, 168]:
-# wclf, hclf = (None, None)
+# for input_size in [225, 255]:
+# wclf, hclf = (input_size, input_size)
 
 # vgg19 = keras.applications.vgg19.VGG19(include_top=False, weights='imagenet', input_shape=(wclf, hclf, 3))
 # x = GlobalAveragePooling2D()(vgg19.output)
@@ -259,43 +259,43 @@ class_folders = os.listdir("dataset-ethz101food/" + set)
 folder_to_scan = 101
 instances_per_folder = 250
 
-# from keras.applications.vgg16 import preprocess_input as clf_preprocess
-#
-# vgg16 = keras.applications.vgg16.VGG16(include_top=False, weights='imagenet', input_shape=(256, 256, 3))
-# x = GlobalAveragePooling2D()(vgg16.output)
-# out = Dense(101, activation='softmax', name='output_layer')(x)
-# vgg16 = Model(inputs=vgg16.input, outputs=out)
-# vgg16.load_weights("trained_models/top5_vgg16_acc77_2017-12-24/vgg16_ft_weights_acc0.78_e15_2017-12-23_22-53-03.hdf5")
-#
-# dict_augmentation = dict(preprocessing_function=clf_preprocess)
-# test_datagen = ImageDataGenerator(**dict_augmentation)
-# validation_generator = test_datagen.flow_from_directory(
-#     'dataset-ethz101food/test',
-#     target_size=(256, 256),
-#     batch_size=32,
-#     class_mode='categorical')
-# vgg16.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['categorical_accuracy', 'top_k_categorical_accuracy'])
-# (loss, acc, top5acc) = vgg16.evaluate_generator(validation_generator, (instances_per_folder * folder_to_scan) // 32)
-# print("[Model VGG16] test-set: loss={:.4f}, top-1 acc={:.4f}%, top-5 acc={:.4f}%".format(loss, acc * 100, top5acc * 100))
+from keras.applications.vgg16 import preprocess_input as clf_preprocess
 
-from keras.applications.xception import preprocess_input as clf_preprocess
-
-xception = keras.applications.xception.Xception(include_top=False, weights='imagenet', input_shape=(231, 231, 3))
-x = GlobalAveragePooling2D()(xception.output)
+vgg16 = keras.applications.vgg16.VGG16(include_top=False, weights='imagenet', input_shape=(288, 288, 3))
+x = GlobalAveragePooling2D()(vgg16.output)
 out = Dense(101, activation='softmax', name='output_layer')(x)
-xception = Model(inputs=xception.input, outputs=out)
-xception.load_weights("trained_models/top1_xception_acc80_2017-12-25/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5")
+vgg16 = Model(inputs=vgg16.input, outputs=out)
+vgg16.load_weights("trained_models/top5_vgg16_acc77_2017-12-24/vgg16_ft_weights_acc0.78_e15_2017-12-23_22-53-03.hdf5")
 
 dict_augmentation = dict(preprocessing_function=clf_preprocess)
 test_datagen = ImageDataGenerator(**dict_augmentation)
 validation_generator = test_datagen.flow_from_directory(
     'dataset-ethz101food/test',
-    target_size=(231, 231),
+    target_size=(288, 288),
     batch_size=32,
     class_mode='categorical')
-xception.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['categorical_accuracy', 'top_k_categorical_accuracy'])
-(loss, acc, top5acc) = xception.evaluate_generator(validation_generator, (instances_per_folder * folder_to_scan) // 32)
-print("[Model Xception] test-set: loss={:.4f}, top-1 acc={:.4f}%, top-5 acc={:.4f}%".format(loss, acc * 100, top5acc * 100))
+vgg16.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['categorical_accuracy', 'top_k_categorical_accuracy'])
+(loss, acc, top5acc) = vgg16.evaluate_generator(validation_generator, (instances_per_folder * folder_to_scan) // 32)
+print("[Model VGG16] test-set: loss={:.4f}, top-1 acc={:.4f}%, top-5 acc={:.4f}%".format(loss, acc * 100, top5acc * 100))
+
+# from keras.applications.xception import preprocess_input as clf_preprocess
+#
+# xception = keras.applications.xception.Xception(include_top=False, weights='imagenet', input_shape=(231, 231, 3))
+# x = GlobalAveragePooling2D()(xception.output)
+# out = Dense(101, activation='softmax', name='output_layer')(x)
+# xception = Model(inputs=xception.input, outputs=out)
+# xception.load_weights("trained_models/top1_xception_acc80_2017-12-25/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5")
+#
+# dict_augmentation = dict(preprocessing_function=clf_preprocess)
+# test_datagen = ImageDataGenerator(**dict_augmentation)
+# validation_generator = test_datagen.flow_from_directory(
+#     'dataset-ethz101food/test',
+#     target_size=(231, 231),
+#     batch_size=32,
+#     class_mode='categorical')
+# xception.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['categorical_accuracy', 'top_k_categorical_accuracy'])
+# (loss, acc, top5acc) = xception.evaluate_generator(validation_generator, (instances_per_folder * folder_to_scan) // 32)
+# print("[Model Xception] test-set: loss={:.4f}, top-1 acc={:.4f}%, top-5 acc={:.4f}%".format(loss, acc * 100, top5acc * 100))
 
 
 
@@ -319,25 +319,23 @@ def predict(model, input_size):
     preds = model.predict(input_preprocessed_image)
     return preds
 
-# input_size = 224
-# preds = predict(vgg16FCN, input_size)
-# print("VGG16: input_img shape (height, width)", input_size, "-> preds shape", preds.shape)
+initial_size_vgg = 224
+initial_size_xce = 295
+initial_size_inc = 299
+inc_list = [0, 32, 64, 96, 160, 224, 288, 384, 512]
 
-# input_size = 256  # 224,
-# preds = predict(vgg16FCN, input_size)
-# print("VGG16: input_img shape (height, width)", input_size, "-> preds shape", preds.shape)
-
-# input_size = 327  # 295
-# preds = predict(xceptionFCN, input_size)
-# print("Xception: input_img shape (height, width)", input_size, "-> preds shape", preds.shape)
+# for inc in inc_list:
+#     preds = predict(vgg16FCN, initial_size_vgg + inc)
+#     print("VGG16: input_img shape (height, width)", initial_size_vgg + inc, "-> preds shape", preds.shape)
 #
-# input_size = 331  # 299
-# preds = predict(incresv2FCN, input_size)
-# print("IncResNetV2: input_img shape (height, width)", input_size, "-> preds shape", preds.shape)
+#     preds = predict(xceptionFCN, initial_size_xce + inc)
+#     print("Xception: input_img shape (height, width)", initial_size_xce + inc, "-> preds shape", preds.shape)
 #
-# input_size = 331  # 299
-# preds = predict(incv3FCN, input_size)
-# print("InceptionV3: input_img shape (height, width)", input_size, "-> preds shape", preds.shape)
+#     preds = predict(incresv2FCN, initial_size_inc + inc)
+#     print("IncResNetV2: input_img shape (height, width)", initial_size_inc + inc, "-> preds shape", preds.shape)
+#
+#     preds = predict(incv3FCN, initial_size_inc + inc)
+#     print("InceptionV3: input_img shape (height, width)", initial_size_inc + inc, "-> preds shape", preds.shape)
 #
 
 # fig, (ax0, ax1, ax2) = plt.subplots(1, 3) #, figsize=(8, 8))
