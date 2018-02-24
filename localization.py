@@ -204,7 +204,6 @@ incv3FCN = convolutionalize_incv3()
 # ensemble = Model(inputs=ensemble_input, outputs=ensemble_output)
 # ensemble.summary()
 
-
 # -----------------------------------
 # CLASSIFIERS
 # for input_size in [225, 255]:
@@ -336,7 +335,6 @@ inc_list = [0, 32, 64, 96, 160, 224, 288, 384, 512]
 #
 #     preds = predict(incv3FCN, initial_size_inc + inc)
 #     print("InceptionV3: input_img shape (height, width)", initial_size_inc + inc, "-> preds shape", preds.shape)
-#
 
 # fig, (ax0, ax1, ax2) = plt.subplots(1, 3) #, figsize=(8, 8))
 # ax0.set_title("FCN crop")
@@ -370,75 +368,75 @@ def save_map(heatmap, resultfname, input_size, tick_interval=None, is_input_img=
 def traslation(heat_coord, factor, fcn_stride=32):
     return(int(fcn_stride * heat_coord / factor))
 
-# def process_image(input_img_reference, input_fn, input_ix, crop_policy):
-#     results = []
-#     if (os.path.exists(input_fn)):
-#         scale_factor = float(fcn_window) / min(input_img_reference.shape[0], input_img_reference.shape[1])
-#
-#         while scale_factor < max_scale_factor:
-#             img_size = (int(max(fcn_window, input_img_reference.shape[0] * scale_factor)),
-#                         int(max(fcn_window, input_img_reference.shape[1] * scale_factor)))
-#             input_img = image.load_img(input_fn, target_size=img_size)
-#             input_img = image.img_to_array(input_img)
-#             input_image_expandedim = np.expand_dims(input_img, axis=0)
-#             input_preprocessed_image = fcn_preprocess(input_image_expandedim)
-#             preds = FCN.predict(input_preprocessed_image)
-#             # print("scale:", scale_factor, "input_img shape (height, width)", input_img.shape, "-> preds shape", preds.shape)
-#
-#             # valore default alla scala di base
-#             if results == []:
-#                 heatmap_values = preds[0, :, :, input_ix]
-#                 max_heatmap = np.amax(heatmap_values)
-#                 max_coordinates = np.unravel_index(np.argmax(heatmap_values, axis=None), heatmap_values.shape)
-#
-#                 crop_heatmaps = preds[0, max_coordinates[0], max_coordinates[1], :]
-#                 max_crop = np.amax(crop_heatmaps)
-#                 max_crop_ix = np.argmax(crop_heatmaps)
-#
-#                 results.append((scale_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates,
-#                                 max_crop, max_crop_ix))
-#
-#             # stop al primo crop che è massimo per la classe input_ix
-#             if crop_policy == "max_input_ix":
-#                 seg_map = np.argmax(preds[0], axis=2)
-#                 bool_map_ix = seg_map == input_ix
-#                 if np.any(bool_map_ix):
-#                     heatmaps_values = preds[0, :, :, input_ix]
-#                     max_heatmap = np.amax(heatmaps_values)
-#                     max_coordinates = np.unravel_index(np.argmax(heatmaps_values, axis=None), heatmaps_values.shape)
-#
-#                     results.append((scale_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates,
-#                                     max_heatmap, input_ix))
-#                     # print("crop max_input_ix found:", results[-1])
-#                     break
-#
-#             # stop al primo crop >= 0.5 per la classe input_ix
-#             elif crop_policy == "input_ix>=0.5":
-#                 heatmaps_values = preds[0, :, :, input_ix]
-#                 max_heatmap = np.amax(heatmaps_values)
-#                 if max_heatmap >= 0.5:
-#                     max_coordinates = np.unravel_index(np.argmax(heatmaps_values, axis=None), heatmaps_values.shape)
-#
-#                     crop_heatmaps = preds[0, max_coordinates[0], max_coordinates[1], :]
-#                     max_crop = np.amax(crop_heatmaps)
-#                     max_crop_ix = np.argmax(crop_heatmaps)
-#
-#                     results.append((scale_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates,
-#                                     max_crop, max_crop_ix))
-#                     # print("crop input_ix>=0.5 found:", results[-1])
-#                     break
-#
-#             else:
-#                 print("Unspecified crop policy. Exiting.")
-#                 exit(-1)
-#
-#             scale_factor *= upsampling_step
-#     else:
-#         print ("The specified image " + input_fn + " does not exist")
-#
-#     # if len(results) == 1:
-#     #     print("crop default", results[0])
-#     return results
+def process_image(input_img_reference, input_fn, input_ix, crop_policy):
+    results = []
+    if (os.path.exists(input_fn)):
+        scale_factor = float(fcn_window) / min(input_img_reference.shape[0], input_img_reference.shape[1])
+
+        while scale_factor < max_scale_factor:
+            img_size = (int(max(fcn_window, input_img_reference.shape[0] * scale_factor)),
+                        int(max(fcn_window, input_img_reference.shape[1] * scale_factor)))
+            input_img = image.load_img(input_fn, target_size=img_size)
+            input_img = image.img_to_array(input_img)
+            input_image_expandedim = np.expand_dims(input_img, axis=0)
+            input_preprocessed_image = fcn_preprocess(input_image_expandedim)
+            preds = FCN.predict(input_preprocessed_image)
+            # print("scale:", scale_factor, "input_img shape (height, width)", input_img.shape, "-> preds shape", preds.shape)
+
+            # valore default alla scala di base
+            if results == []:
+                heatmap_values = preds[0, :, :, input_ix]
+                max_heatmap = np.amax(heatmap_values)
+                max_coordinates = np.unravel_index(np.argmax(heatmap_values, axis=None), heatmap_values.shape)
+
+                crop_heatmaps = preds[0, max_coordinates[0], max_coordinates[1], :]
+                max_crop = np.amax(crop_heatmaps)
+                max_crop_ix = np.argmax(crop_heatmaps)
+
+                results.append((scale_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates,
+                                max_crop, max_crop_ix))
+
+            # stop al primo crop che è massimo per la classe input_ix
+            if crop_policy == "max_input_ix":
+                seg_map = np.argmax(preds[0], axis=2)
+                bool_map_ix = seg_map == input_ix
+                if np.any(bool_map_ix):
+                    heatmaps_values = preds[0, :, :, input_ix]
+                    max_heatmap = np.amax(heatmaps_values)
+                    max_coordinates = np.unravel_index(np.argmax(heatmaps_values, axis=None), heatmaps_values.shape)
+
+                    results.append((scale_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates,
+                                    max_heatmap, input_ix))
+                    # print("crop max_input_ix found:", results[-1])
+                    break
+
+            # stop al primo crop >= 0.5 per la classe input_ix
+            elif crop_policy == "input_ix>=0.5":
+                heatmaps_values = preds[0, :, :, input_ix]
+                max_heatmap = np.amax(heatmaps_values)
+                if max_heatmap >= 0.5:
+                    max_coordinates = np.unravel_index(np.argmax(heatmaps_values, axis=None), heatmaps_values.shape)
+
+                    crop_heatmaps = preds[0, max_coordinates[0], max_coordinates[1], :]
+                    max_crop = np.amax(crop_heatmaps)
+                    max_crop_ix = np.argmax(crop_heatmaps)
+
+                    results.append((scale_factor, (preds.shape[1], preds.shape[2]), max_heatmap, max_coordinates,
+                                    max_crop, max_crop_ix))
+                    # print("crop input_ix>=0.5 found:", results[-1])
+                    break
+
+            else:
+                print("Unspecified crop policy. Exiting.")
+                exit(-1)
+
+            scale_factor *= upsampling_step
+    else:
+        print ("The specified image " + input_fn + " does not exist")
+
+    # if len(results) == 1:
+    #     print("crop default", results[0])
+    return results
 
 # def get_random_crop(x, random_crop_size, sync_seed=None):
 #     np.random.seed(sync_seed)
