@@ -27,6 +27,7 @@ def ix_to_class_name(idx):
     with open("dataset-ethz101food/meta/classes.txt") as file:
         class_labels = [line.strip('\n') for line in file.readlines()]
     return class_labels[idx]
+
 def class_name_to_idx(name):
     with open("dataset-ethz101food/meta/classes.txt") as file:
         class_labels = [line.strip('\n') for line in file.readlines()]
@@ -36,11 +37,13 @@ def class_name_to_idx(name):
         else:
             print("class idx not found!")
             exit(-1)
+
 def threshold_max(rst_list, threshold=0.5):
     for ix, rst in enumerate(rst_list):
         if rst[2] > threshold:
             return ix
     return 0
+
 def factor_weighted_max(rst_list, weight=1.25):
     max_ix = 0
     max_score = 0
@@ -51,6 +54,7 @@ def factor_weighted_max(rst_list, weight=1.25):
             max_score = score
             max_ix = ix
     return max_ix
+
 def prepare_str_file_architecture_syntax(filepath):
     model_str = str(json.load(open(filepath, "r")))
     model_str = model_str.replace("'", '"')
@@ -197,35 +201,51 @@ incv3FCN = convolutionalize_incv3()
 # incv3FCN.summary()
 
 def predict(model, filename, input_size, preprocess):
-    input_img = image.load_img(filename, target_size=(input_size, input_size))
+    input_img = image.load_img(filename, target_size=input_size)
     input_img = image.img_to_array(input_img)
     input_image_expandedim = np.expand_dims(input_img, axis=0)
     input_preprocessed_image = preprocess(input_image_expandedim)
     preds = model.predict(input_preprocessed_image)
     return preds
 
-inc_list = [0, 32, 64, 96, 160, 224, 288, 384, 512]
-initial_sizes = [288, 295, 299, 299]
+max_scale_factor = 3 
+upsampling_step = 1.2
+
+#inc_list = [0, 32, 64, 96, 160, 224, 288, 384, 512]
+kernel_sizes = [288, 295, 299, 299]
 FCNs = [vgg16FCN, xceptionFCN, incresv2FCN, incv3FCN]
 preprocess_func = [  keras.applications.vgg16.preprocess_input
                    , keras.applications.xception.preprocess_input
                    , keras.applications.inception_resnet_v2.preprocess_input
                    , keras.applications.inception_v3.preprocess_input]
 
+def dim_size(w,k,s):
+  return((w-k)//s)
+        
 def process_image(input_fn, input_cix):
-
     results = []
     if (os.path.exists(input_fn)):
 
-        for increment in inc_list:
-
-            # cerchiamo a questo increment il crop che ha il numero massimo di croppatori che lo classificano come classe input_ix
+        while scale_factor < max_scale_factor:
+            #definiamo la dimensione attesa della heatmap a questa scala
+            #usando il kernel del primo fcn
+            #riscaleremo poi le immagini alle dimensioni giuste per gli
+            #altri cropper, im modo da avere in output un heatmap della
+            #dimensione prevista
+            base_kernel_size = kernel_sizes[0]
+            img = image.load_img(input_fn)
+            scale_factor = float(base_kernel_size) / min(img.shape[0], img.shape[1])
+            heat_map_w = dim_size(int(round(img.shape[0]*scale_factor)),base_kernel_size,32)
+            heat_map_h = dim_size(int(round(img.shape[1]*scale_factor)),base_kernel_size,32)    
+            print(heat_map_w,heat_map_h)
+            
+            # cerchiamo a questa scala il crop che ha il numero massimo di croppatori che lo classificano come classe input_ix
             heatmaps = []
             bool_cix_maps = []
             for ix, fcn in enumerate(FCNs):
-
-                img_size = initial_sizes[ix] + increment
-                heatmaps.append(predict(fcn, input_fn, img_size, preprocess_func[ix])[0])
+                new_dim_w = kernel_sizes[ix]+(heat_map_w-1)*32
+                new_dim_h = kernel_sizes[ix]+(heat_map_h-1)*32
+                heatmaps.append(predict(fcn, input_fn, (new_dim_w,new_dim_h), preprocess_func[ix])[0])
 
                 bool_cix_map = np.argmax(heatmaps[-1], axis=2) == input_cix
                 bool_cix_maps.append(bool_cix_map)
@@ -250,9 +270,9 @@ def process_image(input_fn, input_cix):
             best_crop_ix = ordpositions[-1]
             best_crop_score = sum_crop_score(best_crop_ix) / 4
 
-            results.append((increment, heatmaps[-1].shape[0:1], best_crop_ix, best_crop_score, maxcn))
-            # si passa ora al prossimo increment
-
+            results.append((scale_factor, heatmaps[-1].shape[0:1], best_crop_ix, best_crop_score, maxcn))
+            # si passa ora alla prossima scala
+            scale_factor *= upsampling_step
         for result in results:
             print(result)
         print("\n")
