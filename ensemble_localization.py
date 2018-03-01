@@ -227,6 +227,8 @@ def dim_size(w,k,s):
 def process_image(input_fn, input_cix):
     results = []
     if (os.path.exists(input_fn)):
+        img = image.load_img(input_fn)
+        scale_factor = float(base_kernel_size) / min(img.shape[0], img.shape[1])
 
         while scale_factor < max_scale_factor:
             #definiamo la dimensione attesa della heatmap a questa scala
@@ -235,8 +237,6 @@ def process_image(input_fn, input_cix):
             #altri cropper, im modo da avere in output un heatmap della
             #dimensione prevista
             base_kernel_size = kernel_sizes[0]
-            img = image.load_img(input_fn)
-            scale_factor = float(base_kernel_size) / min(img.shape[0], img.shape[1])
             heat_map_w = dim_size(int(round(img.shape[0]*scale_factor)),base_kernel_size,32)
             heat_map_h = dim_size(int(round(img.shape[1]*scale_factor)),base_kernel_size,32)    
             print(heat_map_w,heat_map_h)
@@ -258,7 +258,7 @@ def process_image(input_fn, input_cix):
                 ncix_max_map += bool_cix_map
 
             maxcn = np.max(ncix_max_map)    # valore massimo della mappa ncix_max_map
-            positions = np.nonzero(ncix_max_map == maxcn)  # tupla con indici relativi a ncix_max_map dove e' presente il valore maxcn
+            positions = np.nonzero(ncix_max_map == maxcn)  # tupla con indici relativi a ncix_max_map dove è presente il valore maxcn
             positions = list(zip(positions[0], positions[1]))
             # print(positions)
 
@@ -284,6 +284,24 @@ def process_image(input_fn, input_cix):
 
     return results
 
+def best_crop(res_list):
+    #seleziona il nest crop della return list
+    def mykey(factor, (hdim, wdim), (hcoordh, hcoordw), score, cn_no):
+      return (cn_no, score)
+    sort_list = sorted(res_list, key=mykey)
+    return(sort_list[-1])
+
+def traslation(heat_coord, factor, fcn_stride=32):
+    return(int(fcn_stride * heat_coord / factor))
+    
+        # # if hdim > 1 or wdim > 1:
+        # #     countCnb +=1
+        # #     factorCnb += rst_list[-1][0]
+        # #     print("n.", count, "img:", filename, "rst_list (len", len(rst_list), ")", rst_list)
+        # rect_dim = int(fcn_window / factor)
+        # coordh = traslation(hcoordh, factor)
+        # coordw = traslation(hcoordw, factor)
+        
 set = "test"
 class_folders = os.listdir(dataset_path + set)
 folder_to_scan = 5
@@ -293,4 +311,16 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
     instances = os.listdir("dataset-ethz101food/" + set + "/" + class_folder)
     for i_instance, instance in enumerate(instances[0:instances_per_folder]):
         filename = "dataset-ethz101food/" + set + "/" + class_folder + "/" + instance
-        process_image(filename, class_name_to_idx(class_folder))
+        res_list = process_image(filename, class_name_to_idx(class_folder))
+        factor, (hdim, wdim), (hcoordh, hcoordw), score, cn_no) = best_crop(res_list)
+        coordh = traslation(hcoordh, factor)
+        coordw = traslation(hcoordw, factor)
+
+        if True: #set to True to draw
+          img = image.load_img(input_fn)
+          rect_dim = int(fcn_window / factor)
+          fig = plt.figure()
+          fig.imshow(img / 255.)
+          rect = patches.Rectangle((coordw, coordh), rect_dim, rect_dim, linewidth=1, edgecolor='r', facecolor='none')
+          fig.add_patch(rect)
+          plt.show()
