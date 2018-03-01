@@ -23,13 +23,15 @@ from PIL import Image
 from keras.preprocessing import image
 from keras.preprocessing.image import ImageDataGenerator
 
+dataset_path = "dataset-ethz101food/"
+
 def ix_to_class_name(idx):
-    with open("dataset-ethz101food/meta/classes.txt") as file:
+    with open(dataset_path + "meta/classes.txt") as file:
         class_labels = [line.strip('\n') for line in file.readlines()]
     return class_labels[idx]
 
 def class_name_to_idx(name):
-    with open("dataset-ethz101food/meta/classes.txt") as file:
+    with open(dataset_path + "meta/classes.txt") as file:
         class_labels = [line.strip('\n') for line in file.readlines()]
         for i, label_name in enumerate(class_labels):
             if label_name == name:
@@ -256,7 +258,7 @@ def process_image(input_fn, input_cix):
                 ncix_max_map += bool_cix_map
 
             maxcn = np.max(ncix_max_map)    # valore massimo della mappa ncix_max_map
-            positions = np.nonzero(ncix_max_map == maxcn)  # tupla con indici relativi a ncix_max_map dove è presente il valore maxcn
+            positions = np.nonzero(ncix_max_map == maxcn)  # tupla con indici relativi a ncix_max_map dove e' presente il valore maxcn
             positions = list(zip(positions[0], positions[1]))
             # print(positions)
 
@@ -283,7 +285,7 @@ def process_image(input_fn, input_cix):
     return results
 
 set = "test"
-class_folders = os.listdir("dataset-ethz101food/" + set)
+class_folders = os.listdir(dataset_path + set)
 folder_to_scan = 5
 instances_per_folder = 1
 # "dataset-ethz101food/train/cup_cakes/46500.jpg"
