@@ -285,8 +285,8 @@ def process_image(input_fn, input_cix):
     return results
 
 def best_crop(res_list):
-    #seleziona il nest crop della return list
-    def mykey(factor, (hdim, wdim), (hcoordh, hcoordw), score, cn_no):
+    #seleziona il best crop della return list
+    def mykey(factor, dims, hdims, score, cn_no):
       return (cn_no, score)
     sort_list = sorted(res_list, key=mykey)
     return(sort_list[-1])
