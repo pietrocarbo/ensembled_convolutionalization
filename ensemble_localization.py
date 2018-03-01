@@ -23,7 +23,8 @@ from PIL import Image
 from keras.preprocessing import image
 from keras.preprocessing.image import ImageDataGenerator
 
-dataset_path = "/home/pbattilana/project_machine_learning/dataset-ethz101food/"
+# dataset_path = "/home/pbattilana/project_machine_learning/dataset-ethz101food/"
+dataset_path = "C:\\Users\\Pietro\\Desktop\\Machine Learning\\Progetto\\project_machine_learning\\dataset-ethz101food\\"
 
 def ix_to_class_name(idx):
     with open(dataset_path + "meta/classes.txt") as file:
@@ -210,9 +211,6 @@ def predict(model, filename, input_size, preprocess):
     preds = model.predict(input_preprocessed_image)
     return preds
 
-max_scale_factor = 3
-upsampling_step = 1.2
-
 #inc_list = [0, 32, 64, 96, 160, 224, 288, 384, 512]
 kernel_sizes = [288, 295, 299, 299]
 FCNs = [vgg16FCN, xceptionFCN, incresv2FCN, incv3FCN]
@@ -224,37 +222,35 @@ preprocess_func = [  keras.applications.vgg16.preprocess_input
 def dim_size(w,k,s):
   return((w-k)//s +1)
         
-def process_image(input_fn, input_cix):
+def process_image(input_fn, input_cix, img_shape, upsampling_step = 1.2, max_scale_factor = 3):
     results = []
     if (os.path.exists(input_fn)):
-        img = image.load_img(input_fn)
-        img = image.img_to_array(img)
-        base_kernel_size = 295 #any of the kernels would do
-        scale_factor = float(base_kernel_size) / min(img.shape[0], img.shape[1])
+        base_kernel_size = 295 # any of the kernels would do
+        scale_factor = float(base_kernel_size) / min(img_shape[0], img_shape[1])
 
         while scale_factor < max_scale_factor:
-            #definiamo la dimensione attesa della heatmap a questa scala
-            #usando il kernel del primo fcn
-            #riscaleremo poi le immagini alle dimensioni giuste per gli
-            #altri cropper, im modo da avere in output un heatmap della
-            #dimensione prevista
+            # definiamo la dimensione attesa della heatmap a questa scala usando il kernel del primo fcn
+            # riscaleremo poi le immagini alle dimensioni giuste per gli altri cropper,
+            # in modo da avere in output un heatmap della dimensione prevista
             base_kernel_size = kernel_sizes[0]
-            heat_map_w = dim_size(int(round(img.shape[0]*scale_factor)),base_kernel_size,32)
-            heat_map_h = dim_size(int(round(img.shape[1]*scale_factor)),base_kernel_size,32)    
-            print(heat_map_w,heat_map_h)
+            heatmap_h = dim_size(round(img_shape[0]*scale_factor), base_kernel_size, 32)
+            heatmap_w = dim_size(round(img_shape[1]*scale_factor), base_kernel_size, 32)
+            print("Heatmapdim scale:", heatmap_h, heatmap_w)
             
             # cerchiamo a questa scala il crop che ha il numero massimo di croppatori che lo classificano come classe input_ix
             heatmaps = []
             bool_cix_maps = []
             for ix, fcn in enumerate(FCNs):
-                new_dim_w = kernel_sizes[ix]+(heat_map_w-1)*32
-                new_dim_h = kernel_sizes[ix]+(heat_map_h-1)*32
-                heatmaps.append(predict(fcn, input_fn, (new_dim_w,new_dim_h), preprocess_func[ix])[0])
+                scaled_w = kernel_sizes[ix] + (heatmap_w-1)*32
+                scaled_h = kernel_sizes[ix] + (heatmap_h-1)*32
+                print("Scaled dim:", scaled_h, scaled_w)
+
+                heatmaps.append(predict(fcn, input_fn, (scaled_h, scaled_w), preprocess_func[ix])[0])
 
                 bool_cix_map = np.argmax(heatmaps[-1], axis=2) == input_cix
                 bool_cix_maps.append(bool_cix_map)
 
-            # ncix_max_map e la mappa che mi dice quanti croppatori hanno classificato un crop come input_ix. ha valori da 0 a 4 quindi
+            # ncix_max_map è la mappa che mi dice quanti croppatori hanno classificato un crop come input_ix. ha valori da 0 a 4 quindi
             ncix_max_map = np.zeros(bool_cix_maps[-1].shape, dtype=int)
             for bool_cix_map in bool_cix_maps:
                 ncix_max_map += bool_cix_map
@@ -273,10 +269,13 @@ def process_image(input_fn, input_cix):
             ordpositions = sorted(positions, key=sum_crop_score)
             best_crop_ix = ordpositions[-1]
             best_crop_score = sum_crop_score(best_crop_ix) / 4
-            correct_fcn = [bool_cix_map[best_crop_ix[0],best_crop_ix[1]] for bool_cix_map in bool_cix_maps]
-            results.append((scale_factor, heatmaps[-1].shape[0:2], best_crop_ix, correct_fcn, best_crop_score, maxcn))
+            correct_fcn = [bool_cix_map[best_crop_ix[0], best_crop_ix[1]] for bool_cix_map in bool_cix_maps] # array booleano
+            results.append({"factor": scale_factor, "heatmap_shape": heatmaps[-1].shape[0:2], "ix": best_crop_ix,
+                            "score": best_crop_score, "nfcn_clf_ix": maxcn, "fcn_clf_ix":correct_fcn})
+
             # si passa ora alla prossima scala
             scale_factor *= upsampling_step
+
         for result in results:
             print(result)
         print("\n")
@@ -286,44 +285,40 @@ def process_image(input_fn, input_cix):
 
     return results
 
-def best_crop(res_list):
-    #seleziona il best crop della return list
-    def mykey(x):
-      factor, dims, hdims, _, score, cn_no = x
-      return (cn_no, score)
-    sort_list = sorted(res_list, key=mykey)
-    return(sort_list[-1])
+# seleziona il best crop della return list
+def select_best_crop(res_list):
+    sort_list = sorted(res_list, key=lambda res: (res["nfcn_clf_ix"], res["score"]), reverse=True)
+    return(sort_list[0])
 
 def traslation(heat_coord, factor, fcn_stride=32):
     return(int(fcn_stride * heat_coord / factor))
-    
-        # # if hdim > 1 or wdim > 1:
-        # #     countCnb +=1
-        # #     factorCnb += rst_list[-1][0]
-        # #     print("n.", count, "img:", filename, "rst_list (len", len(rst_list), ")", rst_list)
-        # rect_dim = int(fcn_window / factor)
-        # coordh = traslation(hcoordh, factor)
-        # coordw = traslation(hcoordw, factor)
-        
+
 set = "test"
 class_folders = os.listdir(dataset_path + set)
 folder_to_scan = 5
 instances_per_folder = 1
-# "dataset-ethz101food/train/cup_cakes/46500.jpg"
 for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
     instances = os.listdir(dataset_path + set + "/" + class_folder)
     for i_instance, instance in enumerate(instances[0:instances_per_folder]):
         filename = dataset_path + set + "/" + class_folder + "/" + instance
-        res_list = process_image(filename, class_name_to_idx(class_folder))
-        factor, (hdim, wdim), (hcoordh, hcoordw), correct_fcn, score, cn_no = best_crop(res_list)
-        coordh = traslation(hcoordh, factor)
-        coordw = traslation(hcoordw, factor)
-        rect_dim = int(295 / factor)
-        
+        # filename = "dataset-ethz101food/train/cup_cakes/46500.jpg"
+
+        img = image.load_img(filename)
+        img = image.img_to_array(img)
+        imgh, imgw = img.shape[0:2]
+
+        res_list = process_image(filename, class_name_to_idx(class_folder), (imgh, imgw))
+        crop = select_best_crop(res_list)  # factor, (hdim, wdim), (hcoordh, hcoordw), correct_fcn, score, cn_no
+        coordh = traslation(crop["ix"][0], crop["factor"])
+        coordw = traslation(crop["ix"][1], crop["factor"])
+        rect_dim = int(295 / crop["factor"])
+
+        print("Max confidence", crop["score"], "at scale", crop["factor"],
+              "heatmap crop", (crop["ix"][0], crop["ix"][1]), "in range [" + str(crop["heatmap_shape"][0]) + ", " + str(crop["heatmap_shape"][1]) + "] ->",
+              "relative img point", (coordh, coordw), "in range [" + str(imgh)+ ", " + str(imgw) + "]")
+
         if True: #set to True to draw
-          img = image.load_img(filename)
-          img = image.img_to_array(img)
-          fig,ax = plt.subplots(1)
+          fig, ax = plt.subplots(1)
           ax.imshow(img / 255.)
           rect = patches.Rectangle((coordw, coordh), rect_dim, rect_dim, linewidth=2, edgecolor='b', facecolor='none')
           ax.add_patch(rect)
