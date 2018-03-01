@@ -210,7 +210,7 @@ def predict(model, filename, input_size, preprocess):
     preds = model.predict(input_preprocessed_image)
     return preds
 
-max_scale_factor = 3 
+max_scale_factor = 1.2 
 upsampling_step = 1.2
 
 #inc_list = [0, 32, 64, 96, 160, 224, 288, 384, 512]
@@ -312,7 +312,7 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
     for i_instance, instance in enumerate(instances[0:instances_per_folder]):
         filename = "dataset-ethz101food/" + set + "/" + class_folder + "/" + instance
         res_list = process_image(filename, class_name_to_idx(class_folder))
-        factor, (hdim, wdim), (hcoordh, hcoordw), score, cn_no) = best_crop(res_list)
+        factor, (hdim, wdim), (hcoordh, hcoordw), score, cn_no = best_crop(res_list)
         coordh = traslation(hcoordh, factor)
         coordw = traslation(hcoordw, factor)
 
@@ -320,7 +320,7 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
           img = image.load_img(input_fn)
           rect_dim = int(fcn_window / factor)
           fig = plt.figure()
-          fig.imshow(img / 255.)
+          plt.imshow(img / 255.)
           rect = patches.Rectangle((coordw, coordh), rect_dim, rect_dim, linewidth=1, edgecolor='r', facecolor='none')
           fig.add_patch(rect)
           plt.show()
