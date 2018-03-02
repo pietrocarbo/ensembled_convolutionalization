@@ -227,8 +227,9 @@ def process_image(input_fn, input_cix, img_shape, upsampling_step = 1.2, max_sca
     if (os.path.exists(input_fn)):
         base_kernel_size = 295 # any of the kernels would do
         scale_factor = float(base_kernel_size) / min(img_shape[0], img_shape[1])
-
-        while scale_factor < max_scale_factor:
+        maxcn = 0
+        
+        while scale_factor < max_scale_factor and maxcn < 4:
             # definiamo la dimensione attesa della heatmap a questa scala usando il kernel del primo fcn
             # riscaleremo poi le immagini alle dimensioni giuste per gli altri cropper,
             # in modo da avere in output un heatmap della dimensione prevista
