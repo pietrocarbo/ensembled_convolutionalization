@@ -23,8 +23,8 @@ from PIL import Image
 from keras.preprocessing import image
 from keras.preprocessing.image import ImageDataGenerator
 
-# dataset_path = "/home/pbattilana/project_machine_learning/dataset-ethz101food/"
-dataset_path = "C:\\Users\\Pietro\\Desktop\\Machine Learning\\Progetto\\project_machine_learning\\dataset-ethz101food\\"
+dataset_path = "/home/pbattilana/project_machine_learning/dataset-ethz101food/"
+#dataset_path = "C:\\Users\\Pietro\\Desktop\\Machine Learning\\Progetto\\project_machine_learning\\dataset-ethz101food\\"
 
 def ix_to_class_name(idx):
     with open(dataset_path + "meta/classes.txt") as file:
@@ -163,13 +163,13 @@ def convolutionalize_incv3():
 
     x = AveragePooling2D(pool_size=(8, 8), strides=(1, 1))(last_layer.output)
 
-    x = Conv2D(1024, (1, 1), strides=(1, 1), activation='softmax', padding='valid', weights=[W1, b1],
+    x = Conv2D(1024, (1, 1), strides=(1, 1), padding='valid', weights=[W1, b1],
                name="conv2d_fcn1")(x)
     x = LeakyReLU()(x)
     x = BatchNormalization()(x)
     x = Dropout(0.5)(x)
 
-    x = Conv2D(512, (1, 1), strides=(1, 1), activation='softmax', padding='valid', weights=[W2, b2],
+    x = Conv2D(512, (1, 1), strides=(1, 1), padding='valid', weights=[W2, b2],
                name="conv2d_fcn2")(x)
     x = LeakyReLU()(x)
     x = BatchNormalization()(x)
