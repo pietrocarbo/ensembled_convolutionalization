@@ -146,11 +146,14 @@ def convolutionalize_incv3():
     incv3 = Model(inputs=incv3.input, outputs=out)
     incv3.load_weights(
         "trained_models/top3_inceptionv3_acc79_2017-12-27/inceptionv3_ft_weights_acc0.79_e10_2017-12-25_22-10-02.hdf5")
-    # incv3.summary()
+    incv3.summary()
 
     W1, b1 = incv3.get_layer("dense_1").get_weights()
     W2, b2 = incv3.get_layer("dense_2").get_weights()
     W3, b3 = incv3.get_layer("output_layer").get_weights()
+
+    BN1 = incv3.get_layer("batch_normalization_298").get_weights()
+    BN2 = incv3.get_layer("batch_normalization_299").get_weights()
 
     W1 = W1.reshape((1, 1, 2048, 1024))
     W2 = W2.reshape((1, 1, 1024, 512))
@@ -166,13 +169,13 @@ def convolutionalize_incv3():
     x = Conv2D(1024, (1, 1), strides=(1, 1), padding='valid', weights=[W1, b1],
                name="conv2d_fcn1")(x)
     x = LeakyReLU()(x)
-    x = BatchNormalization()(x)
+    x = BatchNormalization(weights=BN1)(x)
     x = Dropout(0.5)(x)
 
     x = Conv2D(512, (1, 1), strides=(1, 1), padding='valid', weights=[W2, b2],
                name="conv2d_fcn2")(x)
     x = LeakyReLU()(x)
-    x = BatchNormalization()(x)
+    x = BatchNormalization(weights=BN2)(x)
     x = Dropout(0.5)(x)
 
     x = Conv2D(101, (1, 1), strides=(1, 1), activation='softmax', padding='valid', weights=[W3, b3],
