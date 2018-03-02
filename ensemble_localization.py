@@ -24,7 +24,7 @@ from keras.preprocessing import image
 from keras.preprocessing.image import ImageDataGenerator
 
 dataset_path = "/home/pbattilana/project_machine_learning/dataset-ethz101food/"
-#dataset_path = "C:\\Users\\Pietro\\Desktop\\Machine Learning\\Progetto\\project_machine_learning\\dataset-ethz101food\\"
+# dataset_path = "C:\\Users\\Pietro\\Desktop\\Machine Learning\\Progetto\\project_machine_learning\\dataset-ethz101food\\"
 
 def ix_to_class_name(idx):
     with open(dataset_path + "meta/classes.txt") as file:
@@ -146,7 +146,7 @@ def convolutionalize_incv3():
     incv3 = Model(inputs=incv3.input, outputs=out)
     incv3.load_weights(
         "trained_models/top3_inceptionv3_acc79_2017-12-27/inceptionv3_ft_weights_acc0.79_e10_2017-12-25_22-10-02.hdf5")
-    incv3.summary()
+    # incv3.summary()
 
     W1, b1 = incv3.get_layer("dense_1").get_weights()
     W2, b2 = incv3.get_layer("dense_2").get_weights()
@@ -206,6 +206,16 @@ incresv2FCN = convolutionalize_incresv2()
 incv3FCN = convolutionalize_incv3()
 # incv3FCN.summary()
 
+def predict_from_imgarray(model, img, input_size, preprocess):
+    # if img.shape[0] != input_size[0] or img.shape[1] != input_size[1]:
+    img = image.array_to_img(img)
+    img = img.resize((input_size[0], input_size[1]), PIL.Image.BILINEAR)   # width, height order here!
+    img = image.img_to_array(img)
+    img_expandedim = np.expand_dims(img, axis=0)
+    img_preprocessed_image = preprocess(img_expandedim)
+    preds = model.predict(img_preprocessed_image)
+    return preds
+
 def predict(model, filename, input_size, preprocess):
     input_img = image.load_img(filename, target_size=input_size)
     input_img = image.img_to_array(input_img)
@@ -223,7 +233,7 @@ preprocess_func = [  keras.applications.vgg16.preprocess_input
                    , keras.applications.inception_v3.preprocess_input]
 
 def dim_size(w,k,s):
-  return((w-k)//s +1)
+  return((w-k)//s + 1)
         
 def process_image(input_fn, input_cix, img_shape, upsampling_step = 1.2, max_scale_factor = 3):
     results = []
@@ -239,7 +249,7 @@ def process_image(input_fn, input_cix, img_shape, upsampling_step = 1.2, max_sca
             base_kernel_size = kernel_sizes[0]
             heatmap_h = dim_size(round(img_shape[0]*scale_factor), base_kernel_size, 32)
             heatmap_w = dim_size(round(img_shape[1]*scale_factor), base_kernel_size, 32)
-            print("Heatmapdim scale:", heatmap_h, heatmap_w)
+            # print("Heatmapdim scale dim:", heatmap_h, heatmap_w)
             
             # cerchiamo a questa scala il crop che ha il numero massimo di croppatori che lo classificano come classe input_ix
             heatmaps = []
@@ -247,7 +257,7 @@ def process_image(input_fn, input_cix, img_shape, upsampling_step = 1.2, max_sca
             for ix, fcn in enumerate(FCNs):
                 scaled_w = kernel_sizes[ix] + (heatmap_w-1)*32
                 scaled_h = kernel_sizes[ix] + (heatmap_h-1)*32
-                print("Scaled dim:", scaled_h, scaled_w)
+                # print("Scaled input dim:", scaled_h, scaled_w)
 
                 heatmaps.append(predict(fcn, input_fn, (scaled_h, scaled_w), preprocess_func[ix])[0])
 
@@ -280,9 +290,9 @@ def process_image(input_fn, input_cix, img_shape, upsampling_step = 1.2, max_sca
             # si passa ora alla prossima scala
             scale_factor *= upsampling_step
 
-        for result in results:
-            print(result)
-        print("\n")
+        # for result in results:
+        #     print(result)
+        # print("\n")
 
     else:
         print ("The image file " + str(input_fn) + " does not exist")
@@ -297,10 +307,11 @@ def select_best_crop(res_list):
 def traslation(heat_coord, factor, fcn_stride=32):
     return(int(fcn_stride * heat_coord / factor))
 
+dump_list = []
 set = "test"
 class_folders = os.listdir(dataset_path + set)
-folder_to_scan = 5
-instances_per_folder = 1
+folder_to_scan = 101
+instances_per_folder = 250
 for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
     instances = os.listdir(dataset_path + set + "/" + class_folder)
     for i_instance, instance in enumerate(instances[0:instances_per_folder]):
@@ -317,13 +328,65 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
         coordw = traslation(crop["ix"][1], crop["factor"])
         rect_dim = int(295 / crop["factor"])
 
-        print("Max confidence", crop["score"], "at scale", crop["factor"],
-              "heatmap crop", (crop["ix"][0], crop["ix"][1]), "in range [" + str(crop["heatmap_shape"][0]) + ", " + str(crop["heatmap_shape"][1]) + "] ->",
-              "relative img point", (coordh, coordw), "in range [" + str(imgh)+ ", " + str(imgw) + "]")
+        # print("Max confidence", crop["score"], "at scale", crop["factor"],
+        #       "heatmap crop", (crop["ix"][0], crop["ix"][1]),
+        #       "in range [" + str(crop["heatmap_shape"][0]) + ", " + str(crop["heatmap_shape"][1]) + "] ->",
+        #       "relative img point", (coordh, coordw), "in range [" + str(imgh) + ", " + str(imgw) + "]")
+        # fig, ax = plt.subplots(1)
+        # ax.imshow(img / 255.)
+        # rect = patches.Rectangle((coordw, coordh), rect_dim, rect_dim, linewidth=2, edgecolor='b', facecolor='none')
+        # ax.add_patch(rect)
+        # plt.show()
 
-        if True: #set to True to draw
-          fig, ax = plt.subplots(1)
-          ax.imshow(img / 255.)
-          rect = patches.Rectangle((coordw, coordh), rect_dim, rect_dim, linewidth=2, edgecolor='b', facecolor='none')
-          ax.add_patch(rect)
-          plt.show()
+        vgg19 = keras.applications.vgg19.VGG19(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
+        x = GlobalAveragePooling2D()(vgg19.output)
+        out = Dense(101, activation='softmax', name='output_layer')(x)
+        vgg19 = Model(inputs=vgg19.input, outputs=out)
+        vgg19.load_weights("trained_models/top4_vgg19_acc78_2017-12-23/vgg19_ft_weights_acc0.78_e26_2017-12-22_23-55-53.hdf5")
+
+        preds_original = predict(vgg19, filename, (224, 224), keras.applications.vgg19.preprocess_input).flatten()
+        porig_cix = np.argmax(preds_original)
+        porig_class = ix_to_class_name(porig_cix)
+        porig_score = preds_original[porig_cix]
+        porigin_score_label = preds_original[class_name_to_idx(class_folder)]
+
+        preds_crop = predict_from_imgarray(vgg19, img[coordh:coordh + rect_dim, coordw:coordw + rect_dim], (224, 224), keras.applications.vgg19.preprocess_input).flatten()
+        pcrop_cix = np.argmax(preds_crop)
+        pcrop_class = ix_to_class_name(porig_cix)
+        pcrop_score = preds_crop[porig_cix]
+        pcrop_score_label = preds_crop[class_name_to_idx(class_folder)]
+
+        data = dict(filename=str(filename),
+                    label=str(class_folder),
+                    ensemble=dict(
+                        factor=float(crop["factor"]),
+                        heath=int(crop["heatmap_shape"][0]),
+                        heatw=int(crop["heatmap_shape"][1]),
+                        cropixh=int(crop["ix"][0]),
+                        cropixw=int(crop["ix"][1]),
+                        score=float(crop["score"]),
+                        nfcn=int(crop["nfcn_clf_ix"])
+                    ),
+                    rect=dict(lower_left=(int(coordh), int(coordw)), side=int(rect_dim)),
+                    pred_clf=dict(
+                        orginal=dict(
+                            scoreTrueLabel=float(porigin_score_label),
+                            labelGuessed=str(porig_class),
+                            scoreGuessed=float(porig_score)
+                        ),
+                        onCrop=dict(
+                            scoreTrueLabel=float(pcrop_score_label),
+                            labelGuessed=str(pcrop_class),
+                            scoreGuessed=float(pcrop_score)
+                        ),
+                    )
+        )
+        dump_list.append(data)
+        if i_instance == 0:
+            print("processing " + str(instances_per_folder * i_folder + i_instance + 1) + "/" + str(instances_per_folder * folder_to_scan))
+
+with open(set + "Set" + str(instances_per_folder * folder_to_scan) + "_ENSEMBLE" + ".json", "w+") as file:
+    json.dump(dump_list, file, indent=2, sort_keys=True)
+
+
+
