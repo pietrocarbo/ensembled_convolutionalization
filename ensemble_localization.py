@@ -23,8 +23,8 @@ from PIL import Image
 from keras.preprocessing import image
 from keras.preprocessing.image import ImageDataGenerator
 
-dataset_path = "/home/pbattilana/project_machine_learning/dataset-ethz101food/"
-# dataset_path = "C:\\Users\\Pietro\\Desktop\\Machine Learning\\Progetto\\project_machine_learning\\dataset-ethz101food\\"
+# dataset_path = "/home/pbattilana/project_machine_learning/dataset-ethz101food/"
+dataset_path = "C:\\Users\\Pietro\\Desktop\\Machine Learning\\Progetto\\project_machine_learning\\dataset-ethz101food\\"
 
 def ix_to_class_name(idx):
     with open(dataset_path + "meta/classes.txt") as file:
@@ -206,6 +206,12 @@ incresv2FCN = convolutionalize_incresv2()
 incv3FCN = convolutionalize_incv3()
 # incv3FCN.summary()
 
+vgg19 = keras.applications.vgg19.VGG19(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
+x = GlobalAveragePooling2D()(vgg19.output)
+out = Dense(101, activation='softmax', name='output_layer')(x)
+vgg19 = Model(inputs=vgg19.input, outputs=out)
+vgg19.load_weights("trained_models/top4_vgg19_acc78_2017-12-23/vgg19_ft_weights_acc0.78_e26_2017-12-22_23-55-53.hdf5")
+
 def predict_from_imgarray(model, img, input_size, preprocess):
     # if img.shape[0] != input_size[0] or img.shape[1] != input_size[1]:
     img = image.array_to_img(img)
@@ -337,12 +343,6 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
         # rect = patches.Rectangle((coordw, coordh), rect_dim, rect_dim, linewidth=2, edgecolor='b', facecolor='none')
         # ax.add_patch(rect)
         # plt.show()
-
-        vgg19 = keras.applications.vgg19.VGG19(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
-        x = GlobalAveragePooling2D()(vgg19.output)
-        out = Dense(101, activation='softmax', name='output_layer')(x)
-        vgg19 = Model(inputs=vgg19.input, outputs=out)
-        vgg19.load_weights("trained_models/top4_vgg19_acc78_2017-12-23/vgg19_ft_weights_acc0.78_e26_2017-12-22_23-55-53.hdf5")
 
         preds_original = predict(vgg19, filename, (224, 224), keras.applications.vgg19.preprocess_input).flatten()
         porig_cix = np.argmax(preds_original)
