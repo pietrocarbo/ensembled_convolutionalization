@@ -23,8 +23,8 @@ from PIL import Image
 from keras.preprocessing import image
 from keras.preprocessing.image import ImageDataGenerator
 
-# dataset_path = "/home/pbattilana/project_machine_learning/dataset-ethz101food/"
-dataset_path = "C:\\Users\\Pietro\\Desktop\\Machine Learning\\Progetto\\project_machine_learning\\dataset-ethz101food\\"
+dataset_path = "/home/pbattilana/project_machine_learning/dataset-ethz101food/"
+# dataset_path = "C:\\Users\\Pietro\\Desktop\\Machine Learning\\Progetto\\project_machine_learning\\dataset-ethz101food\\"
 
 def ix_to_class_name(idx):
     with open(dataset_path + "meta/classes.txt") as file:
