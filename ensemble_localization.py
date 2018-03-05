@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 plt.style.use('seaborn-bright')
 import matplotlib.ticker as plticker
 
+import time
 import json
 import pickle
 import os
@@ -217,10 +218,9 @@ def predict_from_imgarray(model, img, input_size, preprocess):
     img = image.array_to_img(img)
     img = img.resize((input_size[0], input_size[1]), PIL.Image.BICUBIC)  # width, height order here!
     img = image.img_to_array(img)
-    fig, ax = plt.subplots(1)
-    ax.imshow(img / 255.)
-    plt.show()
-
+    # fig, ax = plt.subplots(1)
+    # ax.imshow(img / 255.)
+    # plt.show()
     img_expandedim = np.expand_dims(img, axis=0)
     img_preprocessed_image = preprocess(img_expandedim)
     preds = model.predict(img_preprocessed_image)
@@ -233,6 +233,10 @@ def predict(model, filename, input_size, preprocess):
     input_preprocessed_image = preprocess(input_image_expandedim)
     preds = model.predict(input_preprocessed_image)
     return preds
+
+def top1data(preds, extraClass):
+    maxix = np.argmax(preds)
+    return (maxix, ix_to_class_name(maxix), preds[maxix], preds[class_name_to_idx(extraClass)])
 
 #inc_list = [0, 32, 64, 96, 160, 224, 288, 384, 512]
 kernel_sizes = [288, 295, 299, 299]
@@ -338,27 +342,22 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
         coordw = traslation(crop["ix"][1], crop["factor"])
         rect_dim = int(295 / crop["factor"])
 
-        print("Max confidence", crop["score"], "at scale", crop["factor"],
-              "heatmap crop", (crop["ix"][0], crop["ix"][1]),
-              "in range [" + str(crop["heatmap_shape"][0]) + ", " + str(crop["heatmap_shape"][1]) + "] ->",
-              "relative img point", (coordh, coordw), "in range [" + str(imgh) + ", " + str(imgw) + "]")
-        fig, ax = plt.subplots(1)
-        ax.imshow(img / 255.)
-        rect = patches.Rectangle((coordw, coordh), rect_dim, rect_dim, linewidth=2, edgecolor='b', facecolor='none')
-        ax.add_patch(rect)
-        plt.show()
+        # debug-purpose
+        # print("Max confidence", crop["score"], "at scale", crop["factor"],
+        #       "heatmap crop", (crop["ix"][0], crop["ix"][1]),
+        #       "in range [" + str(crop["heatmap_shape"][0]) + ", " + str(crop["heatmap_shape"][1]) + "] ->",
+        #       "relative img point", (coordh, coordw), "in range [" + str(imgh) + ", " + str(imgw) + "]")
+        # fig, ax = plt.subplots(1)
+        # ax.imshow(img / 255.)
+        # rect = patches.Rectangle((coordw, coordh), rect_dim, rect_dim, linewidth=2, edgecolor='b', facecolor='none')
+        # ax.add_patch(rect)
+        # plt.show()
 
         preds_original = predict(vgg19, filename, (224, 224), keras.applications.vgg19.preprocess_input).flatten()
-        porig_cix = np.argmax(preds_original)
-        porig_class = ix_to_class_name(porig_cix)
-        porig_score = preds_original[porig_cix]
-        porigin_score_label = preds_original[class_name_to_idx(class_folder)]
+        porig_maxix, porig_maxname, porig_maxscore, porigin_labelscore = top1data(preds_original, class_folder)
 
         preds_crop = predict_from_imgarray(vgg19, img[coordh:coordh + rect_dim, coordw:coordw + rect_dim], (224, 224), keras.applications.vgg19.preprocess_input).flatten()
-        pcrop_cix = np.argmax(preds_crop)
-        pcrop_class = ix_to_class_name(pcrop_cix)
-        pcrop_score = preds_crop[pcrop_cix]
-        pcrop_score_label = preds_crop[class_name_to_idx(class_folder)]
+        pcrop_maxix, pcrop_maxname, pcrop_maxscore, pcrop_labelscore = top1data(preds_crop, class_folder)
 
         data = dict(filename=str(filename),
                     label=str(class_folder),
@@ -372,22 +371,22 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
                         nfcn=int(crop["nfcn_clf_ix"])
                     ),
                     rect=dict(lower_left=(int(coordh), int(coordw)), side=int(rect_dim)),
-                    pred_clf=dict(
-                        orginal=dict(
-                            scoreTrueLabel=float(porigin_score_label),
-                            labelGuessed=str(porig_class),
-                            scoreGuessed=float(porig_score)
+                    clf=dict(
+                        original=dict(
+                            scoreTrueLabel=float(porigin_labelscore),
+                            labelGuessed=str(porig_maxname),
+                            scoreGuessed=float(porig_maxscore)
                         ),
-                        onCrop=dict(
-                            scoreTrueLabel=float(pcrop_score_label),
-                            labelGuessed=str(pcrop_class),
-                            scoreGuessed=float(pcrop_score)
+                        crop=dict(
+                            scoreTrueLabel=float(pcrop_labelscore),
+                            labelGuessed=str(pcrop_maxname),
+                            scoreGuessed=float(pcrop_maxscore)
                         ),
                     )
         )
         dump_list.append(data)
         if i_instance == 0:
-            print("processing " + str(instances_per_folder * i_folder + i_instance + 1) + "/" + str(instances_per_folder * folder_to_scan))
+            print(time.strftime("%Y-%m-%d_%H-%M-%S") + " started class " + str(i_folder + 1) + " of " + str(folder_to_scan))
 
 with open(set + "Set" + str(instances_per_folder * folder_to_scan) + "_ENSEMBLE" + ".json", "w+") as file:
     json.dump(dump_list, file, indent=2, sort_keys=True)

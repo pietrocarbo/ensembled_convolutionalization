@@ -87,54 +87,47 @@ def process_ensdata(filename):
         corrected_samples = []
 
         for ix, sample in enumerate(dumps):
-            if sample["pred_clf"]["orginal"]["labelGuessed"] != sample["pred_clf"]["onCrop"]["labelGuessed"]:
-                print("Different label pre-post crop")
 
-        #     true_label = sample["label"]
-        #     y_true.append(dict_labels[true_label])
-        #     y_original.append(dict_labels[sample["pred_clf"]["orginal"]["labelGuessed"]])
-        #     y_cropped.append(dict_labels[sample["pred_clf"]["onCrop"]["labelGuessed"]])
-        #
-        #     origTrueLabelScores[ix] = sample["pred_clf"]["orginal"]["scoreTrueLabel"]
-        #     cropTrueLabelScores[ix] = sample["pred_clf"]["onCrop"]["scoreTrueLabel"]
-        #
-        #     factors[ix] = sample["ensemble"]["factor"]
-        #     scores[ix] = sample["ensemble"]["score"]
-        #     nfcns[ix] = sample["ensemble"]["nfcn"]
-        #     heatshapes[ix][0] = sample["ensemble"]["heath"]
-        #     heatshapes[ix][1] = sample["ensemble"]["heatw"]
-        #     cropixs[ix][0] = sample["ensemble"]["cropixh"]
-        #     cropixs[ix][1] = sample["ensemble"]["cropixw"]
-        #     rectdims[ix] = sample["rect"]["side"]
-        #     rectlls[ix][0] = sample["rect"]["lower_left"][0]
-        #     rectlls[ix][1] = sample["rect"]["lower_left"][1]
-        #
-        #     if true_label == sample["pred_clf"]["orginal"]["labelGuessed"] and true_label != sample["pred_clf"]["onCrop"]["labelGuessed"]:
-        #        missed_samples.append(ix)
-        #     if true_label != sample["pred_clf"]["orginal"]["labelGuessed"] and true_label == sample["pred_clf"]["onCrop"]["labelGuessed"]:
-        #        corrected_samples.append(ix)
-        #
-        #     # if true_label == sample["predictions"]["randomCrop"]["labelGuessed"]:
-        #     #     cropRandomAcc+= 1
-        #     # if true_label == sample["predictions"]["cropFcn"]["labelGuessed"]:
-        #     #     cropAcc += 1
-        #
-        # n_samples = len(dumps)
-        # print("File:", filename, "contain", n_samples, "samples")
-        #
-        # print("Cropping metrics (avg+-std): factor", "{:.4f}+-{:.4f},".format(np.mean(factors), np.std(factors)),
-        #                         "score", "{:.4f}+-{:.4f},".format(np.mean(scores), np.std(scores)),
-        #                         "nfcn", "{:.4f}+-{:.4f},".format(np.mean(nfcns), np.std(nfcns)),
-        #                 "index", "({:.4f}+-{:.4f}, {:.4f}+-{:.4f})".format(np.mean(cropixs, axis=0)[0], np.std(cropixs, axis=0)[0],
-        #                                                               np.mean(cropixs, axis=0)[1], np.std(cropixs, axis=0)[1]))
-        #
-        # print("Label scores: original", "(avg: {:.4f}, std: {:.4f});".format(np.mean(origTrueLabelScores), np.std(origTrueLabelScores)),
-        #                    "cropped", "(avg: {:.4f}, std: {:.4f})".format(np.mean(cropTrueLabelScores), np.std(cropTrueLabelScores)),)
-        #
-        # print("Mistaken", len(missed_samples), "samples:", missed_samples)
-        # print("Corrected", len(corrected_samples), "samples:", corrected_samples)
-        #
-        # print("\nImage classification report\n", classification_report(y_true, y_original, target_names=[lab for lab in sorted(dict_labels)]))
-        # print("\nCrop classification report\n", classification_report(y_true, y_cropped, target_names=[lab for lab in sorted(dict_labels)]))
+            true_label = sample["label"]
+            y_true.append(dict_labels[true_label])
+            y_original.append(dict_labels[sample["clf"]["original"]["labelGuessed"]])
+            y_cropped.append(dict_labels[sample["clf"]["crop"]["labelGuessed"]])
+
+            origTrueLabelScores[ix] = sample["clf"]["original"]["scoreTrueLabel"]
+            cropTrueLabelScores[ix] = sample["clf"]["crop"]["scoreTrueLabel"]
+
+            factors[ix] = sample["ensemble"]["factor"]
+            scores[ix] = sample["ensemble"]["score"]
+            nfcns[ix] = sample["ensemble"]["nfcn"]
+            heatshapes[ix][0] = sample["ensemble"]["heath"]
+            heatshapes[ix][1] = sample["ensemble"]["heatw"]
+            cropixs[ix][0] = sample["ensemble"]["cropixh"]
+            cropixs[ix][1] = sample["ensemble"]["cropixw"]
+            rectdims[ix] = sample["rect"]["side"]
+            rectlls[ix][0] = sample["rect"]["lower_left"][0]
+            rectlls[ix][1] = sample["rect"]["lower_left"][1]
+
+            if true_label == sample["clf"]["original"]["labelGuessed"] and true_label != sample["clf"]["crop"]["labelGuessed"]:
+               missed_samples.append(ix)
+            if true_label != sample["clf"]["original"]["labelGuessed"] and true_label == sample["clf"]["crop"]["labelGuessed"]:
+               corrected_samples.append(ix)
+
+        n_samples = len(dumps)
+        print("File:", filename, "contain", n_samples, "samples")
+
+        print("Cropping metrics (avg+-std): factor", "{:.4f}+-{:.4f},".format(np.mean(factors), np.std(factors)),
+                                "score", "{:.4f}+-{:.4f},".format(np.mean(scores), np.std(scores)),
+                                "nfcn", "{:.4f}+-{:.4f},".format(np.mean(nfcns), np.std(nfcns)),
+                        "index", "({:.4f}+-{:.4f}, {:.4f}+-{:.4f})".format(np.mean(cropixs, axis=0)[0], np.std(cropixs, axis=0)[0],
+                                                                      np.mean(cropixs, axis=0)[1], np.std(cropixs, axis=0)[1]))
+
+        print("Label scores: original", "(avg: {:.4f}, std: {:.4f});".format(np.mean(origTrueLabelScores), np.std(origTrueLabelScores)),
+                           "cropped", "(avg: {:.4f}, std: {:.4f})".format(np.mean(cropTrueLabelScores), np.std(cropTrueLabelScores)),)
+
+        print("Mistaken", len(missed_samples), "samples:", missed_samples)
+        print("Corrected", len(corrected_samples), "samples:", corrected_samples)
+
+        print("\nImage classification report\n", classification_report(y_true, y_original, target_names=[lab for lab in sorted(dict_labels)]))
+        print("\nCrop classification report\n", classification_report(y_true, y_cropped, target_names=[lab for lab in sorted(dict_labels)]))
 
 process_ensdata("testSet25250_ENSEMBLE.json")
