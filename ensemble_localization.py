@@ -23,8 +23,8 @@ from PIL import Image
 from keras.preprocessing import image
 from keras.preprocessing.image import ImageDataGenerator
 
-dataset_path = "/home/pbattilana/project_machine_learning/dataset-ethz101food/"
-# dataset_path = "C:\\Users\\Pietro\\Desktop\\Machine Learning\\Progetto\\project_machine_learning\\dataset-ethz101food\\"
+# dataset_path = "/home/pbattilana/project_machine_learning/dataset-ethz101food/"
+dataset_path = "C:\\Users\\Pietro\\Desktop\\Machine Learning\\Progetto\\project_machine_learning\\dataset-ethz101food\\"
 
 def ix_to_class_name(idx):
     with open(dataset_path + "meta/classes.txt") as file:
@@ -215,8 +215,12 @@ vgg19.load_weights("trained_models/top4_vgg19_acc78_2017-12-23/vgg19_ft_weights_
 def predict_from_imgarray(model, img, input_size, preprocess):
     # if img.shape[0] != input_size[0] or img.shape[1] != input_size[1]:
     img = image.array_to_img(img)
-    img = img.resize((input_size[0], input_size[1]), PIL.Image.BILINEAR)   # width, height order here!
+    img = img.resize((input_size[0], input_size[1]), PIL.Image.BICUBIC)  # width, height order here!
     img = image.img_to_array(img)
+    fig, ax = plt.subplots(1)
+    ax.imshow(img / 255.)
+    plt.show()
+
     img_expandedim = np.expand_dims(img, axis=0)
     img_preprocessed_image = preprocess(img_expandedim)
     preds = model.predict(img_preprocessed_image)
@@ -334,15 +338,15 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
         coordw = traslation(crop["ix"][1], crop["factor"])
         rect_dim = int(295 / crop["factor"])
 
-        # print("Max confidence", crop["score"], "at scale", crop["factor"],
-        #       "heatmap crop", (crop["ix"][0], crop["ix"][1]),
-        #       "in range [" + str(crop["heatmap_shape"][0]) + ", " + str(crop["heatmap_shape"][1]) + "] ->",
-        #       "relative img point", (coordh, coordw), "in range [" + str(imgh) + ", " + str(imgw) + "]")
-        # fig, ax = plt.subplots(1)
-        # ax.imshow(img / 255.)
-        # rect = patches.Rectangle((coordw, coordh), rect_dim, rect_dim, linewidth=2, edgecolor='b', facecolor='none')
-        # ax.add_patch(rect)
-        # plt.show()
+        print("Max confidence", crop["score"], "at scale", crop["factor"],
+              "heatmap crop", (crop["ix"][0], crop["ix"][1]),
+              "in range [" + str(crop["heatmap_shape"][0]) + ", " + str(crop["heatmap_shape"][1]) + "] ->",
+              "relative img point", (coordh, coordw), "in range [" + str(imgh) + ", " + str(imgw) + "]")
+        fig, ax = plt.subplots(1)
+        ax.imshow(img / 255.)
+        rect = patches.Rectangle((coordw, coordh), rect_dim, rect_dim, linewidth=2, edgecolor='b', facecolor='none')
+        ax.add_patch(rect)
+        plt.show()
 
         preds_original = predict(vgg19, filename, (224, 224), keras.applications.vgg19.preprocess_input).flatten()
         porig_cix = np.argmax(preds_original)
@@ -352,8 +356,8 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
 
         preds_crop = predict_from_imgarray(vgg19, img[coordh:coordh + rect_dim, coordw:coordw + rect_dim], (224, 224), keras.applications.vgg19.preprocess_input).flatten()
         pcrop_cix = np.argmax(preds_crop)
-        pcrop_class = ix_to_class_name(porig_cix)
-        pcrop_score = preds_crop[porig_cix]
+        pcrop_class = ix_to_class_name(pcrop_cix)
+        pcrop_score = preds_crop[pcrop_cix]
         pcrop_score_label = preds_crop[class_name_to_idx(class_folder)]
 
         data = dict(filename=str(filename),

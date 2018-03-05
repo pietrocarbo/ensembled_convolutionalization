@@ -1,7 +1,8 @@
 import json
+import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-from keras.preprocessing import image
+from sklearn.metrics import classification_report
 
 def show_samples(samples_ix, dumps):
     for ix in samples_ix:
@@ -12,6 +13,7 @@ def show_samples(samples_ix, dumps):
               ", confidence", dumps[ix]["croppedSize"]["xception"]["scoreGuessed"], "\n")
 
         fig, ax = plt.subplots(1)
+        from keras.preprocessing import image
         img = image.load_img(dumps[ix]["filename"])
         img = image.img_to_array(img)
         ax.imshow(img / 255.)
@@ -56,20 +58,83 @@ def process_v1(filename):
         # show_samples(missed_samples, dumps)
         show_samples(corrected_samples, dumps)
 
-def process_v2(filename):
+def process_ensdata(filename):
     with open(filename, "r") as json_file:
         dumps = json.load(json_file)
-        cropAcc = 0.
-        cropRandomAcc = 0.
-        for ix, sample in enumerate(dumps):
-            true_label = sample["label"]
-            if true_label == sample["predictions"]["randomCrop"]["labelGuessed"]:
-                cropRandomAcc+= 1
-            if true_label == sample["predictions"]["cropFcn"]["labelGuessed"]:
-                cropAcc += 1
 
         n_samples = len(dumps)
-        print("Total samples", n_samples)
-        print("Accuracy random crop {:f}, crop FCN {:f}".format(cropAcc/n_samples, cropRandomAcc/n_samples))
 
-process_v2("testSet25250_Crop-RandomCrop-CLF.json")
+        factors = np.empty(n_samples)
+        scores = np.empty(n_samples)
+        nfcns = np.empty(n_samples, dtype=int)
+        cropixs = np.empty((n_samples, 2), dtype=int)
+        heatshapes = np.empty((n_samples, 2), dtype=int)
+        rectdims = np.empty(n_samples, dtype=int)
+        rectlls = np.empty((n_samples, 2), dtype=int)
+
+
+        with open("dataset-ethz101food/meta/classes.txt") as file:
+            dict_labels = {label.strip('\n'): ix for (ix, label) in enumerate(file.readlines())}
+
+        y_true = []
+        y_original = []
+        y_cropped = []
+
+        origTrueLabelScores = np.empty(n_samples)
+        cropTrueLabelScores = np.empty(n_samples)
+
+        missed_samples = []
+        corrected_samples = []
+
+        for ix, sample in enumerate(dumps):
+            if sample["pred_clf"]["orginal"]["labelGuessed"] != sample["pred_clf"]["onCrop"]["labelGuessed"]:
+                print("Different label pre-post crop")
+
+        #     true_label = sample["label"]
+        #     y_true.append(dict_labels[true_label])
+        #     y_original.append(dict_labels[sample["pred_clf"]["orginal"]["labelGuessed"]])
+        #     y_cropped.append(dict_labels[sample["pred_clf"]["onCrop"]["labelGuessed"]])
+        #
+        #     origTrueLabelScores[ix] = sample["pred_clf"]["orginal"]["scoreTrueLabel"]
+        #     cropTrueLabelScores[ix] = sample["pred_clf"]["onCrop"]["scoreTrueLabel"]
+        #
+        #     factors[ix] = sample["ensemble"]["factor"]
+        #     scores[ix] = sample["ensemble"]["score"]
+        #     nfcns[ix] = sample["ensemble"]["nfcn"]
+        #     heatshapes[ix][0] = sample["ensemble"]["heath"]
+        #     heatshapes[ix][1] = sample["ensemble"]["heatw"]
+        #     cropixs[ix][0] = sample["ensemble"]["cropixh"]
+        #     cropixs[ix][1] = sample["ensemble"]["cropixw"]
+        #     rectdims[ix] = sample["rect"]["side"]
+        #     rectlls[ix][0] = sample["rect"]["lower_left"][0]
+        #     rectlls[ix][1] = sample["rect"]["lower_left"][1]
+        #
+        #     if true_label == sample["pred_clf"]["orginal"]["labelGuessed"] and true_label != sample["pred_clf"]["onCrop"]["labelGuessed"]:
+        #        missed_samples.append(ix)
+        #     if true_label != sample["pred_clf"]["orginal"]["labelGuessed"] and true_label == sample["pred_clf"]["onCrop"]["labelGuessed"]:
+        #        corrected_samples.append(ix)
+        #
+        #     # if true_label == sample["predictions"]["randomCrop"]["labelGuessed"]:
+        #     #     cropRandomAcc+= 1
+        #     # if true_label == sample["predictions"]["cropFcn"]["labelGuessed"]:
+        #     #     cropAcc += 1
+        #
+        # n_samples = len(dumps)
+        # print("File:", filename, "contain", n_samples, "samples")
+        #
+        # print("Cropping metrics (avg+-std): factor", "{:.4f}+-{:.4f},".format(np.mean(factors), np.std(factors)),
+        #                         "score", "{:.4f}+-{:.4f},".format(np.mean(scores), np.std(scores)),
+        #                         "nfcn", "{:.4f}+-{:.4f},".format(np.mean(nfcns), np.std(nfcns)),
+        #                 "index", "({:.4f}+-{:.4f}, {:.4f}+-{:.4f})".format(np.mean(cropixs, axis=0)[0], np.std(cropixs, axis=0)[0],
+        #                                                               np.mean(cropixs, axis=0)[1], np.std(cropixs, axis=0)[1]))
+        #
+        # print("Label scores: original", "(avg: {:.4f}, std: {:.4f});".format(np.mean(origTrueLabelScores), np.std(origTrueLabelScores)),
+        #                    "cropped", "(avg: {:.4f}, std: {:.4f})".format(np.mean(cropTrueLabelScores), np.std(cropTrueLabelScores)),)
+        #
+        # print("Mistaken", len(missed_samples), "samples:", missed_samples)
+        # print("Corrected", len(corrected_samples), "samples:", corrected_samples)
+        #
+        # print("\nImage classification report\n", classification_report(y_true, y_original, target_names=[lab for lab in sorted(dict_labels)]))
+        # print("\nCrop classification report\n", classification_report(y_true, y_cropped, target_names=[lab for lab in sorted(dict_labels)]))
+
+process_ensdata("testSet25250_ENSEMBLE.json")
