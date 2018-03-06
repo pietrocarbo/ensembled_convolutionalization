@@ -386,7 +386,7 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
         )
         dump_list.append(data)
         if i_instance == 0:
-            print(time.strftime("%Y-%m-%d_%H-%M-%S") + " started class " + str(i_folder + 1) + " of " + str(folder_to_scan))
+            print(time.strftime("%Y-%m-%d %H:%M:%S") + " started class " + str(i_folder + 1) + " of " + str(folder_to_scan))
 
 with open(set + "Set" + str(instances_per_folder * folder_to_scan) + "_ENSEMBLE" + ".json", "w+") as file:
     json.dump(dump_list, file, indent=2, sort_keys=True)
