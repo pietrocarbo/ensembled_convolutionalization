@@ -121,7 +121,7 @@ top_n_show = 1
 model = overlap_fcnVGG16
 
 base_dir = "dataset-ethz101food/"
-# with open("test_images/files_zip_results.txt") as file:
+# with open("test_images/smallfoodpics.txt") as file:
 #     file_list = [base_dir + line.strip('"\n') for line in file.readlines()]
 # # for file in file_list:
 # #     print(file)

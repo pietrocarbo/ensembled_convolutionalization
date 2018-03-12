@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 plt.style.use('seaborn-bright')
 import matplotlib.ticker as plticker
 
+from random import shuffle
 import json
 import pickle
 import os
@@ -184,17 +185,17 @@ vgg16FCN = convolutionalize_net(architecture_path="trained_models/top5_vgg16_acc
                                 pool_size=7)
 # vgg16FCN.summary()
 
-xceptionFCN = convolutionalize_net(architecture_path="trained_models/xception_architecture_2017-12-24_13-00-22.json",
-                                   weigths_path="trained_models/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5",
-                                   last_layer_name="block14_sepconv2_act",
-                                   pool_size=10)
+# xceptionFCN = convolutionalize_net(architecture_path="trained_models/xception_architecture_2017-12-24_13-00-22.json",
+#                                    weigths_path="trained_models/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5",
+#                                    last_layer_name="block14_sepconv2_act",
+#                                    pool_size=10)
 # xceptionFCN.summary()
 
 
-incresv2FCN = convolutionalize_incresv2()
+# incresv2FCN = convolutionalize_incresv2()
 # incresv2FCN.summary()
 
-incv3FCN = convolutionalize_incv3()
+# incv3FCN = convolutionalize_incv3()
 # incv3FCN.summary()
 
 # model_list = [xceptionFCN, incresv2FCN, incv3FCN]
@@ -266,8 +267,8 @@ xception.load_weights("trained_models/top1_xception_acc80_2017-12-25/xception_ft
 CLF = xception
 from keras.applications.xception import preprocess_input as clf_preprocess
 
-FCN = [xceptionFCN, incresv2FCN, incv3FCN]
-fcn_window = 299
+FCN = vgg16FCN
+fcn_window = 224
 from keras.applications.vgg16 import preprocess_input as fcn_preprocess
 
 max_scale_factor = 3
@@ -281,7 +282,6 @@ instances_per_folder = 250
 
 results = []
 dump_list = []
-filename = "dataset-ethz101food/train/cup_cakes/46500.jpg"
 
 def predict(model, input_size):
     input_img = image.load_img(filename, target_size=(input_size, input_size))
@@ -416,132 +416,140 @@ def resize_arrayimg(imgarray, new_width, new_height):
     imgarray = image.img_to_array(imgarray)
     return imgarray
 
+# file_list = []
 # ciclo per un set di immagini
-for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
-    instances = os.listdir("dataset-ethz101food/" + set + "/" + class_folder)
-    for i_instance, instance in enumerate(instances[0:instances_per_folder]):
-        filename = "dataset-ethz101food/" + set + "/" + class_folder + "/" + instance
+# for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
+#     instances = os.listdir("dataset-ethz101food/" + set + "/" + class_folder)
+#     for i_instance, instance in enumerate(instances[0:instances_per_folder]):
+#         filename = "dataset-ethz101food/" + set + "/" + class_folder + "/" + instance
+#         file_list.append((filename, class_folder))
+        # img_classify = image.img_to_array(img_classify)
+        # img_classify_expandedim = np.expand_dims(img_classify, axis=0)
+        # img_classify_preprocessed = clf_preprocess(img_classify_expandedim)
+        # clf = CLF.predict(img_classify_preprocessed).flatten()
+        # clf_cix = np.argmax(clf)
+        # clf_class = ix_to_class_name(clf_cix)
+        # clf_score = clf[clf_cix]
+        # clf_true_label = clf[class_name_to_idx(class_folder)]
+with open("test_images/smallfoodpics.txt") as file:
+    file_list = [("dataset-ethz101food/" + line.strip("\"\n"), line.strip("\"\n").split("/")[1]) for line in file.readlines()]
+shuffle(file_list)
 
-        img_classify = image.img_to_array(img_classify)
-        img_classify_expandedim = np.expand_dims(img_classify, axis=0)
-        img_classify_preprocessed = clf_preprocess(img_classify_expandedim)
-        clf = CLF.predict(img_classify_preprocessed).flatten()
-        clf_cix = np.argmax(clf)
-        clf_class = ix_to_class_name(clf_cix)
-        clf_score = clf[clf_cix]
-        clf_true_label = clf[class_name_to_idx(class_folder)]
+for filename, class_folder in file_list:
 
-        # estrazione best crop
-        img = image.load_img(filename)
-        img = image.img_to_array(img)
-        rst_list = process_image(img, filename, class_name_to_idx(class_folder), crop_selection_policy)
-        factor, (hdim, wdim), prob, (hcoordh, hcoordw), max_crop, max_crop_ix = rst_list[-1]
-        # if hdim > 1 or wdim > 1:
-        #     countCnb +=1
-        #     factorCnb += rst_list[-1][0]
-        #     print("n.", count, "img:", filename, "rst_list (len", len(rst_list), ")", rst_list)
-        rect_dim = int(fcn_window / factor)
-        coordh = traslation(hcoordh, factor)
-        coordw = traslation(hcoordw, factor)
-        # img_localize = image.load_img(filename)
-        img_localize = image.img_to_array(img_localize)
-        print("Max confidence", prob, "found at scale factor", factor, " size [" + str(int(max(224, img_localize.shape[0] * factor))) + ", " +  str(int(max(224, img_localize.shape[1] * factor))) + "]:",
-              "heatmap cell", (hcoordh, hcoordw), "in range [" + str(hdim) + ", " + str(wdim) + "] ->",
-              "relative img point", (coordh, coordw), "in range [" + str(img_localize.shape[0])+ ", " + str(img_localize.shape[1]) + "]")
+    # estrazione best crop
+    img = image.load_img(filename)
+    img = image.img_to_array(img)
+    rst_list = process_image(img, filename, class_name_to_idx(class_folder), crop_selection_policy)
+    factor, (hdim, wdim), prob, (hcoordh, hcoordw), max_crop, max_crop_ix = rst_list[-1]
+    # if hdim > 1 or wdim > 1:
+    #     countCnb +=1
+    #     factorCnb += rst_list[-1][0]
+    #     print("n.", count, "img:", filename, "rst_list (len", len(rst_list), ")", rst_list)
+    rect_dim = int(fcn_window / factor)
+    coordh = traslation(hcoordh, factor)
+    coordw = traslation(hcoordw, factor)
+    img_localize = image.load_img(filename)
+    img_localize = image.img_to_array(img_localize)
+    print("Max confidence", prob, "found at scale factor", factor, " size [" + str(int(max(224, img_localize.shape[0] * factor))) + ", " +  str(int(max(224, img_localize.shape[1] * factor))) + "]:",
+          "heatmap cell", (hcoordh, hcoordw), "in range [" + str(hdim) + ", " + str(wdim) + "] ->",
+          "relative img point", (coordh, coordw), "in range [" + str(img_localize.shape[0])+ ", " + str(img_localize.shape[1]) + "]")
 
-        # classificazione sul best crop
-        crop = img[coordh:coordh + rect_dim, coordw:coordw + rect_dim]
-        crop = image.array_to_img(crop)
-        crop = crop.resize((wtrain, htrain))
-        crop = image.img_to_array(crop)
-        crop_expandedim = np.expand_dims(crop, axis=0)
-        crop_preprocessed = clf_preprocess(crop_expandedim)
-        crop_clf = CLF.predict(crop_preprocessed).flatten()
-        crop_cix = np.argmax(crop_clf)
-        crop_class = ix_to_class_name(crop_cix)
-        crop_score = crop_clf[crop_cix]
+    # classificazione sul best crop
+    # crop = img[coordh:coordh + rect_dim, coordw:coordw + rect_dim]
+    # crop = image.array_to_img(crop)
+    # crop = crop.resize((wtrain, htrain))
+    # crop = image.img_to_array(crop)
+    # crop_expandedim = np.expand_dims(crop, axis=0)
+    # crop_preprocessed = clf_preprocess(crop_expandedim)
+    # crop_clf = CLF.predict(crop_preprocessed).flatten()
+    # crop_cix = np.argmax(crop_clf)
+    # crop_class = ix_to_class_name(crop_cix)
+    # crop_score = crop_clf[crop_cix]
+    #
+    #
+    # # classificazione su random crop
+    # random_crop = get_random_crop(img, rect_dim)
+    # random_crop = image.array_to_img(random_crop)
+    # random_crop = random_crop.resize((wtrain, htrain))
+    # random_crop = image.img_to_array(random_crop)
+    # random_crop_expandedim = np.expand_dims(random_crop, axis=0)
+    # random_crop_preprocessed = clf_preprocess(random_crop_expandedim)
+    # random_crop_clf = CLF.predict(random_crop_preprocessed).flatten()
+    # random_crop_cix = np.argmax(random_crop_clf)
+    # random_crop_class = ix_to_class_name(crop_cix)
+    # random_crop_score = random_crop_clf[crop_cix]
+    #
+    # # dumping dei dati
+    # data = dict(filename = str(filename),
+    #     label = str(class_folder),
+    #     scale_factor = float(factor),
+    #     square_crop = dict(lower_left = (int(coordh), int(coordw)), side = int(rect_dim)),
+    #     originalSize = dict(
+    #         vgg16 = dict(
+    #             score = float(rst_list[0][2]),
+    #             labelGuessed = str(ix_to_class_name(rst_list[0][5])),
+    #             scoreGuessed = float(rst_list[0][4])
+    #         ),
+    #         xception = dict(
+    #             score = float(clf_true_label),
+    #             labelGuessed = str(clf_class),
+    #             scoreGuessed = float(clf_score)
+    #         )
+    #     ),
+    #     croppedSize = dict(
+    #         vgg16 = dict(
+    #             score = float(prob),
+    #             labelGuessed = str(ix_to_class_name(max_crop_ix)),
+    #             scoreGuessed = float(max_crop)
+    #         ),
+    #         xception=dict(
+    #             score = float(crop_true_label),
+    #             labelGuessed = str(crop_class),
+    #             scoreGuessed = float(crop_score)
+    #         )
+    #     )
+    # )
+    # data = dict(filename=str(filename),
+    #     label=str(class_folder),
+    #     scale_factor=float(factor),
+    #     square_crop=dict(lower_left=(int(coordh), int(coordw)), side=int(rect_dim)),
+    #     predictions=dict(
+    #         randomCrop=dict(
+    #             scoreTrueLabel=float(random_crop_clf[class_name_to_idx(class_folder)]),
+    #             labelGuessed=str(ix_to_class_name(random_crop_cix)),
+    #             scoreGuessed=float(random_crop_clf[random_crop_cix])
+    #         ),
+    #         cropFcn=dict(
+    #             scoreTrueLabel=float(crop_clf[class_name_to_idx(class_folder)]),
+    #             labelGuessed=str(ix_to_class_name(crop_cix)),
+    #             scoreGuessed=float(crop_clf[crop_cix])
+    #         )
+    #     )
+    # )
+    # dump_list.append(data)
 
+    # stampa dei risultati
+    # if i_instance == 0:
+    #     print("processing " + str(instances_per_folder * i_folder + i_instance + 1) + "/" + str(instances_per_folder * folder_to_scan))
+    #     print("#imgs cropped at non-original size", countCnb, ", avg factor", factorCnb / countCnb)
+    # print(json.dumps(data, indent=2, sort_keys=True))
 
-        # classificazione su random crop
-        random_crop = get_random_crop(img, rect_dim)
-        random_crop = image.array_to_img(random_crop)
-        random_crop = random_crop.resize((wtrain, htrain))
-        random_crop = image.img_to_array(random_crop)
-        random_crop_expandedim = np.expand_dims(random_crop, axis=0)
-        random_crop_preprocessed = clf_preprocess(random_crop_expandedim)
-        random_crop_clf = CLF.predict(random_crop_preprocessed).flatten()
-        random_crop_cix = np.argmax(random_crop_clf)
-        random_crop_class = ix_to_class_name(crop_cix)
-        random_crop_score = random_crop_clf[crop_cix]
+    # fig, (ax0, ax1, ax2) = plt.subplots(1, 3) #, figsize=(8, 8))
+    # ax0.set_title("FCN crop")
+    # ax0.imshow((crop + 1) / 2)
+    #
+    # ax1.set_title("Random crop")
+    # ax1.imshow((random_crop + 1) / 2)
 
-        # dumping dei dati
-        data = dict(filename = str(filename),
-            label = str(class_folder),
-            scale_factor = float(factor),
-            square_crop = dict(lower_left = (int(coordh), int(coordw)), side = int(rect_dim)),
-            originalSize = dict(
-                vgg16 = dict(
-                    score = float(rst_list[0][2]),
-                    labelGuessed = str(ix_to_class_name(rst_list[0][5])),
-                    scoreGuessed = float(rst_list[0][4])
-                ),
-                xception = dict(
-                    score = float(clf_true_label),
-                    labelGuessed = str(clf_class),
-                    scoreGuessed = float(clf_score)
-                )
-            ),
-            croppedSize = dict(
-                vgg16 = dict(
-                    score = float(prob),
-                    labelGuessed = str(ix_to_class_name(max_crop_ix)),
-                    scoreGuessed = float(max_crop)
-                ),
-                xception=dict(
-                    score = float(crop_true_label),
-                    labelGuessed = str(crop_class),
-                    scoreGuessed = float(crop_score)
-                )
-            )
-        )
-        data = dict(filename=str(filename),
-            label=str(class_folder),
-            scale_factor=float(factor),
-            square_crop=dict(lower_left=(int(coordh), int(coordw)), side=int(rect_dim)),
-            predictions=dict(
-                randomCrop=dict(
-                    scoreTrueLabel=float(random_crop_clf[class_name_to_idx(class_folder)]),
-                    labelGuessed=str(ix_to_class_name(random_crop_cix)),
-                    scoreGuessed=float(random_crop_clf[random_crop_cix])
-                ),
-                cropFcn=dict(
-                    scoreTrueLabel=float(crop_clf[class_name_to_idx(class_folder)]),
-                    labelGuessed=str(ix_to_class_name(crop_cix)),
-                    scoreGuessed=float(crop_clf[crop_cix])
-                )
-            )
-        )
-        dump_list.append(data)
+    fig, ax2 = plt.subplots(1)
+    # ax2.set_title("Img + FCN crop")
+    ax2.set_title(class_folder)
+    ax2.imshow(img / 255.)
+    rect = patches.Rectangle((coordw, coordh), rect_dim, rect_dim, linewidth=2, edgecolor='g', facecolor='none')
+    ax2.add_patch(rect)
 
-        # stampa dei risultati
-        # if i_instance == 0:
-        #     print("processing " + str(instances_per_folder * i_folder + i_instance + 1) + "/" + str(instances_per_folder * folder_to_scan))
-        #     print("#imgs cropped at non-original size", countCnb, ", avg factor", factorCnb / countCnb)
-        print(json.dumps(data, indent=2, sort_keys=True))
-
-        fig, (ax0, ax1, ax2) = plt.subplots(1, 3) #, figsize=(8, 8))
-        ax0.set_title("FCN crop")
-        ax0.imshow((crop + 1) / 2)
-
-        ax1.set_title("Random crop")
-        ax1.imshow((random_crop + 1) / 2)
-
-        ax2.set_title("Img + FCN crop")
-        ax2.imshow(img / 255.)
-        rect = patches.Rectangle((coordw, coordh), rect_dim, rect_dim, linewidth=1, edgecolor='r', facecolor='none')
-        ax2.add_patch(rect)
-
-        plt.show()
+    plt.show()
 
 with open(set + "Set" + str(instances_per_folder * folder_to_scan) + "_Crop-RandomCrop-CLF" + ".json", "w+") as file:
     json.dump(dump_list, file, indent=2, sort_keys=True)

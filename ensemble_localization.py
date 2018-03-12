@@ -15,6 +15,7 @@ import matplotlib.ticker as plticker
 import time
 import json
 import pickle
+from random import shuffle
 import os
 import numpy as np
 import matplotlib.patches as patches
@@ -321,75 +322,99 @@ def select_best_crop(res_list):
 def traslation(heat_coord, factor, fcn_stride=32):
     return(int(fcn_stride * heat_coord / factor))
 
+
 dump_list = []
 set = "test"
 class_folders = os.listdir(dataset_path + set)
 folder_to_scan = 101
 instances_per_folder = 250
+
+file_list = []
 for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
     instances = os.listdir(dataset_path + set + "/" + class_folder)
     for i_instance, instance in enumerate(instances[0:instances_per_folder]):
-        filename = dataset_path + set + "/" + class_folder + "/" + instance
-        # filename = "dataset-ethz101food/train/cup_cakes/46500.jpg"
+        filename = os.path.join(dataset_path, set, class_folder, instance)
+        file_list.append((filename, class_folder))
+# with open("test_images/smallfoodpics.txt") as file:
+#     file_list = [("dataset-ethz101food/" + line.strip("\"\n"), line.strip("\"\n").split("/")[1]) for line in file.readlines()]
+# shuffle(file_list)
 
-        img = image.load_img(filename)
-        img = image.img_to_array(img)
-        imgh, imgw = img.shape[0:2]
+count = 0
+for filename, class_folder in file_list:
 
-        res_list = process_image(filename, class_name_to_idx(class_folder), (imgh, imgw))
-        crop = select_best_crop(res_list)  # factor, (hdim, wdim), (hcoordh, hcoordw), correct_fcn, score, cn_no
-        coordh = traslation(crop["ix"][0], crop["factor"])
-        coordw = traslation(crop["ix"][1], crop["factor"])
-        rect_dim = int(295 / crop["factor"])
+    img = image.load_img(filename)
+    img = image.img_to_array(img)
+    imgh, imgw = img.shape[0:2]
 
-        # debug-purpose
-        # print("Max confidence", crop["score"], "at scale", crop["factor"],
-        #       "heatmap crop", (crop["ix"][0], crop["ix"][1]),
-        #       "in range [" + str(crop["heatmap_shape"][0]) + ", " + str(crop["heatmap_shape"][1]) + "] ->",
-        #       "relative img point", (coordh, coordw), "in range [" + str(imgh) + ", " + str(imgw) + "]")
-        # fig, ax = plt.subplots(1)
-        # ax.imshow(img / 255.)
-        # rect = patches.Rectangle((coordw, coordh), rect_dim, rect_dim, linewidth=2, edgecolor='b', facecolor='none')
-        # ax.add_patch(rect)
-        # plt.show()
+    res_list = process_image(filename, class_name_to_idx(class_folder), (imgh, imgw))
+    crop = select_best_crop(res_list)  # factor, (hdim, wdim), (hcoordh, hcoordw), correct_fcn, score, cn_no
+    coordh = traslation(crop["ix"][0], crop["factor"])
+    coordw = traslation(crop["ix"][1], crop["factor"])
+    rect_dim = int(295 / crop["factor"])
 
-        preds_original = predict(vgg19, filename, (224, 224), keras.applications.vgg19.preprocess_input).flatten()
-        porig_maxix, porig_maxname, porig_maxscore, porigin_labelscore = top1data(preds_original, class_folder)
+    def is_square_in_img(llh, llw, edge, imgh, imgw):
+        def inside(width, height, x, y):
+            if 0 <= x <= width and 0 <= y <= height: return True
+            else: return False
+        if inside(imgw, imgh, llw, llh) and inside(imgw, imgh, llw+edge, llh) and inside(imgw, imgh, llw, llh+edge) and inside(imgw, imgh, llw+edge, llh+edge):
+            return True
+        else:
+            return False
 
-        preds_crop = predict_from_imgarray(vgg19, img[coordh:coordh + rect_dim, coordw:coordw + rect_dim], (224, 224), keras.applications.vgg19.preprocess_input).flatten()
-        pcrop_maxix, pcrop_maxname, pcrop_maxscore, pcrop_labelscore = top1data(preds_crop, class_folder)
+    count += 1
+    # debug-purpose
+    # print("File:", filename, count , "/", len(file_list))
+    if not is_square_in_img(coordh, coordw, rect_dim, imgh, imgw):
+        print("Crop out of img bound! File:", filename, "Crop data:", coordh, coordw, rect_dim, imgh, imgw)
+    # print("Max confidence", crop["score"], "at scale", crop["factor"],
+    #       "heatmap crop", (crop["ix"][0], crop["ix"][1]),
+    #       "in range [" + str(crop["heatmap_shape"][0]) + ", " + str(crop["heatmap_shape"][1]) + "] ->",
+    #       "relative img point", (coordh, coordw), "in range [" + str(imgh) + ", " + str(imgw) + "]")
+    # fig, ax = plt.subplots(1)
+    # ax.imshow(img / 255.)
+    # ax.set_title(class_folder)
+    # rect = patches.Rectangle((coordw, coordh), rect_dim, rect_dim, linewidth=2, edgecolor='g', facecolor='none')
+    # ax.add_patch(rect)
+    # plt.show()
 
-        data = dict(filename=str(filename),
-                    label=str(class_folder),
-                    ensemble=dict(
-                        factor=float(crop["factor"]),
-                        heath=int(crop["heatmap_shape"][0]),
-                        heatw=int(crop["heatmap_shape"][1]),
-                        cropixh=int(crop["ix"][0]),
-                        cropixw=int(crop["ix"][1]),
-                        score=float(crop["score"]),
-                        nfcn=int(crop["nfcn_clf_ix"])
-                    ),
-                    rect=dict(lower_left=(int(coordh), int(coordw)), side=int(rect_dim)),
-                    clf=dict(
-                        original=dict(
-                            scoreTrueLabel=float(porigin_labelscore),
-                            labelGuessed=str(porig_maxname),
-                            scoreGuessed=float(porig_maxscore)
-                        ),
-                        crop=dict(
-                            scoreTrueLabel=float(pcrop_labelscore),
-                            labelGuessed=str(pcrop_maxname),
-                            scoreGuessed=float(pcrop_maxscore)
-                        ),
-                    )
-        )
-        dump_list.append(data)
-        if i_instance == 0:
-            print(time.strftime("%Y-%m-%d %H:%M:%S") + " started class " + str(i_folder + 1) + " of " + str(folder_to_scan))
+    # preds_original = predict(vgg19, filename, (224, 224), keras.applications.vgg19.preprocess_input).flatten()
+    # porig_maxix, porig_maxname, porig_maxscore, porigin_labelscore = top1data(preds_original, class_folder)
+    #
+    # preds_crop = predict_from_imgarray(vgg19, img[coordh:coordh + rect_dim, coordw:coordw + rect_dim], (224, 224), keras.applications.vgg19.preprocess_input).flatten()
+    # pcrop_maxix, pcrop_maxname, pcrop_maxscore, pcrop_labelscore = top1data(preds_crop, class_folder)
 
-with open(set + "Set" + str(instances_per_folder * folder_to_scan) + "_ENSEMBLE" + ".json", "w+") as file:
-    json.dump(dump_list, file, indent=2, sort_keys=True)
+    # data = dict(filename=str(filename),
+    #             label=str(class_folder),
+    #             ensemble=dict(
+    #                 factor=float(crop["factor"]),
+    #                 heath=int(crop["heatmap_shape"][0]),
+    #                 heatw=int(crop["heatmap_shape"][1]),
+    #                 cropixh=int(crop["ix"][0]),
+    #                 cropixw=int(crop["ix"][1]),
+    #                 score=float(crop["score"]),
+    #                 nfcn=int(crop["nfcn_clf_ix"])
+    #             ),
+    #             rect=dict(lower_left=(int(coordh), int(coordw)), side=int(rect_dim)),
+    #             clf=dict(
+    #                 original=dict(
+    #                     scoreTrueLabel=float(porigin_labelscore),
+    #                     labelGuessed=str(porig_maxname),
+    #                     scoreGuessed=float(porig_maxscore)
+    #                 ),
+    #                 crop=dict(
+    #                     scoreTrueLabel=float(pcrop_labelscore),
+    #                     labelGuessed=str(pcrop_maxname),
+    #                     scoreGuessed=float(pcrop_maxscore)
+    #                 ),
+    #             )
+    # )
+    # dump_list.append(data)
+    if count % 101 == 0:
+        print(time.strftime("%Y-%m-%d %H:%M:%S") + " started class " + str(count/101))
+        # print(time.strftime("%Y-%m-%d %H:%M:%S") + " started class " + str(i_folder + 1) + " of " + str(folder_to_scan))
+
+# with open(set + "Set" + str(instances_per_folder * folder_to_scan) + "_ENSEMBLE" + ".json", "w+") as file:
+#     json.dump(dump_list, file, indent=2, sort_keys=True)
 
 
 

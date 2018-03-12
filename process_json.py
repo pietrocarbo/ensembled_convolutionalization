@@ -130,4 +130,5 @@ def process_ensdata(filename):
         print("\nImage classification report\n", classification_report(y_true, y_original, target_names=[lab for lab in sorted(dict_labels)]))
         print("\nCrop classification report\n", classification_report(y_true, y_cropped, target_names=[lab for lab in sorted(dict_labels)]))
 
+# process_ensdata("trainSet75750_ENSEMBLE.json")
 process_ensdata("testSet25250_ENSEMBLE.json")
