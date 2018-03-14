@@ -28,6 +28,7 @@ def ix_to_class_name(idx):
     with open("dataset-ethz101food/meta/classes.txt") as file:
         class_labels = [line.strip('\n') for line in file.readlines()]
     return class_labels[idx]
+
 def class_name_to_idx(name):
     with open("dataset-ethz101food/meta/classes.txt") as file:
         class_labels = [line.strip('\n') for line in file.readlines()]
@@ -37,11 +38,13 @@ def class_name_to_idx(name):
         else:
             print("class idx not found!")
             exit(-1)
+
 def threshold_max(rst_list, threshold=0.5):
     for ix, rst in enumerate(rst_list):
         if rst[2] > threshold:
             return ix
     return 0
+
 def factor_weighted_max(rst_list, weight=1.25):
     max_ix = 0
     max_score = 0
@@ -52,6 +55,7 @@ def factor_weighted_max(rst_list, weight=1.25):
             max_score = score
             max_ix = ix
     return max_ix
+
 def prepare_str_file_architecture_syntax(filepath):
     model_str = str(json.load(open(filepath, "r")))
     model_str = model_str.replace("'", '"')
