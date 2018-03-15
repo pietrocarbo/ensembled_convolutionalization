@@ -28,12 +28,12 @@ from keras.preprocessing.image import ImageDataGenerator
 dataset_path = "dataset-ethz101food"
 
 def ix_to_class_name(idx):
-    with open(os.path.join(dataset_path + "meta", "classes.txt")) as file:
+    with open(os.path.join(dataset_path, "meta", "classes.txt")) as file:
         class_labels = [line.strip('\n') for line in file.readlines()]
     return class_labels[idx]
 
 def class_name_to_idx(name):
-    with open(os.path.join(dataset_path + "meta", "classes.txt")) as file:
+    with open(os.path.join(dataset_path, "meta", "classes.txt")) as file:
         class_labels = [line.strip('\n') for line in file.readlines()]
         for i, label_name in enumerate(class_labels):
             if label_name == name:
@@ -330,7 +330,7 @@ instances_per_folder = 2
 file_list = []
 
 with open(os.path.join("test_images", "wronglabels.txt")) as file:
-    file_list = [(os.path.join(dataset_path, os.path.normpath(line.strip("\"\n"))), line.strip("\"\n").split("\\")[1]) for line in file.readlines()]
+    file_list = [(os.path.normpath(os.path.join(dataset_path, line.strip("\"\n"))), line.strip("\"\n").split("\\")[1]) for line in file.readlines()]
 # for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
 #     instances = os.listdir(dataset_path + set + "/" + class_folder)
 #     for i_instance, instance in enumerate(instances[0:instances_per_folder]):
