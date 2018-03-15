@@ -330,7 +330,11 @@ instances_per_folder = 2
 file_list = []
 
 with open(os.path.join("test_images", "wronglabels.txt")) as file:
-    file_list = [(os.path.normpath(os.path.join(dataset_path, line.strip("\"\n"))), line.strip("\"\n").split("\\")[1]) for line in file.readlines()]
+    file_list = [(os.path.join(dataset_path,
+                               line.strip("\"\n").split("\\")[0],
+                               line.strip("\"\n").split("\\")[1],
+                               line.strip("\"\n").split("\\")[2]),
+                               line.strip("\"\n").split("\\")[1]) for line in file.readlines()]
 # for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
 #     instances = os.listdir(dataset_path + set + "/" + class_folder)
 #     for i_instance, instance in enumerate(instances[0:instances_per_folder]):
