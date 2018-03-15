@@ -25,8 +25,8 @@ from PIL import Image
 from keras.preprocessing import image
 from keras.preprocessing.image import ImageDataGenerator
 
-# dataset_path = "/home/pbattilana/project_machine_learning/dataset-ethz101food/"
-dataset_path = "C:\\Users\\Pietro\\Desktop\\Machine Learning\\Progetto\\project_machine_learning\\dataset-ethz101food\\"
+dataset_path = "/home/pbattilana/project_machine_learning/dataset-ethz101food/"
+# dataset_path = "C:\\Users\\Pietro\\Desktop\\Machine Learning\\Progetto\\project_machine_learning\\dataset-ethz101food\\"
 
 def ix_to_class_name(idx):
     with open(dataset_path + "meta/classes.txt") as file:
@@ -250,7 +250,7 @@ preprocess_func = [  keras.applications.vgg16.preprocess_input
 def dim_size(w, k, s):
   return ((w - k) // s + 1)
         
-def process_image(input_fn, input_cix, img_shape, upsampling_step = 1.2, max_scale_factor = 3):
+def process_image(input_fn, input_cix, img_shape, upsampling_step = 1.2, max_scale_factor = 2.5):
     results = []
     if (os.path.exists(input_fn)):
         base_kernel_size = 295 # any of the kernels would do
@@ -366,12 +366,13 @@ for filename, class_folder in file_list:
     # if not is_square_in_img(coordh, coordw, rect_dim, imgh, imgw):
     #     print("Crop out of img bound! File:", filename, "Crop data:", coordh, coordw, rect_dim, imgh, imgw)
 
-    factors[count] = crop["factor"]
-    scores[count] = crop["score"]
-    nfcns[count] = crop["nfcn_clf_ix"]
-    count += 1
+    # factors[count] = crop["factor"]
+    # scores[count] = crop["score"]
+    # nfcns[count] = crop["nfcn_clf_ix"]
+    # count += 1
+
     # debug-purpose
-    print("Wrong sample", str(count) + "/" + str(len(file_list)), "->", filename, "factor", crop["factor"], "score", crop["score"], "nets classifing correct", crop["nfcn_clf_ix"], crop["fcn_clf_ix"])
+    # print("Wrong sample", str(count) + "/" + str(len(file_list)), "->", filename, "factor", crop["factor"], "score", crop["score"], "nets classifing correct", crop["nfcn_clf_ix"], crop["fcn_clf_ix"])
     # print("Max confidence", crop["score"], "at scale", crop["factor"],
     #       "heatmap crop", (crop["ix"][0], crop["ix"][1]),
     #       "in range [" + str(crop["heatmap_shape"][0]) + ", " + str(crop["heatmap_shape"][1]) + "] ->",
@@ -388,6 +389,25 @@ for filename, class_folder in file_list:
     #
     # preds_crop = predict_from_imgarray(vgg19, img[coordh:coordh + rect_dim, coordw:coordw + rect_dim], (224, 224), keras.applications.vgg19.preprocess_input).flatten()
     # pcrop_maxix, pcrop_maxname, pcrop_maxscore, pcrop_labelscore = top1data(preds_crop, class_folder)
+
+    data = dict(filename=str(filename),
+                label=str(class_folder),
+                crop=dict(
+                    factor=float(crop["factor"]),
+                    heath=int(crop["heatmap_shape"][0]),
+                    heatw=int(crop["heatmap_shape"][1]),
+                    cropixh=int(crop["ix"][0]),
+                    cropixw=int(crop["ix"][1]),
+                    score=float(crop["score"]),
+                    nfcn=int(crop["nfcn_clf_ix"]),
+                    fcn=dict(vgg16FCN=str(crop["fcn_clf_ix"][0]),
+                             xceptionFCN=str(crop["fcn_clf_ix"][1]),
+                             incresv2FCN=str(crop["fcn_clf_ix"][2]),
+                             incv3FCN=str(crop["fcn_clf_ix"][3])
+                    )
+                ),
+                rect=dict(lower_left=(int(coordh), int(coordw)), side=int(rect_dim))
+    )
 
     # data = dict(filename=str(filename),
     #             label=str(class_folder),
@@ -414,62 +434,12 @@ for filename, class_folder in file_list:
     #                 ),
     #             )
     # )
-    # dump_list.append(data)
+    dump_list.append(data)
+
     # if count % 101 == 0:
     #     print(time.strftime("%Y-%m-%d %H:%M:%S") + " started class " + str(count//101))
         # print(time.strftime("%Y-%m-%d %H:%M:%S") + " started class " + str(i_folder + 1) + " of " + str(folder_to_scan))
 
-print("Averages: score", np.mean(scores), "nfcn", np.mean(nfcns), "factor", np.mean(factors))
-
-# with open(set + "Set" + str(instances_per_folder * folder_to_scan) + "_ENSEMBLE" + ".json", "w+") as file:
-#     json.dump(dump_list, file, indent=2, sort_keys=True)
-
-
-dump_list = []
-set = "test"
-class_folders = os.listdir(dataset_path + set)
-folder_to_scan = 10
-instances_per_folder = 4
-file_list = []
-for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
-    instances = os.listdir(dataset_path + set + "/" + class_folder)
-    for i_instance, instance in enumerate(instances[0:instances_per_folder]):
-        filename = os.path.join(dataset_path, set, class_folder, instance)
-        file_list.append((filename, class_folder))
-
-factors = np.empty(len(file_list))
-scores = np.empty(len(file_list))
-nfcns = np.empty(len(file_list), dtype=int)
-count = 0
-for filename, class_folder in file_list:
-
-    img = image.load_img(filename)
-    img = image.img_to_array(img)
-    imgh, imgw = img.shape[0:2]
-
-    res_list = process_image(filename, class_name_to_idx(class_folder), (imgh, imgw))
-    crop = select_best_crop(res_list)  # factor, (hdim, wdim), (hcoordh, hcoordw), correct_fcn, score, cn_no
-    coordh = traslation(crop["ix"][0], crop["factor"])
-    coordw = traslation(crop["ix"][1], crop["factor"])
-    rect_dim = int(295 / crop["factor"])
-
-    def is_square_in_img(llh, llw, edge, imgh, imgw):
-        def inside(width, height, x, y):
-            if 0 <= x <= width and 0 <= y <= height: return True
-            else: return False
-        if inside(imgw, imgh, llw, llh) and inside(imgw, imgh, llw+edge, llh) and inside(imgw, imgh, llw, llh+edge) and inside(imgw, imgh, llw+edge, llh+edge):
-            return True
-        else:
-            return False
-    # if not is_square_in_img(coordh, coordw, rect_dim, imgh, imgw):
-    #     print("Crop out of img bound! File:", filename, "Crop data:", coordh, coordw, rect_dim, imgh, imgw)
-
-    factors[count] = crop["factor"]
-    scores[count] = crop["score"]
-    nfcns[count] = crop["nfcn_clf_ix"]
-    count += 1
-    # debug-purpose
-    print("Correct sample", str(count) + "/" + str(len(file_list)), "->", filename, "factor", crop["factor"], "score", crop["score"], "nets classifing correct", crop["nfcn_clf_ix"], crop["fcn_clf_ix"])
-
-print("Averages: score", np.mean(scores), "nfcn", np.mean(nfcns), "factor", np.mean(factors))
-
+# print("Averages: score", np.mean(scores), "nfcn", np.mean(nfcns), "factor", np.mean(factors))
+with open(set + "Set" + str(instances_per_folder * folder_to_scan) + "_wrongLabels" + ".json", "w+") as file:
+    json.dump(dump_list, file, indent=2, sort_keys=True)

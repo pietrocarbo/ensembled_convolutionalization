@@ -1,0 +1,3 @@
+"test/pho/1713987.jpg"
+"test/tiramisu/2946211.jpg"
+"test/hummus/3590863.jpg"
