@@ -324,7 +324,7 @@ def traslation(heat_coord, factor, fcn_stride=32):
 
 dump_list = []
 set = "test"
-class_folders = os.listdir(dataset_path + set)
+class_folders = os.listdir(os.path.join(dataset_path, set))
 folder_to_scan = 10
 instances_per_folder = 2
 file_list = []
