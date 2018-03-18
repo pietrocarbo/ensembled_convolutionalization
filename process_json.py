@@ -172,8 +172,8 @@ def classification_eval(orig_clf_fn, crop_clf_fn):
     print("Mistaken", len(missed_samples), "samples") #:", missed_samples)
     print("Corrected", len(corrected_samples), "samples") #:", corrected_samples)
 
-    print("\nImage classification accuracy\n", accuracy_score(y_true, y_original))
-    print("\nCrop classification accuracy\n", accuracy_score(y_true, y_cropped))
+    print("Image classification accuracy", accuracy_score(y_true, y_original))
+    print("Crop classification accuracy", accuracy_score(y_true, y_cropped))
     # print("\nImage classification report\n",
     #       classification_report(y_true, y_original, target_names=[lab for lab in sorted(dict_labels)]))
     # print("\nCrop classification report\n",
@@ -208,11 +208,12 @@ def final_evaluation(foldername):
             rectlls[ix][0] = sample["rect"]["lower_left"][0]
             rectlls[ix][1] = sample["rect"]["lower_left"][1]
 
+        print("CROPS METRICS")
         print("File:", ensfn, "contains", len(ens_crop_data), "samples")
         print("Cropping metrics (avg+-std): factor", "{:.4f}+-{:.4f},".format(np.mean(factors), np.std(factors)),
                                 "score", "{:.4f}+-{:.4f},".format(np.mean(scores), np.std(scores)),
                                 "nfcn", "{:.4f}+-{:.4f},".format(np.mean(nfcns), np.std(nfcns)),
-                        "index", "({:.4f}+-{:.4f}, {:.4f}+-{:.4f})".format(np.mean(cropixs, axis=0)[0], np.std(cropixs, axis=0)[0],
+                        "index", "({:.4f}+-{:.4f}, {:.4f}+-{:.4f})\n\n".format(np.mean(cropixs, axis=0)[0], np.std(cropixs, axis=0)[0],
                                                                       np.mean(cropixs, axis=0)[1], np.std(cropixs, axis=0)[1]))
 
 
@@ -221,15 +222,20 @@ def final_evaluation(foldername):
         # ----------------------------------------------
         # crops evaluation using several classifiers
 
-        # classification_eval(os.path.join(foldername, "vgg16_orig_data.pickle"), os.path.join(foldername, "vgg16_crop_data.pickle"))
+        print("VGG16")
+        classification_eval(os.path.join(foldername, "vgg16_orig_data.pickle"), os.path.join(foldername, "vgg16_crop_data.pickle"))
 
+        print("\nVGG19")
         classification_eval(os.path.join(foldername, "vgg19_orig_data.pickle"), os.path.join(foldername, "vgg19_crop_data.pickle"))
 
-        # classification_eval(os.path.join(foldername, "xce_orig_data.pickle"), os.path.join(foldername, "xce_crop_data.pickle"))
+        print("\nXCEPTION")
+        classification_eval(os.path.join(foldername, "xce_orig_data.pickle"), os.path.join(foldername, "xce_crop_data.pickle"))
 
-        # classification_eval(os.path.join(foldername, "incv3_orig_data.pickle"), os.path.join(foldername, "incv3_crop_data.pickle"))
+        print("\nINCEPTION_V3")
+        classification_eval(os.path.join(foldername, "incv3_orig_data.pickle"), os.path.join(foldername, "incv3_crop_data.pickle"))
 
-        # classification_eval(os.path.join(foldername, "incrv2_orig_data.pickle"), os.path.join(foldername, "incrv2_crop_data.pickle"))
+        print("\nINCEPTION_RESNET_V2")
+        classification_eval(os.path.join(foldername, "incrv2_orig_data.pickle"), os.path.join(foldername, "incrv2_crop_data.pickle"))
 
 
 final_evaluation("results/cropping_eval")
