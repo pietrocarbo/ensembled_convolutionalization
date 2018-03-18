@@ -164,7 +164,7 @@ def classification_eval(orig_clf_fn, crop_clf_fn):
         if true_label != clf[0]["ix_predicted"] and true_label == clf[1]["ix_predicted"]:
             corrected_samples.append(ix)
 
-    print("True label score: on original imgs",
+    print("Confidence on the true label: on original imgs",
           "(avg: {:.4f}, std: {:.4f}),".format(np.mean(origTrueLabelScores), np.std(origTrueLabelScores)),
           "on cropped imgs",
           "(avg: {:.4f}, std: {:.4f})".format(np.mean(cropTrueLabelScores), np.std(cropTrueLabelScores)), )
