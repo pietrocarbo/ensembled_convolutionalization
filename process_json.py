@@ -188,7 +188,7 @@ def final_evaluation(foldername):
     # crops metrics
     ensfn = os.path.join(foldername, "cropsdata.pickle")
     with open(ensfn, "r") as ensfile:
-        ens_crop_data = json.load(ensfile)
+        ens_crop_data = pickle.load(ensfile)
 
         n_samples = len(ens_crop_data)
         factors = np.empty(n_samples)
