@@ -169,8 +169,8 @@ def classification_eval(orig_clf_fn, crop_clf_fn):
           "on cropped imgs",
           "(avg: {:.4f}, std: {:.4f})".format(np.mean(cropTrueLabelScores), np.std(cropTrueLabelScores)), )
 
-    print("Mistaken", len(missed_samples), "samples:", missed_samples)
-    print("Corrected", len(corrected_samples), "samples:", corrected_samples)
+    print("Mistaken", len(missed_samples), "samples") #:", missed_samples)
+    print("Corrected", len(corrected_samples), "samples") #:", corrected_samples)
 
     print("\nImage classification accuracy\n", accuracy_score(y_true, y_original))
     print("\nCrop classification accuracy\n", accuracy_score(y_true, y_cropped))
