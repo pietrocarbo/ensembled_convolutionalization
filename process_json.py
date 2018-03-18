@@ -134,9 +134,6 @@ def process_ensdata(filename):
         print("\nCrop classification report\n", classification_report(y_true, y_cropped, target_names=[lab for lab in sorted(dict_labels)]))
 # process_ensdata("testSet25250_ENSEMBLE.json")
 
-with open("dataset-ethz101food/meta/classes.txt") as file:
-    dict_labels = {label.strip('\n'): ix for (ix, label) in enumerate(file.readlines())}
-
 def classification_eval(orig_clf_fn, crop_clf_fn):
     orig_clf = pickle.load(open(orig_clf_fn, "rb"))
     crop_clf = pickle.load(open(crop_clf_fn, "rb"))
@@ -154,10 +151,10 @@ def classification_eval(orig_clf_fn, crop_clf_fn):
     for ix, clf in enumerate(list(zip(orig_clf, crop_clf))):
 
         true_label = clf[0]["ix_label"]
-        y_true.append(dict_labels[true_label])
+        y_true.append(true_label)
 
-        y_original.append(dict_labels[clf[0]["ix_predicted"]])
-        y_cropped.append(dict_labels[clf[1]["ix_predicted"]])
+        y_original.append(clf[0]["ix_predicted"])
+        y_cropped.append(clf[1]["ix_predicted"])
 
         origTrueLabelScores[ix] = clf[0]["pr_label"]
         cropTrueLabelScores[ix] = clf[1]["pr_label"]
