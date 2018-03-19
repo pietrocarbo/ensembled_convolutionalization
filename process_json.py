@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from sklearn.metrics import accuracy_score
-# from sklearn.metrics import classification_report
+from sklearn.metrics import classification_report
 
 def show_samples(samples_ix, dumps):
     for ix in samples_ix:
