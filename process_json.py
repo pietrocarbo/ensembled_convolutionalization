@@ -133,8 +133,7 @@ def process_ensdata(filename):
         print("Crop classification accuracy", accuracy_score(y_true, y_cropped))
         # print("\nImage classification report\n", classification_report(y_true, y_original, target_names=[lab for lab in sorted(dict_labels)]))
         # print("\nCrop classification report\n", classification_report(y_true, y_cropped, target_names=[lab for lab in sorted(dict_labels)]))
-
-process_ensdata("testSet25250_ENSEMBLE.json")
+# process_ensdata("testSet25250_ENSEMBLE.json")
 
 def classification_eval(orig_clf_fn, crop_clf_fn):
     orig_clf = pickle.load(open(orig_clf_fn, "rb"))
@@ -237,4 +236,4 @@ def final_evaluation(foldername):
 
         print("\nINCEPTION_RESNET_V2")
         classification_eval(os.path.join(foldername, "incrv2_orig_data.pickle"), os.path.join(foldername, "incrv2_crop_data.pickle"))
-# final_evaluation("results/cropping_eval")
+final_evaluation("results/cropping_eval")
