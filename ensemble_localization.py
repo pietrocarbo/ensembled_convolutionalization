@@ -218,6 +218,29 @@ out = Dense(101, activation='softmax', name='output_layer')(x)
 vgg19CLF = Model(inputs=vgg19CLF.input, outputs=out)
 vgg19CLF.load_weights("trained_models/top4_vgg19_acc78_2017-12-23/vgg19_ft_weights_acc0.78_e26_2017-12-22_23-55-53.hdf5")
 
+dict_augmentation = dict(preprocessing_function=keras.applications.vgg19.preprocess_input)
+test_datagen = ImageDataGenerator(**dict_augmentation)
+batch_size = 32
+validation_generator = test_datagen.flow_from_directory(
+    'dataset-ethz101food/test',
+    target_size=(224, 224),
+    batch_size=batch_size,
+    class_mode='categorical')
+vgg19CLF.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['categorical_accuracy'])
+(loss, acc) = vgg19CLF.evaluate_generator(validation_generator, 25250 // batch_size)
+print("[EVAL] loss={:.4f}, top-1 accuracy: {:.4f}%".format(loss, acc * 100))
+
+batch_size = 1
+validation_generator = test_datagen.flow_from_directory(
+    'dataset-ethz101food/test',
+    target_size=(224, 224),
+    batch_size=batch_size,
+    class_mode='categorical')
+vgg19CLF.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['categorical_accuracy'])
+(loss, acc) = vgg19CLF.evaluate_generator(validation_generator, 25250)
+print("[EVAL] loss={:.4f}, top-1 accuracy: {:.4f}%".format(loss, acc * 100))
+
+
 xceptionCLF = keras.applications.xception.Xception(include_top=False, weights='imagenet', input_shape=(299, 299, 3))
 x = GlobalAveragePooling2D()(xceptionCLF.output)
 out = Dense(101, activation='softmax', name='output_layer')(x)
