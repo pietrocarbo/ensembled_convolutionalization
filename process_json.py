@@ -126,11 +126,13 @@ def process_ensdata(filename):
         print("Label scores: original", "(avg: {:.4f}, std: {:.4f});".format(np.mean(origTrueLabelScores), np.std(origTrueLabelScores)),
                            "cropped", "(avg: {:.4f}, std: {:.4f})".format(np.mean(cropTrueLabelScores), np.std(cropTrueLabelScores)),)
 
-        print("Mistaken", len(missed_samples), "samples:", missed_samples)
-        print("Corrected", len(corrected_samples), "samples:", corrected_samples)
+        print("Mistaken", len(missed_samples), "samples") #:", missed_samples)
+        print("Corrected", len(corrected_samples), "samples") #:", corrected_samples)
 
-        print("\nImage classification report\n", classification_report(y_true, y_original, target_names=[lab for lab in sorted(dict_labels)]))
-        print("\nCrop classification report\n", classification_report(y_true, y_cropped, target_names=[lab for lab in sorted(dict_labels)]))
+        print("Image classification accuracy", accuracy_score(y_true, y_original))
+        print("Crop classification accuracy", accuracy_score(y_true, y_cropped))
+        # print("\nImage classification report\n", classification_report(y_true, y_original, target_names=[lab for lab in sorted(dict_labels)]))
+        # print("\nCrop classification report\n", classification_report(y_true, y_cropped, target_names=[lab for lab in sorted(dict_labels)]))
 
 process_ensdata("testSet25250_ENSEMBLE.json")
 
@@ -178,7 +180,6 @@ def classification_eval(orig_clf_fn, crop_clf_fn):
     #       classification_report(y_true, y_original, target_names=[lab for lab in sorted(dict_labels)]))
     # print("\nCrop classification report\n",
     #       classification_report(y_true, y_cropped, target_names=[lab for lab in sorted(dict_labels)]))
-
 
 def final_evaluation(foldername):
 
