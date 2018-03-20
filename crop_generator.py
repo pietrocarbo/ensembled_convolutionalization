@@ -35,6 +35,6 @@ def yield_crops(cropfilename):
                 # ax.set_title(crop["filename"])
                 # plt.show()
 
-                yield ({'input': img}, {'output': y})
+                yield ({'input_1': img}, {'output': y})
 
 yield_crops("results/cropping_eval/cropsdata.pickle")
