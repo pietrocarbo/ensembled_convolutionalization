@@ -4,7 +4,6 @@ import numpy as np
 from keras.utils import to_categorical
 import matplotlib.pyplot as plt
 from keras.preprocessing import image
-from keras.applications.vgg19 import preprocess_input as preprocess
 
 with open("dataset-ethz101food/meta/classes.txt") as file:
     map_label_ix = {label.strip('\n'): ix for (ix, label) in enumerate(file.readlines())}
@@ -18,7 +17,7 @@ def is_square_in_img(llh, llw, edge, imgh, imgw):
     else:
         return False
 
-def yield_crops(cropfilename):
+def yield_crops(cropfilename, input_size, preprocess_func):
 
     count = 0
     while True:
@@ -50,11 +49,11 @@ def yield_crops(cropfilename):
                 #     plt.show()
 
                 img = image.array_to_img(img)
-                img = img.resize((224, 224), PIL.Image.BICUBIC)
+                img = img.resize((input_size[0], input_size[1]), PIL.Image.BICUBIC)
                 img = image.img_to_array(img)
 
                 img = np.expand_dims(img, axis=0)
-                img = preprocess(img)
+                img = preprocess_func(img)
 
                 y = map_label_ix[str(crop["label"])]
 
@@ -62,5 +61,3 @@ def yield_crops(cropfilename):
 
                 count += 1
                 yield ({'input_1': img}, {'output_layer': np.expand_dims(to_categorical(y, num_classes=101), axis=0)})
-
-yield_crops("results/cropping_eval/cropsdata.pickle")

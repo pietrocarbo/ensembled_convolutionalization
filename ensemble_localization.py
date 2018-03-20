@@ -234,7 +234,9 @@ vgg19CLF.summary()
 print("Begin crop test-set eval")
 from crop_generator import yield_crops
 vgg19CLF.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['categorical_accuracy'])
-(loss, acc) = vgg19CLF.evaluate_generator(yield_crops("results/cropping_eval/cropsdata.pickle"), 25250)
+(loss, acc) = vgg19CLF.evaluate_generator(yield_crops("results/cropping_eval/cropsdata.pickle",
+                                                      (224, 224),
+                                                      keras.applications.vgg16.preprocess_input), 25250)
 print("[CROPPED TEST-SET] loss={:.4f}, top-1 accuracy: {:.4f}%".format(loss, acc * 100))
 
 xceptionCLF = keras.applications.xception.Xception(include_top=False, weights='imagenet', input_shape=(299, 299, 3))
