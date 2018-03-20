@@ -45,6 +45,6 @@ def yield_crops(cropfilename):
                 # ax.set_title(crop["filename"])
                 # plt.show()
 
-                yield ({'input_1': img}, {'output_layer': to_categorical(y, num_classes=101)})
+                yield ({'input_1': img}, {'output_layer': np.expand_dims(to_categorical(y, num_classes=101), axis=0)})
 
 yield_crops("results/cropping_eval/cropsdata.pickle")
