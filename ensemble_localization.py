@@ -372,16 +372,6 @@ def select_best_crop(res_list):
 def traslation(heat_coord, factor, fcn_stride=32):
     return(int(fcn_stride * heat_coord / factor))
 
-def is_square_in_img(llh, llw, edge, imgh, imgw):
-    def inside(width, height, x, y):
-        if 0 <= x <= width and 0 <= y <= height: return True
-        else: return False
-    if inside(imgw, imgh, llw, llh) and inside(imgw, imgh, llw+edge, llh) and inside(imgw, imgh, llw, llh+edge) and inside(imgw, imgh, llw+edge, llh+edge):
-        return True
-    else:
-        return False
-
-
 file_list = []
 set = "test"
 class_folders = os.listdir(os.path.join(dataset_path, set))
