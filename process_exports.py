@@ -7,6 +7,13 @@ import matplotlib.patches as patches
 # from sklearn.metrics import accuracy_score
 # from sklearn.metrics import classification_report
 
+def acc_score(labels, predictions):
+    count = 0
+    for ix, label in enumerate(labels):
+        if predictions[ix] == label:
+            count += 1
+    return count / len(labels)
+
 def show_samples(samples_ix, dumps):
     for ix in samples_ix:
         print("True label:", dumps[ix]["label"])
@@ -129,11 +136,11 @@ def process_ensdata(filename):
         print("Mistaken", len(missed_samples), "samples") #:", missed_samples)
         print("Corrected", len(corrected_samples), "samples") #:", corrected_samples)
 
-        print("Image classification accuracy", accuracy_score(y_true, y_original))
-        print("Crop classification accuracy", accuracy_score(y_true, y_cropped))
+        print("Image classification accuracy", acc_score(y_true, y_original))
+        print("Crop classification accuracy", acc_score(y_true, y_cropped))
         # print("\nImage classification report\n", classification_report(y_true, y_original, target_names=[lab for lab in sorted(dict_labels)]))
         # print("\nCrop classification report\n", classification_report(y_true, y_cropped, target_names=[lab for lab in sorted(dict_labels)]))
-# process_ensdata("testSet25250_ENSEMBLE.json")
+# process_ensdata("results/testSet25250_ENSEMBLE.json")
 
 def classification_eval(orig_clf_fn, crop_clf_fn):
     orig_clf = pickle.load(open(orig_clf_fn, "rb"))
@@ -173,18 +180,9 @@ def classification_eval(orig_clf_fn, crop_clf_fn):
     print("Mistaken", len(missed_samples), "samples") #:", missed_samples)
     print("Corrected", len(corrected_samples), "samples") #:", corrected_samples)
 
-    def acc_score(labels, predictions):
-        count = 0
-        for ix, label in enumerate(labels):
-            if predictions[ix] == label:
-                count += 1
-        return count / len(labels)
+    print("Original classification accuracy: {:.4f}%".format(acc_score(y_true, y_original) * 100))
+    print("Crop classification accuracy: {:.4f}%".format(acc_score(y_true, y_cropped) * 100))
 
-    # print("Image classification accuracy", accuracy_score(y_true, y_original))
-    print("hand version", acc_score(y_true, y_original))
-
-    # print("Crop classification accuracy", accuracy_score(y_true, y_cropped))
-    print("hand version", acc_score(y_true, y_cropped))
     # print("\nImage classification report\n",
     #       classification_report(y_true, y_original, target_names=[lab for lab in sorted(dict_labels)]))
     # print("\nCrop classification report\n",
@@ -241,9 +239,11 @@ def final_evaluation(foldername):
         print("\nXCEPTION")
         classification_eval(os.path.join(foldername, "xce_orig_data.pickle"), os.path.join(foldername, "xce_crop_data.pickle"))
 
+        print("\nINCEPTION_RESNET_V2")
+        classification_eval(os.path.join(foldername, "incrv2_orig_data.pickle"), os.path.join(foldername, "incrv2_crop_data.pickle"))
+
         print("\nINCEPTION_V3")
         classification_eval(os.path.join(foldername, "incv3_orig_data.pickle"), os.path.join(foldername, "incv3_crop_data.pickle"))
 
-        print("\nINCEPTION_RESNET_V2")
-        classification_eval(os.path.join(foldername, "incrv2_orig_data.pickle"), os.path.join(foldername, "incrv2_crop_data.pickle"))
+
 final_evaluation("results/cropping_eval")

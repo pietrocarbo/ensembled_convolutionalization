@@ -5,7 +5,6 @@ from keras.regularizers import l2
 import keras
 import keras.backend as K
 
-import shutil
 import matplotlib
 # matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -189,55 +188,34 @@ def convolutionalize_incv3():
 # -----------------------------------
 # FCNs
 
-# vgg16FCN = convolutionalize_architecture(architecture_path="trained_models/top5_vgg16_acc77_2017-12-24/vgg16_architecture_2017-12-23_22-53-03.json",
-#                                          weigths_path="trained_models/top5_vgg16_acc77_2017-12-24/vgg16_ft_weights_acc0.78_e15_2017-12-23_22-53-03.hdf5",
-#                                          last_layer_name="block5_pool",
-#                                          pool_size=9)
-#
-# xceptionFCN = convolutionalize_architecture(architecture_path="trained_models/xception_architecture_2017-12-24_13-00-22.json",
-#                                             weigths_path="trained_models/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5",
-#                                             last_layer_name="block14_sepconv2_act",
-#                                             pool_size=10)
-#
-# incresv2FCN = convolutionalize_incresv2()
-#
-# incv3FCN = convolutionalize_incv3()
-#
-#
-# # -----------------------------------
-# # CLFs
-# vgg16CLF = keras.applications.vgg16.VGG16(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
-# x = GlobalAveragePooling2D()(vgg16CLF.output)
-# out = Dense(101, activation='softmax', name='output_layer')(x)
-# vgg16CLF = Model(inputs=vgg16CLF.input, outputs=out)
-# vgg16CLF.load_weights("trained_models/top5_vgg16_acc77_2017-12-24/vgg16_ft_weights_acc0.78_e15_2017-12-23_22-53-03.hdf5")
+vgg16FCN = convolutionalize_architecture(architecture_path="trained_models/top5_vgg16_acc77_2017-12-24/vgg16_architecture_2017-12-23_22-53-03.json",
+                                         weigths_path="trained_models/top5_vgg16_acc77_2017-12-24/vgg16_ft_weights_acc0.78_e15_2017-12-23_22-53-03.hdf5",
+                                         last_layer_name="block5_pool",
+                                         pool_size=9)
+
+xceptionFCN = convolutionalize_architecture(architecture_path="trained_models/xception_architecture_2017-12-24_13-00-22.json",
+                                            weigths_path="trained_models/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5",
+                                            last_layer_name="block14_sepconv2_act",
+                                            pool_size=10)
+
+incresv2FCN = convolutionalize_incresv2()
+
+incv3FCN = convolutionalize_incv3()
+
+
+# -----------------------------------
+# CLFs
+vgg16CLF = keras.applications.vgg16.VGG16(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
+x = GlobalAveragePooling2D()(vgg16CLF.output)
+out = Dense(101, activation='softmax', name='output_layer')(x)
+vgg16CLF = Model(inputs=vgg16CLF.input, outputs=out)
+vgg16CLF.load_weights("trained_models/top5_vgg16_acc77_2017-12-24/vgg16_ft_weights_acc0.78_e15_2017-12-23_22-53-03.hdf5")
 
 vgg19CLF = keras.applications.vgg19.VGG19(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
 x = GlobalAveragePooling2D()(vgg19CLF.output)
 out = Dense(101, activation='softmax', name='output_layer')(x)
 vgg19CLF = Model(inputs=vgg19CLF.input, outputs=out)
 vgg19CLF.load_weights("trained_models/top4_vgg19_acc78_2017-12-23/vgg19_ft_weights_acc0.78_e26_2017-12-22_23-55-53.hdf5")
-
-# dict_augmentation = dict(preprocessing_function=keras.applications.vgg19.preprocess_input)
-# test_datagen = ImageDataGenerator(**dict_augmentation)
-# validation_generator = test_datagen.flow_from_directory(
-#     'dataset-ethz101food/test',
-#     target_size=(224, 224),
-#     batch_size=1,
-#     class_mode='categorical')
-# vgg19CLF.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['categorical_accuracy'])
-# (loss, acc) = vgg19CLF.evaluate_generator(validation_generator)
-# print("[ORIGINAL TEST-SET] loss={:.4f}, top-1 accuracy: {:.4f}%".format(loss, acc * 100))
-
-vgg19CLF.summary()
-
-print("Begin crop test-set eval")
-from crop_generator import yield_crops
-vgg19CLF.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['categorical_accuracy'])
-(loss, acc) = vgg19CLF.evaluate_generator(yield_crops("results/cropping_eval/cropsdata.pickle",
-                                                      (224, 224),
-                                                      keras.applications.vgg16.preprocess_input), 25250)
-print("[CROPPED TEST-SET] loss={:.4f}, top-1 accuracy: {:.4f}%".format(loss, acc * 100))
 
 xceptionCLF = keras.applications.xception.Xception(include_top=False, weights='imagenet', input_shape=(299, 299, 3))
 x = GlobalAveragePooling2D()(xceptionCLF.output)

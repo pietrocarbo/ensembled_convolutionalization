@@ -17,20 +17,14 @@ def is_square_in_img(llh, llw, edge, imgh, imgw):
     else:
         return False
 
-def yield_crops(cropfilename, input_size, preprocess_func):
+def yield_crops(cropfilename, input_size, preprocess_func, input_name="input_1", output_name="output_layer"):
 
     count = 0
     while True:
         with open(cropfilename, "rb") as cropfile:
-
             crops = pickle.load(cropfile)
-            print("Crops in pickle file:", len(crops))
-
 
             for crop in crops:
-                # create numpy arrays of input data
-                # and labels, from each line in the file
-
                 coordh = int(crop["rect"]["lower_left"][0])
                 coordw = int(crop["rect"]["lower_left"][1])
                 rect_dim = int(crop["rect"]["side"])
@@ -57,7 +51,7 @@ def yield_crops(cropfilename, input_size, preprocess_func):
 
                 y = map_label_ix[str(crop["label"])]
 
-                print("File", count, "label", y)
+                # print("File", count, "label", y)
 
                 count += 1
-                yield ({'input_1': img}, {'output_layer': np.expand_dims(to_categorical(y, num_classes=101), axis=0)})
+                yield ({input_name: img}, {output_name: np.expand_dims(to_categorical(y, num_classes=101), axis=0)})
