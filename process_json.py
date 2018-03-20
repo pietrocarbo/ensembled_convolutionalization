@@ -4,8 +4,8 @@ import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-from sklearn.metrics import accuracy_score
-from sklearn.metrics import classification_report
+# from sklearn.metrics import accuracy_score
+# from sklearn.metrics import classification_report
 
 def show_samples(samples_ix, dumps):
     for ix in samples_ix:
@@ -173,8 +173,18 @@ def classification_eval(orig_clf_fn, crop_clf_fn):
     print("Mistaken", len(missed_samples), "samples") #:", missed_samples)
     print("Corrected", len(corrected_samples), "samples") #:", corrected_samples)
 
-    print("Image classification accuracy", accuracy_score(y_true, y_original))
-    print("Crop classification accuracy", accuracy_score(y_true, y_cropped))
+    def acc_score(labels, predictions):
+        count = 0
+        for ix, label in enumerate(labels):
+            if predictions[ix] == label:
+                count += 1
+        return count / len(labels)
+
+    # print("Image classification accuracy", accuracy_score(y_true, y_original))
+    print("hand version", acc_score(y_true, y_original))
+
+    # print("Crop classification accuracy", accuracy_score(y_true, y_cropped))
+    print("hand version", acc_score(y_true, y_cropped))
     # print("\nImage classification report\n",
     #       classification_report(y_true, y_original, target_names=[lab for lab in sorted(dict_labels)]))
     # print("\nCrop classification report\n",
