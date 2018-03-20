@@ -1,6 +1,7 @@
 import PIL.Image
 import pickle
 import numpy as np
+from keras.utils import to_categorical
 import matplotlib.pyplot as plt
 from keras.preprocessing import image
 from keras.applications.vgg19 import preprocess_input as preprocess
@@ -44,6 +45,6 @@ def yield_crops(cropfilename):
                 # ax.set_title(crop["filename"])
                 # plt.show()
 
-                yield ({'input_1': img}, {'output_layer': np.array([y])})
+                yield ({'input_1': img}, {'output_layer': to_categorical(y, num_classes=101)})
 
 yield_crops("results/cropping_eval/cropsdata.pickle")
