@@ -212,7 +212,7 @@ def convolutionalize_incv3():
 # vgg16CLF = Model(inputs=vgg16CLF.input, outputs=out)
 # vgg16CLF.load_weights("trained_models/top5_vgg16_acc77_2017-12-24/vgg16_ft_weights_acc0.78_e15_2017-12-23_22-53-03.hdf5")
 
-vgg19CLF = keras.applications.vgg19.VGG19(include_top=False, weights='imagenet', input_shape=(1, 224, 224, 3))
+vgg19CLF = keras.applications.vgg19.VGG19(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
 x = GlobalAveragePooling2D()(vgg19CLF.output)
 out = Dense(101, activation='softmax', name='output_layer')(x)
 vgg19CLF = Model(inputs=vgg19CLF.input, outputs=out)
