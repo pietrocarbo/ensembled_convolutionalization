@@ -1,4 +1,5 @@
 import pickle
+import numpy as np
 import matplotlib.pyplot as plt
 from keras.preprocessing import image
 from keras.applications.vgg19 import preprocess_input as preprocess
@@ -24,6 +25,7 @@ def yield_crops(cropfilename):
 
                 img = image.load_img(crop["filename"], target_size=(224, 224))
                 img = image.img_to_array(img)
+                img = np.expand_dims(img, axis=0)
                 img = preprocess(img[coordh:coordh + rect_dim, coordw:coordw + rect_dim])
 
                 y = map_label_ix[str(crop["label"])]
