@@ -405,8 +405,7 @@ for filename, class_folder in file_list:
 
     i_processed += 1
     if i_processed % instances_per_folder == 0:
-        print(time.strftime("%Y-%m-%d %H:%M:%S") + " started class " + str(
-            i_processed // instances_per_folder) + " of " + str(folder_to_scan))
+        print(time.strftime("%Y-%m-%d %H:%M:%S") + " started class " + str(i_processed // instances_per_folder) + " of " + str(folder_to_scan))
 
 print("Averages: score", np.mean(scores), "nfcn", np.mean(nfcns), "factor", np.mean(factors))
 

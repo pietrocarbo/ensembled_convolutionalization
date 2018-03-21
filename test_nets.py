@@ -42,21 +42,21 @@ def class_name_to_idx(name):
             exit(-1)
 
 
-def eval_on_orig_cropped_test_set(model, input_size, input_name, preprocess_func):
-    test_datagen = ImageDataGenerator(preprocessing_function=preprocess_func)
-    validation_generator = test_datagen.flow_from_directory(
-        'dataset-ethz101food/test',
-        target_size=input_size,
-        batch_size=1,
-        class_mode='categorical')
-    model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['categorical_accuracy'])
-    (loss, acc) = model.evaluate_generator(validation_generator)
-    print("Original classification accuracy: {:.4f}%".format(acc * 100))
+def eval_on_orig_cropped_test_set(model, input_size, input_name, preprocess_func, cropfilename):
+    # test_datagen = ImageDataGenerator(preprocessing_function=preprocess_func)
+    # validation_generator = test_datagen.flow_from_directory(
+    #     'dataset-ethz101food/test',
+    #     target_size=input_size,
+    #     batch_size=1,
+    #     class_mode='categorical')
+    # model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['categorical_accuracy'])
+    # (loss, acc) = model.evaluate_generator(validation_generator)
+    # print("Original classification accuracy: {:.4f}%".format(acc * 100))
 
 
 
     model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['categorical_accuracy'])
-    (loss, acc) = model.evaluate_generator(yield_crops(cropfilename="results/cropping_eval/cropsdata.pickle",
+    (loss, acc) = model.evaluate_generator(yield_crops(cropfilename=cropfilename,
                                                           input_size=input_size,
                                                           preprocess_func=preprocess_func,
                                                           input_name=input_name), 25250)
@@ -103,34 +103,20 @@ out = Dense(101, kernel_initializer='he_uniform', bias_initializer="he_uniform",
 incv3CLF = Model(inputs=incv3CLF.input, outputs=out)
 incv3CLF.load_weights("trained_models/top3_inceptionv3_acc79_2017-12-27/inceptionv3_ft_weights_acc0.79_e10_2017-12-25_22-10-02.hdf5")
 
-res50CLF = keras.applications.resnet50.ResNet50(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
-x = GlobalAveragePooling2D()(res50CLF.output)
-out = Dense(101, activation='softmax', name='output_layer')(x)
-res50CLF = Model(inputs=res50CLF.input, outputs=out)
-res50CLF.load_weights("trained_models/2017-12-10_acc77_resnet50/resnet50_ft_weights_acc0.77_e2_2017-12-09_19-16-07.hdf5")
-
-# mobnCLF = keras.applications.mobilenet.MobileNet(alpha=1.0, depth_multiplier=1, dropout=1e-3, include_top=False, weights='imagenet', input_shape=(224, 224, 3))
-# x = GlobalAveragePooling2D()(mobnCLF.output)
-# x = Dense(512, activation='relu', name='fc-1')(x)
-# x = Dropout(0.5)(x)
-# x = Dense(256, activation='relu', name='fc-2')(x)
-# x = Dropout(0.5)(x)
-# out = Dense(101, activation='softmax', name='output_layer')(x)
-# mobnCLF.load_weights("trained_models/2017-12-06_acc76_mobilenet/mobilenet_ft_0.76_2_2017-12-05_22-15-05.hdf5")
-# mobnCLF = Model(inputs=mobnCLF.input, outputs=out)
+cropfilename = "cropsdata.pickle"
 
 print("VGG16")
-eval_on_orig_cropped_test_set(vgg16CLF, (224, 224), "input_1", keras.applications.vgg16.preprocess_input)
+eval_on_orig_cropped_test_set(vgg16CLF, (224, 224), "input_1", keras.applications.vgg16.preprocess_input, cropfilename)
 
 print("\nVGG19")
-eval_on_orig_cropped_test_set(vgg19CLF, (224, 224), "input_2", keras.applications.vgg19.preprocess_input)
+eval_on_orig_cropped_test_set(vgg19CLF, (224, 224), "input_2", keras.applications.vgg19.preprocess_input, cropfilename)
 
 print("\nXCEPTION")
-eval_on_orig_cropped_test_set(xceptionCLF, (299, 299), "input_3", keras.applications.xception.preprocess_input)
+eval_on_orig_cropped_test_set(xceptionCLF, (299, 299), "input_3", keras.applications.xception.preprocess_input, cropfilename)
 
 print("\nINCEPTION_RESNET_V2")
-eval_on_orig_cropped_test_set(incresv2CLF, (299, 299), "input_4", keras.applications.inception_resnet_v2.preprocess_input)
+eval_on_orig_cropped_test_set(incresv2CLF, (299, 299), "input_4", keras.applications.inception_resnet_v2.preprocess_input, cropfilename)
 
 print("\nINCEPTION_V3")
-eval_on_orig_cropped_test_set(incv3CLF, (299, 299), "input_5", keras.applications.inception_v3.preprocess_input)
+eval_on_orig_cropped_test_set(incv3CLF, (299, 299), "input_5", keras.applications.inception_v3.preprocess_input, cropfilename)
 
