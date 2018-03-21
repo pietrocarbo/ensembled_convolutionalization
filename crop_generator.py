@@ -54,4 +54,6 @@ def yield_crops(cropfilename, input_size, preprocess_func, input_name="input_1",
                 # print("File", count, "label", y)
 
                 count += 1
+                if count >= 252520:
+                    print("Yielded", count, "samples")
                 yield ({input_name: img}, {output_name: np.expand_dims(to_categorical(y, num_classes=101), axis=0)})
