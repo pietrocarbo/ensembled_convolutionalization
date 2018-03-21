@@ -109,7 +109,7 @@ out = Dense(101, activation='softmax', name='output_layer')(x)
 res50CLF = Model(inputs=res50CLF.input, outputs=out)
 res50CLF.load_weights("trained_models/2017-12-10_acc77_resnet50/resnet50_ft_weights_acc0.77_e2_2017-12-09_19-16-07.hdf5")
 
-mobnCLF = keras.applications.mobilenet.MobileNet(alpha=1.0, depth_multiplier=1, dropout=1e-3, include_top=False, weights='imagenet', input_shape=(224, 224, 3))
+mobnCLF = keras.applications.mobilenet.MobileNet( include_top=False, weights='imagenet', input_shape=(224, 224, 3))
 x = GlobalAveragePooling2D()(mobnCLF.output)
 x = Dense(512, activation='relu', name='fc-1')(x)
 x = Dropout(0.5)(x)
