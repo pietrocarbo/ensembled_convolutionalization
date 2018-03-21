@@ -1,4 +1,5 @@
-from keras.layers import Conv2D, AveragePooling2D, Dense, BatchNormalization, LeakyReLU, GlobalAveragePooling2D, Dropout, Input
+from keras.layers import Conv2D, AveragePooling2D, Dense, BatchNormalization, LeakyReLU, GlobalAveragePooling2D, \
+    Dropout, Input
 from keras.models import Model
 from keras.models import model_from_json
 from keras.regularizers import l2
@@ -8,6 +9,7 @@ import keras.backend as K
 import matplotlib
 # matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+
 plt.style.use('seaborn-bright')
 import matplotlib.ticker as plticker
 
@@ -26,10 +28,12 @@ from keras.preprocessing.image import ImageDataGenerator
 
 dataset_path = "dataset-ethz101food"
 
+
 def ix_to_class_name(idx):
     with open(os.path.join(dataset_path, "meta", "classes.txt")) as file:
         class_labels = [line.strip('\n') for line in file.readlines()]
     return class_labels[idx]
+
 
 def class_name_to_idx(name):
     with open(os.path.join(dataset_path, "meta", "classes.txt")) as file:
@@ -41,11 +45,13 @@ def class_name_to_idx(name):
             print("class idx not found!")
             exit(-1)
 
+
 def threshold_max(rst_list, threshold=0.5):
     for ix, rst in enumerate(rst_list):
         if rst[2] > threshold:
             return ix
     return 0
+
 
 def factor_weighted_max(rst_list, weight=1.25):
     max_ix = 0
@@ -58,6 +64,7 @@ def factor_weighted_max(rst_list, weight=1.25):
             max_ix = ix
     return max_ix
 
+
 def prepare_str_file_architecture_syntax(filepath):
     model_str = str(json.load(open(filepath, "r")))
     model_str = model_str.replace("'", '"')
@@ -65,6 +72,7 @@ def prepare_str_file_architecture_syntax(filepath):
     model_str = model_str.replace("False", "false")
     model_str = model_str.replace("None", "null")
     return model_str
+
 
 def convolutionalize_architecture(architecture_path, weigths_path, last_layer_name, pool_size, debug=False):
     model = model_from_json(prepare_str_file_architecture_syntax(architecture_path))
@@ -183,65 +191,27 @@ def convolutionalize_incv3():
     incv3 = Model(inputs=incv3.input, outputs=x)
     return incv3
 
+
 # K.clear_session()
 
 # -----------------------------------
 # FCNs
 
-vgg16FCN = convolutionalize_architecture(architecture_path="trained_models/top5_vgg16_acc77_2017-12-24/vgg16_architecture_2017-12-23_22-53-03.json",
-                                         weigths_path="trained_models/top5_vgg16_acc77_2017-12-24/vgg16_ft_weights_acc0.78_e15_2017-12-23_22-53-03.hdf5",
-                                         last_layer_name="block5_pool",
-                                         pool_size=9)
+vgg16FCN = convolutionalize_architecture(
+    architecture_path="trained_models/top5_vgg16_acc77_2017-12-24/vgg16_architecture_2017-12-23_22-53-03.json",
+    weigths_path="trained_models/top5_vgg16_acc77_2017-12-24/vgg16_ft_weights_acc0.78_e15_2017-12-23_22-53-03.hdf5",
+    last_layer_name="block5_pool",
+    pool_size=9)
 
-xceptionFCN = convolutionalize_architecture(architecture_path="trained_models/xception_architecture_2017-12-24_13-00-22.json",
-                                            weigths_path="trained_models/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5",
-                                            last_layer_name="block14_sepconv2_act",
-                                            pool_size=10)
+# xceptionFCN = convolutionalize_architecture(
+#     architecture_path="trained_models/xception_architecture_2017-12-24_13-00-22.json",
+#     weigths_path="trained_models/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5",
+#     last_layer_name="block14_sepconv2_act",
+#     pool_size=10)
 
 incresv2FCN = convolutionalize_incresv2()
 
 incv3FCN = convolutionalize_incv3()
-
-
-# -----------------------------------
-# CLFs
-vgg16CLF = keras.applications.vgg16.VGG16(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
-x = GlobalAveragePooling2D()(vgg16CLF.output)
-out = Dense(101, activation='softmax', name='output_layer')(x)
-vgg16CLF = Model(inputs=vgg16CLF.input, outputs=out)
-vgg16CLF.load_weights("trained_models/top5_vgg16_acc77_2017-12-24/vgg16_ft_weights_acc0.78_e15_2017-12-23_22-53-03.hdf5")
-
-vgg19CLF = keras.applications.vgg19.VGG19(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
-x = GlobalAveragePooling2D()(vgg19CLF.output)
-out = Dense(101, activation='softmax', name='output_layer')(x)
-vgg19CLF = Model(inputs=vgg19CLF.input, outputs=out)
-vgg19CLF.load_weights("trained_models/top4_vgg19_acc78_2017-12-23/vgg19_ft_weights_acc0.78_e26_2017-12-22_23-55-53.hdf5")
-
-xceptionCLF = keras.applications.xception.Xception(include_top=False, weights='imagenet', input_shape=(299, 299, 3))
-x = GlobalAveragePooling2D()(xceptionCLF.output)
-out = Dense(101, activation='softmax', name='output_layer')(x)
-xceptionCLF = Model(inputs=xceptionCLF.input, outputs=out)
-xceptionCLF.load_weights("trained_models/top1_xception_acc80_2017-12-25/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5")
-
-incresv2CLF = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet', input_shape=(299, 299, 3))
-x = GlobalAveragePooling2D()(incresv2CLF.output)
-out = Dense(101, activation='softmax', name='output_layer')(x)
-incresv2CLF = Model(inputs=incresv2CLF.input, outputs=out)
-incresv2CLF.load_weights("trained_models/top2_incresnetv2_acc79_2017-12-22/incv2resnet_ft_weights_acc0.79_e4_2017-12-21_09-02-16.hdf5")
-
-incv3CLF = keras.applications.inception_v3.InceptionV3(include_top=False, weights='imagenet', input_shape=(299, 299, 3))
-x = GlobalAveragePooling2D()(incv3CLF.output)
-x = Dense(1024, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005), bias_regularizer=l2(.0005))(x)
-x = LeakyReLU()(x)
-x = BatchNormalization()(x)
-x = Dropout(0.5)(x)
-x = Dense(512, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005), bias_regularizer=l2(.0005))(x)
-x = LeakyReLU()(x)
-x = BatchNormalization()(x)
-x = Dropout(0.5)(x)
-out = Dense(101, kernel_initializer='he_uniform', bias_initializer="he_uniform", activation='softmax', name='output_layer')(x)
-incv3CLF = Model(inputs=incv3CLF.input, outputs=out)
-incv3CLF.load_weights("trained_models/top3_inceptionv3_acc79_2017-12-27/inceptionv3_ft_weights_acc0.79_e10_2017-12-25_22-10-02.hdf5")
 
 
 def predict_from_imgarray(model, img, input_size, preprocess):
@@ -257,6 +227,7 @@ def predict_from_imgarray(model, img, input_size, preprocess):
     preds = model.predict(img_preprocessed_image)
     return preds
 
+
 def predict_from_filename(model, filename, input_size, preprocess):
     input_img = image.load_img(filename, target_size=input_size)
     input_img = image.img_to_array(input_img)
@@ -265,37 +236,39 @@ def predict_from_filename(model, filename, input_size, preprocess):
     preds = model.predict(input_preprocessed_image)
     return preds
 
+
 def get_top1data(preds, extraClass):
     maxix = np.argmax(preds)
     return (maxix, ix_to_class_name(maxix), preds[maxix], preds[class_name_to_idx(extraClass)])
 
-#inc_list = [0, 32, 64, 96, 160, 224, 288, 384, 512]
-kernel_sizes = [288, 295, 299, 299]
-FCNs = [vgg16FCN, xceptionFCN, incresv2FCN, incv3FCN]
-preprocess_func = [  keras.applications.vgg16.preprocess_input
-                   , keras.applications.xception.preprocess_input
-                   , keras.applications.inception_resnet_v2.preprocess_input
-                   , keras.applications.inception_v3.preprocess_input]
+
+# inc_list = [0, 32, 64, 96, 160, 224, 288, 384, 512]
+kernel_sizes = [288, 299, 299]
+FCNs = [vgg16FCN, incresv2FCN, incv3FCN]
+preprocess_func = [keras.applications.vgg16.preprocess_input
+    , keras.applications.inception_resnet_v2.preprocess_input
+    , keras.applications.inception_v3.preprocess_input]
+
 
 def dim_size(w, k, s):
-  return ((w - k) // s + 1)
-        
-def process_image(input_fn, input_cix, img_shape, upsampling_step = 1.2, max_scale_factor = 2.5):
+    return ((w - k) // s + 1)
+
+def process_image(input_fn, input_cix, img_shape, upsampling_step=1.2, max_scale_factor=2.5):
     results = []
     if (os.path.exists(input_fn)):
-        base_kernel_size = 295 # any of the kernels would do
+        base_kernel_size = 299  # any of the kernels would do
         scale_factor = float(base_kernel_size) / min(img_shape[0], img_shape[1])
         maxcn = 0
-        
-        while scale_factor < max_scale_factor and maxcn < 4:
+
+        while scale_factor < max_scale_factor and maxcn < len(FCNs):
             # definiamo la dimensione attesa della heatmap a questa scala usando il kernel del primo fcn
             # riscaleremo poi le immagini alle dimensioni giuste per gli altri cropper,
             # in modo da avere in output un heatmap della dimensione prevista
             base_kernel_size = kernel_sizes[0]
-            heatmap_h = dim_size(round(img_shape[0]*scale_factor), base_kernel_size, 32)
-            heatmap_w = dim_size(round(img_shape[1]*scale_factor), base_kernel_size, 32)
+            heatmap_h = dim_size(round(img_shape[0] * scale_factor), base_kernel_size, 32)
+            heatmap_w = dim_size(round(img_shape[1] * scale_factor), base_kernel_size, 32)
             # print("Heatmapdim scale dim:", heatmap_h, heatmap_w)
-            
+
             # cerchiamo a questa scala il crop che ha il numero massimo di croppatori che lo classificano come classe input_ix
             heatmaps = []
             bool_cix_maps = []
@@ -314,10 +287,12 @@ def process_image(input_fn, input_cix, img_shape, upsampling_step = 1.2, max_sca
             for bool_cix_map in bool_cix_maps:
                 ncix_max_map += bool_cix_map
 
-            maxcn = np.max(ncix_max_map)    # valore massimo della mappa ncix_max_map
-            positions = np.nonzero(ncix_max_map == maxcn)  # tupla con indici relativi a ncix_max_map dove è presente il valore maxcn
+            maxcn = np.max(ncix_max_map)  # valore massimo della mappa ncix_max_map
+            positions = np.nonzero(
+                ncix_max_map == maxcn)  # tupla con indici relativi a ncix_max_map dove è presente il valore maxcn
             positions = list(zip(positions[0], positions[1]))
-            #print(positions)
+
+            # print(positions)
 
             def sum_crop_score(x):
                 res = 0
@@ -327,8 +302,9 @@ def process_image(input_fn, input_cix, img_shape, upsampling_step = 1.2, max_sca
 
             ordpositions = sorted(positions, key=sum_crop_score)
             best_crop_ix = ordpositions[-1]
-            best_crop_score = sum_crop_score(best_crop_ix) / 4
-            correct_fcn = [bool_cix_map[best_crop_ix[0], best_crop_ix[1]] for bool_cix_map in bool_cix_maps] # array booleano
+            best_crop_score = sum_crop_score(best_crop_ix) / len(FCNs)
+            correct_fcn = [bool_cix_map[best_crop_ix[0], best_crop_ix[1]] for bool_cix_map in
+                           bool_cix_maps]  # array booleano
             results.append({"factor": scale_factor, "heatmap_shape": heatmaps[-1].shape[0:2], "ix": best_crop_ix,
                             "score": best_crop_score, "nfcn_clf_ix": maxcn, "fcn_clf_ix": correct_fcn})
 
@@ -340,17 +316,20 @@ def process_image(input_fn, input_cix, img_shape, upsampling_step = 1.2, max_sca
         # print("\n")
 
     else:
-        print ("The image file " + str(input_fn) + " does not exist")
+        print("The image file " + str(input_fn) + " does not exist")
 
     return results
+
 
 # seleziona il best crop della return list
 def select_best_crop(res_list):
     sort_list = sorted(res_list, key=lambda res: (res["nfcn_clf_ix"], res["score"]), reverse=True)
-    return(sort_list[0])
+    return (sort_list[0])
+
 
 def traslation(heat_coord, factor, fcn_stride=32):
-    return(int(fcn_stride * heat_coord / factor))
+    return (int(fcn_stride * heat_coord / factor))
+
 
 file_list = []
 set = "test"
@@ -364,34 +343,11 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
         filename = os.path.join(dataset_path, set, class_folder, instance)
         file_list.append((filename, class_folder))
 
-# with open(os.path.join("test_images", "wronglabels.txt")) as file:
-#     file_list = [(os.path.join(dataset_path,
-#                                line.strip("\"\n").split("\\")[0],
-#                                line.strip("\"\n").split("\\")[1],
-#                                line.strip("\"\n").split("\\")[2]),
-#                                line.strip("\"\n").split("\\")[1]) for line in file.readlines()]
-# shuffle(file_list)
-
 factors = np.empty(len(file_list))
 scores = np.empty(len(file_list))
 nfcns = np.empty(len(file_list), dtype=int)
 
 crop_data = []
-
-vgg16_orig_data = []
-vgg16_crop_data = []
-
-vgg19_orig_data = []
-vgg19_crop_data = []
-
-xce_orig_data = []
-xce_crop_data = []
-
-incv3_orig_data = []
-incv3_crop_data = []
-
-incrv2_orig_data = []
-incrv2_crop_data = []
 
 i_processed = 0
 
@@ -426,76 +382,32 @@ for filename, class_folder in file_list:
     # ax.add_patch(rect)
     # plt.show()
 
-
     ix_label = class_name_to_idx(class_folder)
 
-    def append_predictions(modelCLF, filename, croparray, input_size, preprocess, orig_export_list, crop_export_list):
-        preds_original = predict_from_filename(modelCLF, filename, input_size, preprocess).flatten()
-        porig_maxix, porig_maxname, porig_maxscore, porigin_labelscore = get_top1data(preds_original, class_folder)
-        orig_export_list.append(dict(ix_label=int(ix_label), pr_label=float(porigin_labelscore), ix_predicted=int(porig_maxix), pr_predicted=float(porig_maxscore)))
-
-        preds_crop = predict_from_imgarray(modelCLF, croparray, input_size, preprocess).flatten()
-        pcrop_maxix, pcrop_maxname, pcrop_maxscore, pcrop_labelscore = get_top1data(preds_crop, class_folder)
-        crop_export_list.append(dict(ix_label=int(ix_label), pr_label=float(pcrop_labelscore), ix_predicted=int(pcrop_maxix), pr_predicted=float(pcrop_maxscore)))
-
-    # VGG16
-    append_predictions(vgg16CLF, filename, img[coordh:coordh + rect_dim, coordw:coordw + rect_dim], (224, 224),
-                       keras.applications.vgg16.preprocess_input, vgg16_orig_data, vgg16_crop_data)
-
-    # VGG19
-    append_predictions(vgg19CLF, filename, img[coordh:coordh + rect_dim, coordw:coordw + rect_dim], (224, 224),
-                       keras.applications.vgg19.preprocess_input, vgg19_orig_data, vgg19_crop_data)
-    # INCV3
-    append_predictions(incv3CLF, filename, img[coordh:coordh + rect_dim, coordw:coordw + rect_dim], (299, 299),
-                       keras.applications.inception_v3.preprocess_input, incv3_orig_data, incv3_crop_data)
-
-    # INCRESNETV2
-    append_predictions(incresv2CLF, filename, img[coordh:coordh + rect_dim, coordw:coordw + rect_dim], (299, 299),
-                       keras.applications.inception_resnet_v2.preprocess_input, incrv2_orig_data, incrv2_crop_data)
-
-    # XCEPTION
-    append_predictions(xceptionCLF, filename, img[coordh:coordh + rect_dim, coordw:coordw + rect_dim], (299, 299),
-                       keras.applications.xception.preprocess_input, xce_orig_data, xce_crop_data)
-
     crop_data.append(dict(filename=str(filename),
-                label=str(class_folder),
-                crop=dict(
-                    factor=float(crop["factor"]),
-                    heath=int(crop["heatmap_shape"][0]),
-                    heatw=int(crop["heatmap_shape"][1]),
-                    cropixh=int(crop["ix"][0]),
-                    cropixw=int(crop["ix"][1]),
-                    score=float(crop["score"]),
-                    nfcn=int(crop["nfcn_clf_ix"]),
-                    fcn=dict(vgg16FCN=str(crop["fcn_clf_ix"][0]),
-                             xceptionFCN=str(crop["fcn_clf_ix"][1]),
-                             incresv2FCN=str(crop["fcn_clf_ix"][2]),
-                             incv3FCN=str(crop["fcn_clf_ix"][3])
-                    )
-                ),
-                rect=dict(lower_left=(int(coordh), int(coordw)), side=int(rect_dim))
-        )
-    )
+                          label=str(class_folder),
+                          crop=dict(
+                              factor=float(crop["factor"]),
+                              heath=int(crop["heatmap_shape"][0]),
+                              heatw=int(crop["heatmap_shape"][1]),
+                              cropixh=int(crop["ix"][0]),
+                              cropixw=int(crop["ix"][1]),
+                              score=float(crop["score"]),
+                              nfcn=int(crop["nfcn_clf_ix"]),
+                              fcn=dict(vgg16FCN=str(crop["fcn_clf_ix"][0]),
+                                       incresv2FCN=str(crop["fcn_clf_ix"][1]),
+                                       incv3FCN=str(crop["fcn_clf_ix"][2])
+                                       )
+                          ),
+                          rect=dict(lower_left=(int(coordh), int(coordw)), side=int(rect_dim))
+                          )
+                     )
 
     i_processed += 1
     if i_processed % instances_per_folder == 0:
-        print(time.strftime("%Y-%m-%d %H:%M:%S") + " started class " + str(i_processed//instances_per_folder) + " of " + str(folder_to_scan))
+        print(time.strftime("%Y-%m-%d %H:%M:%S") + " started class " + str(
+            i_processed // instances_per_folder) + " of " + str(folder_to_scan))
 
 print("Averages: score", np.mean(scores), "nfcn", np.mean(nfcns), "factor", np.mean(factors))
-
-pickle.dump(vgg16_orig_data, open("vgg16_orig_data.pickle", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
-pickle.dump(vgg16_crop_data, open("vgg16_crop_data.pickle", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
-
-pickle.dump(vgg19_orig_data, open("vgg19_orig_data.pickle", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
-pickle.dump(vgg19_crop_data, open("vgg19_crop_data.pickle", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
-
-pickle.dump(incv3_orig_data, open("incv3_orig_data.pickle", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
-pickle.dump(incv3_crop_data, open("incv3_crop_data.pickle", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
-
-pickle.dump(incrv2_orig_data, open("incrv2_orig_data.pickle", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
-pickle.dump(incrv2_crop_data, open("incrv2_crop_data.pickle", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
-
-pickle.dump(xce_orig_data, open("xce_orig_data.pickle", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
-pickle.dump(xce_crop_data, open("xce_crop_data.pickle", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
 
 pickle.dump(crop_data, open("cropsdata.pickle", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
