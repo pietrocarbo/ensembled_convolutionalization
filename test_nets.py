@@ -107,7 +107,7 @@ res50CLF = keras.applications.resnet50.ResNet50(include_top=False, weights='imag
 x = GlobalAveragePooling2D()(res50CLF.output)
 out = Dense(101, activation='softmax', name='output_layer')(x)
 res50CLF = Model(inputs=res50CLF.input, outputs=out)
-res50CLF.load_weights("trained_models/2017-12-10_acc77_resnet50/resnet50_ft_weights_acc0.77_e5_2017-12-09_19-16-07.hdf5")
+res50CLF.load_weights("trained_models/2017-12-10_acc77_resnet50/resnet50_ft_weights_acc0.77_e2_2017-12-09_19-16-07.hdf5")
 
 mobnCLF = keras.applications.mobilenet.MobileNet(alpha=1.0, depth_multiplier=1, dropout=1e-3, include_top=False, weights='imagenet', input_shape=(224, 224, 3))
 x = GlobalAveragePooling2D()(mobnCLF.output)
@@ -116,8 +116,8 @@ x = Dropout(0.5)(x)
 x = Dense(256, activation='relu', name='fc-2')(x)
 x = Dropout(0.5)(x)
 out = Dense(101, activation='softmax', name='output_layer')(x)
+mobnCLF.load_weights("trained_models/2017-12-06_acc76_mobilenet/mobilenet_ft_0.76_2_2017-12-05_22-15-05.hdf5")
 mobnCLF = Model(inputs=mobnCLF.input, outputs=out)
-mobnCLF.load_weights("trained_models/2017-12-06_acc76_mobilenet/mobilenet_ft_0.76_3_2017-12-05_22-15-05.hdf5")
 
 # print("VGG16")
 # eval_on_orig_cropped_test_set(vgg16CLF, (224, 224), "input_1", keras.applications.vgg16.preprocess_input)
