@@ -11,11 +11,11 @@ from keras.layers.advanced_activations import LeakyReLU
 from keras.models import Model
 from keras.regularizers import l2
 
-from lib.plot_utils import save_acc_loss_plots
-from lib.randomization import lower_randomization_effects
-from lib.callbacks import checkpointer, early_stopper, lr_reducer, csv_logger
-from lib.memory_management import memory_growth_config
-from lib.outputs_directories import create_empty_directories
+from utils.plot_utils import save_acc_loss_plots
+from utils.randomization import lower_randomization_effects
+from utils.callbacks import checkpointer, early_stopper, lr_reducer, csv_logger
+from utils.memory_management import memory_growth_config
+from utils.outputs_directories import create_empty_directories
 
 create_empty_directories(['results','logs', 'models'], empty_dirs=True)
 lower_randomization_effects()
@@ -23,7 +23,7 @@ memory_growth_config()
 
 IMG_WIDTH = 299
 IMG_HEIGHT = 299
-
+# network to finetune
 from keras.applications.xception import preprocess_input
 model_name = 'xception'
 base_model = keras.applications.xception.Xception(include_top=False, weights='imagenet', input_shape=(IMG_WIDTH, IMG_HEIGHT, 3))
@@ -49,7 +49,7 @@ if TOP_NET_ARCH == dense3:
     topnet_output = Dense(num_classes, activation='softmax', name='output_layer')(x)
 
 elif TOP_NET_ARCH == vgg19:
-    x = Flatten(name='flatten')(base_model.output)
+    x = GlobalAveragePooling2D()(base_model.output)
     x = Dense(4096, kernel_initializer='glorot_normal', bias_initializer="zeros", activation='relu',
               kernel_regularizer=l2(.0005), name="fc-1-glorot-l2")(x)
     x = Dropout(0.5)(x)
@@ -59,8 +59,7 @@ elif TOP_NET_ARCH == vgg19:
     topnet_output = Dense(num_classes, activation="softmax", name='output_layer')(x)
 
 elif TOP_NET_ARCH == dense3LRBN:
-    #x = GlobalAveragePooling2D()(base_model.output)
-    x = Flatten()(base_model.output)
+    x = GlobalAveragePooling2D()(base_model.output)
     x = Dense(1024, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005),
               bias_regularizer=l2(.0005))(x)
     x = LeakyReLU()(x)
@@ -81,8 +80,7 @@ elif TOP_NET_ARCH == dense2:
     topnet_output = Dense(num_classes, activation='softmax', kernel_initializer='he_uniform', bias_initializer="he_uniform")(x)
 
 elif TOP_NET_ARCH == dense1:
-    # x = GlobalAveragePooling2D()(base_model.output)
-    x = Flatten()(base_model.output)
+    x = GlobalAveragePooling2D()(base_model.output)
     topnet_output = Dense(num_classes, activation='softmax', name='output_layer')(x)
 
 else:
@@ -91,9 +89,9 @@ else:
 custom_model = Model(inputs=base_model.input, outputs=topnet_output)
 
 base_model_nlayers = len(base_model.layers)
-topnn_nlayers = len(custom_model.layers) - len(base_model.layers)
+topnn_nlayers = len(custom_model.layers) - base_model_nlayers
 
-print('Custom model structure')
+print('Network structure')
 custom_model.summary()
 
 data_augmentation_level = 4
@@ -118,7 +116,8 @@ if data_augmentation_level > 3:
 
 train_datagen = ImageDataGenerator(**dict_augmentation)
 
-
+# Training function.
+# Takes all the necessary parameter and train the model for the specified epochs, optionally evaluating it at the end.
 def train_top_n_layers(model, threshold_train, epochs, optimizer, batch_size=32, callbacks=None, train_steps=None,
                        val_steps=None, test_epoch_end=True, top5acc_metric=True):
     ltrained = lfreezed = 0
@@ -131,6 +130,7 @@ def train_top_n_layers(model, threshold_train, epochs, optimizer, batch_size=32,
             ltrained += 1
     print('Training on {} layers, {} freezed layers'.format(ltrained, lfreezed))
 
+    # Keras generator yielding the augmented images of Food-101
     train_generator = train_datagen.flow_from_directory(
         'dataset-ethz101food/train',
         target_size=(IMG_WIDTH, IMG_HEIGHT),
@@ -165,7 +165,7 @@ def train_top_n_layers(model, threshold_train, epochs, optimizer, batch_size=32,
             print("[EVAL] loss={:.4f}, top-1 accuracy: {:.4f}%".format(loss, acc * 100))
     return history
 
-
+# Handling a smooth exit during training
 def close_signals_handler(signum, frame):
     sys.stdout.flush()
     print('\n\nReceived KeyboardInterrupt (CTRL-C), preparing to exit')
@@ -180,7 +180,7 @@ signal.signal(signal.SIGINT, close_signals_handler)
 
 timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
 
-# filenames
+# output filenames
 model_arch_file = model_name + '_architecture_' + timestamp + '.json'
 traincfg_file =  model_name + '_trainconfig_' + timestamp + '.json'
 logfile = model_name + '_ft_' + timestamp + '.csv'
@@ -194,7 +194,7 @@ adam = 'adam'
 rmsprop = 'rmsprop'
 sgd = keras.optimizers.SGD(lr=1e-4, decay=1e-6, momentum=0.9, nesterov=True)
 
-# callbacks
+# Keras callbacks used during training
 logger = csv_logger(logfile)
 lr_reduce = lr_reducer(factor=0.1, patience=3)
 stopper = early_stopper(monitor='val_categorical_accuracy', patience=3)
@@ -205,11 +205,9 @@ batch_size = int(sys.argv[1]) if len(sys.argv) > 1 else 32
 train_steps = None or 75750 // batch_size
 val_steps = None or 25250 // batch_size
 epochs = 250
-
 twopass, bottomup, whole_net, = ("twopass", "bottomup", "whole_net")
 ft_bottumup_step = base_model_nlayers // 5
 FT_TECNIQUE = bottomup
-
 traincfg = {
     "train_tecnique": FT_TECNIQUE,
     "batch_size": batch_size,
@@ -229,13 +227,18 @@ traincfg = {
     "ft_step": str(ft_bottumup_step),
 }
 
+# exporting training configuration
 with open(os.path.join(os.getcwd(), 'logs', traincfg_file), 'w') as outfile:
     json.dump(traincfg, outfile, indent=2, sort_keys=True)
 
+# exporting network structure
 with open(os.path.join(os.getcwd(), 'models', model_arch_file), 'w') as outfile:
     json.dump(json.loads(custom_model.to_json()), outfile, indent=2)
 
+
 train_time = time.time()
+
+# train last layers, then whole net
 if FT_TECNIQUE == twopass:
     histories = [train_top_n_layers(
         model=custom_model,
@@ -254,6 +257,7 @@ if FT_TECNIQUE == twopass:
         train_steps=train_steps, val_steps=val_steps,
         callbacks=[stopper, logger, model_saver]))
 
+# train last layers, then increase the trainability threshold using a fixed step
 elif FT_TECNIQUE == bottomup:
     histories = [train_top_n_layers(
         model=custom_model,
@@ -273,6 +277,7 @@ elif FT_TECNIQUE == bottomup:
             train_steps=train_steps, val_steps=val_steps,
             callbacks=[stopper, logger, model_saver]))
 
+# train all the network layers together
 elif FT_TECNIQUE == whole_net:
     histories = [train_top_n_layers(
         model=custom_model,

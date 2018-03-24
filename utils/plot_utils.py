@@ -5,6 +5,8 @@ plt.style.use('seaborn-bright')
 import itertools
 import numpy as np
 
+
+# save in results/ folder the plots of loss and accuracy evolution in the given (training) "histories" object
 def save_acc_loss_plots(histories, acc_fn, loss_fn):
     epochs_per_step = []
     val_acc = []

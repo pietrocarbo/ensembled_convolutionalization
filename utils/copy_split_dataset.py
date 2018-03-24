@@ -1,6 +1,8 @@
 import os
 from shutil import copyfile
 
+# script to use to split the Food-101 images in the train and test sets using the dataset original splitting indication
+
 def split_dataset(splitfile):
     with open(os.path.join('dataset-ethz101food','meta', splitfile + '.txt')) as file:
         lines = file.readlines()

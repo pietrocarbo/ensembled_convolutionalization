@@ -1,59 +1,23 @@
-from keras.layers import Conv2D, AveragePooling2D, Dense, BatchNormalization, LeakyReLU, GlobalAveragePooling2D, Dropout, Input
-from keras.models import Model
-from keras.models import model_from_json
-from keras.regularizers import l2
-import keras
-
-import matplotlib
-# matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-plt.style.use('seaborn-bright')
-import matplotlib.ticker as plticker
-
-import time
-import json
-import pickle
-from random import shuffle
 import os
-import numpy as np
-import matplotlib.patches as patches
-
-import PIL
-from PIL import Image
-from keras.preprocessing import image
+import keras
+from keras.models import Model
+from keras.regularizers import l2
 from keras.preprocessing.image import ImageDataGenerator
-from crop_generator import yield_crops
+from keras.layers import Dense, BatchNormalization, LeakyReLU, GlobalAveragePooling2D, Dropout
 
-dataset_path = "dataset-ethz101food"
+from utils.crop_generator import yield_crops
 
-def ix_to_class_name(idx):
-    with open(os.path.join(dataset_path, "meta", "classes.txt")) as file:
-        class_labels = [line.strip('\n') for line in file.readlines()]
-    return class_labels[idx]
-
-def class_name_to_idx(name):
-    with open(os.path.join(dataset_path, "meta", "classes.txt")) as file:
-        class_labels = [line.strip('\n') for line in file.readlines()]
-        for i, label_name in enumerate(class_labels):
-            if label_name == name:
-                return i
-        else:
-            print("class idx not found!")
-            exit(-1)
-
-
+# Test-set evaluation using Keras evaluate_generator function
 def eval_on_orig_cropped_test_set(model, input_size, input_name, preprocess_func, cropfilename):
-    # test_datagen = ImageDataGenerator(preprocessing_function=preprocess_func)
-    # validation_generator = test_datagen.flow_from_directory(
-    #     'dataset-ethz101food/test',
-    #     target_size=input_size,
-    #     batch_size=1,
-    #     class_mode='categorical')
-    # model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['categorical_accuracy'])
-    # (loss, acc) = model.evaluate_generator(validation_generator)
-    # print("Original classification accuracy: {:.4f}%".format(acc * 100))
-
-
+    test_datagen = ImageDataGenerator(preprocessing_function=preprocess_func)
+    validation_generator = test_datagen.flow_from_directory(
+        'dataset-ethz101food/test',
+        target_size=input_size,
+        batch_size=1,
+        class_mode='categorical')
+    model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['categorical_accuracy'])
+    (loss, acc) = model.evaluate_generator(validation_generator)
+    print("Original classification accuracy: {:.4f}%".format(acc * 100))
 
     model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['categorical_accuracy'])
     (loss, acc) = model.evaluate_generator(yield_crops(cropfilename=cropfilename,

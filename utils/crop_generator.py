@@ -1,9 +1,8 @@
-import PIL.Image
 import pickle
+import PIL.Image
 import numpy as np
-from keras.utils import to_categorical
-import matplotlib.pyplot as plt
 from keras.preprocessing import image
+from keras.utils import to_categorical
 
 with open("dataset-ethz101food/meta/classes.txt") as file:
     map_label_ix = {label.strip('\n'): ix for (ix, label) in enumerate(file.readlines())}
@@ -17,6 +16,7 @@ def is_square_in_img(llh, llw, edge, imgh, imgw):
     else:
         return False
 
+# Python generator yielding cropped and preprocessed images to a classifier
 def yield_crops(cropfilename, input_size, preprocess_func, input_name="input_1", output_name="output_layer"):
 
     count = 0

@@ -26,44 +26,8 @@ from PIL import Image
 from keras.preprocessing import image
 from keras.preprocessing.image import ImageDataGenerator
 
+from utils.labels_ix_mapping import ix_to_class_name, class_name_to_idx
 dataset_path = "dataset-ethz101food"
-
-
-def ix_to_class_name(idx):
-    with open(os.path.join(dataset_path, "meta", "classes.txt")) as file:
-        class_labels = [line.strip('\n') for line in file.readlines()]
-    return class_labels[idx]
-
-
-def class_name_to_idx(name):
-    with open(os.path.join(dataset_path, "meta", "classes.txt")) as file:
-        class_labels = [line.strip('\n') for line in file.readlines()]
-        for i, label_name in enumerate(class_labels):
-            if label_name == name:
-                return i
-        else:
-            print("class idx not found!")
-            exit(-1)
-
-
-def threshold_max(rst_list, threshold=0.5):
-    for ix, rst in enumerate(rst_list):
-        if rst[2] > threshold:
-            return ix
-    return 0
-
-
-def factor_weighted_max(rst_list, weight=1.25):
-    max_ix = 0
-    max_score = 0
-    for ix, rst in enumerate(rst_list):
-        score = (weight / rst[0]) * rst[2]
-        # print("element", ix, " has factor: {:f}".format(rst[0]), ", prob: {:f}".format(rst[2]), "-> score {:f}".format(score))
-        if score < max_score:
-            max_score = score
-            max_ix = ix
-    return max_ix
-
 
 def prepare_str_file_architecture_syntax(filepath):
     model_str = str(json.load(open(filepath, "r")))
@@ -205,7 +169,7 @@ vgg16FCN = convolutionalize_architecture(
 
 # xceptionFCN = convolutionalize_architecture(
 #     architecture_path="trained_models/xception_architecture_2017-12-24_13-00-22.json",
-#     weigths_path="trained_models/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5",
+#     weigths_path="trained_models/top1_xception_acc80_2017-12-25/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5",
 #     last_layer_name="block14_sepconv2_act",
 #     pool_size=10)
 
@@ -253,7 +217,7 @@ preprocess_func = [keras.applications.vgg16.preprocess_input
 def dim_size(w, k, s):
     return ((w - k) // s + 1)
 
-def process_image(input_fn, input_cix, img_shape, upsampling_step=1.2, max_scale_factor=2.5):
+def process_image(input_fn, input_cix, img_shape, upsampling_step=1.2, max_scale_factor=3.0):
     results = []
     if (os.path.exists(input_fn)):
         base_kernel_size = 299  # any of the kernels would do

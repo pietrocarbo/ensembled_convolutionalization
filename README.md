@@ -1,4 +1,4 @@
-# Machine Learning Project
+# Automatic point-of-interest image cropping via ensembled convolutionalization
 
 ## Setup instructions
 
