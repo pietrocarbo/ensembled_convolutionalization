@@ -18,4 +18,4 @@ by a sensible and uniform improvement (3-5%) in the classification accuracy of c
   * `source venv/bin/activate` on Linux or `venv\Scripts\activate.bat` on Windows
   * `pip install -r requirements.txt`
 
-4. Run the script `copy_splitdataset.py` to split the Food-101 dataset in the provided train/test folders (then delete the `images` directory if you want to save disk space)
+4. Run the script `copy_splitdataset.py` to copy the dataset images in the train/test folders (then delete the `images` directory if you want to save disk space)
