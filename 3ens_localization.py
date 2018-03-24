@@ -168,7 +168,7 @@ vgg16FCN = convolutionalize_architecture(
     pool_size=9)
 
 xceptionFCN = convolutionalize_architecture(
-    architecture_path="trained_models/xception_architecture_2017-12-24_13-00-22.json",
+    architecture_path="trained_models/top1_xception_acc80_2017-12-25/xception_architecture_2017-12-24_13-00-22.json",
     weigths_path="trained_models/top1_xception_acc80_2017-12-25/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5",
     last_layer_name="block14_sepconv2_act",
     pool_size=10)
