@@ -1,5 +1,5 @@
 from keras.layers import Conv2D, AveragePooling2D, Dense, BatchNormalization, LeakyReLU, GlobalAveragePooling2D, \
-    Dropout, Input
+    Dropout
 from keras.models import Model
 from keras.models import model_from_json
 from keras.regularizers import l2
@@ -167,11 +167,11 @@ vgg16FCN = convolutionalize_architecture(
     last_layer_name="block5_pool",
     pool_size=9)
 
-# xceptionFCN = convolutionalize_architecture(
-#     architecture_path="trained_models/xception_architecture_2017-12-24_13-00-22.json",
-#     weigths_path="trained_models/top1_xception_acc80_2017-12-25/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5",
-#     last_layer_name="block14_sepconv2_act",
-#     pool_size=10)
+xceptionFCN = convolutionalize_architecture(
+    architecture_path="trained_models/xception_architecture_2017-12-24_13-00-22.json",
+    weigths_path="trained_models/top1_xception_acc80_2017-12-25/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5",
+    last_layer_name="block14_sepconv2_act",
+    pool_size=10)
 
 incresv2FCN = convolutionalize_incresv2()
 
@@ -179,13 +179,9 @@ incv3FCN = convolutionalize_incv3()
 
 
 def predict_from_imgarray(model, img, input_size, preprocess):
-    # if img.shape[0] != input_size[0] or img.shape[1] != input_size[1]:
     img = image.array_to_img(img)
     img = img.resize((input_size[0], input_size[1]), PIL.Image.BICUBIC)  # width, height order here!
     img = image.img_to_array(img)
-    # fig, ax = plt.subplots(1)
-    # ax.imshow(img / 255.)
-    # plt.show()
     img_expandedim = np.expand_dims(img, axis=0)
     img_preprocessed_image = preprocess(img_expandedim)
     preds = model.predict(img_preprocessed_image)
@@ -206,29 +202,21 @@ def get_top1data(preds, extraClass):
     return (maxix, ix_to_class_name(maxix), preds[maxix], preds[class_name_to_idx(extraClass)])
 
 
-# inc_list = [0, 32, 64, 96, 160, 224, 288, 384, 512]
-kernel_sizes = [288, 299, 299]
-FCNs = [vgg16FCN, incresv2FCN, incv3FCN]
-preprocess_func = [keras.applications.vgg16.preprocess_input
-    , keras.applications.inception_resnet_v2.preprocess_input
-    , keras.applications.inception_v3.preprocess_input]
-
-
 def dim_size(w, k, s):
     return ((w - k) // s + 1)
 
-def process_image(input_fn, input_cix, img_shape, upsampling_step=1.2, max_scale_factor=3.0):
+def process_image(fcns, kernels, prep_funcs, input_fn, input_cix, img_shape, upsampling_step=1.2, max_scale_factor=3.0):
     results = []
     if (os.path.exists(input_fn)):
-        base_kernel_size = 299  # any of the kernels would do
+        base_kernel_size = sum(kernels) // len(kernels)
         scale_factor = float(base_kernel_size) / min(img_shape[0], img_shape[1])
         maxcn = 0
 
-        while scale_factor < max_scale_factor and maxcn < len(FCNs):
+        while scale_factor < max_scale_factor and maxcn < len(fcns):
             # definiamo la dimensione attesa della heatmap a questa scala usando il kernel del primo fcn
             # riscaleremo poi le immagini alle dimensioni giuste per gli altri cropper,
             # in modo da avere in output un heatmap della dimensione prevista
-            base_kernel_size = kernel_sizes[0]
+            base_kernel_size = min(kernels)
             heatmap_h = dim_size(round(img_shape[0] * scale_factor), base_kernel_size, 32)
             heatmap_w = dim_size(round(img_shape[1] * scale_factor), base_kernel_size, 32)
             # print("Heatmapdim scale dim:", heatmap_h, heatmap_w)
@@ -236,12 +224,12 @@ def process_image(input_fn, input_cix, img_shape, upsampling_step=1.2, max_scale
             # cerchiamo a questa scala il crop che ha il numero massimo di croppatori che lo classificano come classe input_ix
             heatmaps = []
             bool_cix_maps = []
-            for ix, fcn in enumerate(FCNs):
-                scaled_w = kernel_sizes[ix] + (heatmap_w - 1) * 32
-                scaled_h = kernel_sizes[ix] + (heatmap_h - 1) * 32
+            for ix, fcn in enumerate(fcns):
+                scaled_w = kernels[ix] + (heatmap_w - 1) * 32
+                scaled_h = kernels[ix] + (heatmap_h - 1) * 32
                 # print("Scaled input dim:", scaled_h, scaled_w)
 
-                heatmaps.append(predict_from_filename(fcn, input_fn, (scaled_h, scaled_w), preprocess_func[ix])[0])
+                heatmaps.append(predict_from_filename(fcn, input_fn, (scaled_h, scaled_w), prep_funcs[ix])[0])
 
                 bool_cix_map = np.argmax(heatmaps[-1], axis=2) == input_cix
                 bool_cix_maps.append(bool_cix_map)
@@ -252,8 +240,7 @@ def process_image(input_fn, input_cix, img_shape, upsampling_step=1.2, max_scale
                 ncix_max_map += bool_cix_map
 
             maxcn = np.max(ncix_max_map)  # valore massimo della mappa ncix_max_map
-            positions = np.nonzero(
-                ncix_max_map == maxcn)  # tupla con indici relativi a ncix_max_map dove è presente il valore maxcn
+            positions = np.nonzero(ncix_max_map == maxcn)  # tupla con indici relativi a ncix_max_map dove è presente il valore maxcn
             positions = list(zip(positions[0], positions[1]))
 
             # print(positions)
@@ -266,7 +253,7 @@ def process_image(input_fn, input_cix, img_shape, upsampling_step=1.2, max_scale
 
             ordpositions = sorted(positions, key=sum_crop_score)
             best_crop_ix = ordpositions[-1]
-            best_crop_score = sum_crop_score(best_crop_ix) / len(FCNs)
+            best_crop_score = sum_crop_score(best_crop_ix) / len(fcns)
             correct_fcn = [bool_cix_map[best_crop_ix[0], best_crop_ix[1]] for bool_cix_map in
                            bool_cix_maps]  # array booleano
             results.append({"factor": scale_factor, "heatmap_shape": heatmaps[-1].shape[0:2], "ix": best_crop_ix,
@@ -307,70 +294,88 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
         filename = os.path.join(dataset_path, set, class_folder, instance)
         file_list.append((filename, class_folder))
 
-factors = np.empty(len(file_list))
-scores = np.empty(len(file_list))
-nfcns = np.empty(len(file_list), dtype=int)
+kernel_sizes = [288, 295, 299, 299]
+FCNs = [vgg16FCN, xceptionFCN, incresv2FCN, incv3FCN]
+preprocess_funcs = [keras.applications.vgg16.preprocess_input
+    , keras.applications.xception.preprocess_input
+    , keras.applications.inception_resnet_v2.preprocess_input
+    , keras.applications.inception_v3.preprocess_input]
 
-crop_data = []
+crops_vgg16 = []
+crops_xce = []
+crops_incrnv2 = []
+crops_incv3 = []
 
 i_processed = 0
-
 for filename, class_folder in file_list:
-
+    ix_label = class_name_to_idx(class_folder)
     img = image.load_img(filename)
     img = image.img_to_array(img)
     imgh, imgw = img.shape[0:2]
 
-    res_list = process_image(filename, class_name_to_idx(class_folder), (imgh, imgw))
-    crop = select_best_crop(res_list)  # factor, (hdim, wdim), (hcoordh, hcoordw), correct_fcn, score, cn_no
-    coordh = traslation(crop["ix"][0], crop["factor"])
-    coordw = traslation(crop["ix"][1], crop["factor"])
-    rect_dim = int(295 / crop["factor"])
+    for ix, excluded_fcn in enumerate(FCNs):
 
-    factors[i_processed] = crop["factor"]
-    scores[i_processed] = crop["score"]
-    nfcns[i_processed] = crop["nfcn_clf_ix"]
+        ensemble = FCNs[:ix] + FCNs[ix+1:]
+        kernels = kernel_sizes[:ix] + kernel_sizes[ix + 1:]
+        preprocesses = preprocess_funcs[:ix] + preprocess_funcs[ix + 1:]
 
-    # debug-purpose
-    # if not is_square_in_img(coordh, coordw, rect_dim, imgh, imgw):
-    #     print("Crop out of img bound! File:", filename, "Crop data:", coordh, coordw, rect_dim, imgh, imgw)
-    # print("Wrong sample", str(count) + "/" + str(len(file_list)), "->", filename, "factor", crop["factor"], "score", crop["score"], "nets classifing correct", crop["nfcn_clf_ix"], crop["fcn_clf_ix"])
-    # print("Max confidence", crop["score"], "at scale", crop["factor"],
-    #       "heatmap crop", (crop["ix"][0], crop["ix"][1]),
-    #       "in range [" + str(crop["heatmap_shape"][0]) + ", " + str(crop["heatmap_shape"][1]) + "] ->",
-    #       "relative img point", (coordh, coordw), "in range [" + str(imgh) + ", " + str(imgw) + "]")
-    # fig, ax = plt.subplots(1)
-    # ax.imshow(img / 255.)
-    # ax.set_title(class_folder)
-    # rect = patches.Rectangle((coordw, coordh), rect_dim, rect_dim, linewidth=2, edgecolor='g', facecolor='none')
-    # ax.add_patch(rect)
-    # plt.show()
+        res_list = process_image(ensemble, kernels, preprocesses, filename, class_name_to_idx(class_folder), (imgh, imgw))
+        crop = select_best_crop(res_list)
+        coordh = traslation(crop["ix"][0], crop["factor"])
+        coordw = traslation(crop["ix"][1], crop["factor"])
+        rect_dim = int(295 / crop["factor"])
 
-    ix_label = class_name_to_idx(class_folder)
+        # debug-purpose
+        # if not is_square_in_img(coordh, coordw, rect_dim, imgh, imgw):
+        #     print("Crop out of img bound! File:", filename, "Crop data:", coordh, coordw, rect_dim, imgh, imgw)
+        # print("Wrong sample", str(count) + "/" + str(len(file_list)), "->", filename, "factor", crop["factor"], "score", crop["score"], "nets classifing correct", crop["nfcn_clf_ix"], crop["fcn_clf_ix"])
+        # print("Max confidence", crop["score"], "at scale", crop["factor"],
+        #       "heatmap crop", (crop["ix"][0], crop["ix"][1]),
+        #       "in range [" + str(crop["heatmap_shape"][0]) + ", " + str(crop["heatmap_shape"][1]) + "] ->",
+        #       "relative img point", (coordh, coordw), "in range [" + str(imgh) + ", " + str(imgw) + "]")
+        # fig, ax = plt.subplots(1)
+        # ax.imshow(img / 255.)
+        # ax.set_title(class_folder)
+        # rect = patches.Rectangle((coordw, coordh), rect_dim, rect_dim, linewidth=2, edgecolor='g', facecolor='none')
+        # ax.add_patch(rect)
+        # plt.show()
 
-    crop_data.append(dict(filename=str(filename),
-                          label=str(class_folder),
-                          crop=dict(
-                              factor=float(crop["factor"]),
-                              heath=int(crop["heatmap_shape"][0]),
-                              heatw=int(crop["heatmap_shape"][1]),
-                              cropixh=int(crop["ix"][0]),
-                              cropixw=int(crop["ix"][1]),
-                              score=float(crop["score"]),
-                              nfcn=int(crop["nfcn_clf_ix"]),
-                              fcn=dict(vgg16FCN=str(crop["fcn_clf_ix"][0]),
-                                       incresv2FCN=str(crop["fcn_clf_ix"][1]),
-                                       incv3FCN=str(crop["fcn_clf_ix"][2])
-                                       )
-                          ),
-                          rect=dict(lower_left=(int(coordh), int(coordw)), side=int(rect_dim))
+        if ix == 0:
+            crops_list = crops_vgg16
+        elif ix == 1:
+            crops_list = crops_xce
+        elif ix == 2:
+            crops_list = crops_incrnv2
+        elif ix == 3:
+            crops_list = crops_incv3
+        else:
+            raise Exception("Unkown fcn index", ix, excluded_fcn)
+
+        crops_list.append(dict(filename=str(filename),
+                              label=str(class_folder),
+                              crop=dict(
+                                  factor=float(crop["factor"]),
+                                  heath=int(crop["heatmap_shape"][0]),
+                                  heatw=int(crop["heatmap_shape"][1]),
+                                  cropixh=int(crop["ix"][0]),
+                                  cropixw=int(crop["ix"][1]),
+                                  score=float(crop["score"]),
+                                  nfcn=int(crop["nfcn_clf_ix"]),
+                                  fcn=dict(fcn1=str(crop["fcn_clf_ix"][0]),
+                                           fcn2=str(crop["fcn_clf_ix"][1]),
+                                           fcn3=str(crop["fcn_clf_ix"][2])
+                                           )
+                                        ),
+                              rect=dict(lower_left=(int(coordh), int(coordw)), side=int(rect_dim))
                           )
-                     )
+         )
 
     i_processed += 1
     if i_processed % instances_per_folder == 0:
         print(time.strftime("%Y-%m-%d %H:%M:%S") + " started class " + str(i_processed // instances_per_folder) + " of " + str(folder_to_scan))
 
-print("Averages: score", np.mean(scores), "nfcn", np.mean(nfcns), "factor", np.mean(factors))
 
-pickle.dump(crop_data, open("cropsdata.pickle", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
+pickle.dump(crops_xce, open("crops_xce.pickle", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
+pickle.dump(crops_vgg16, open("crops_vgg16.pickle", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
+pickle.dump(crops_incv3, open("crops_incv3.pickle", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
+pickle.dump(crops_incrnv2, open("crops_incrnv2.pickle", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
