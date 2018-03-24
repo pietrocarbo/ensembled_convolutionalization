@@ -1,52 +1,21 @@
 # Automatic point-of-interest image cropping via ensembled convolutionalization
 
+Convolutionalization of discriminative neural networks, introduced [here](https://www.vision.ee.ethz.ch/datasets_extra/food-101/) for segmentation purposes, is a simple technique allowing to generate _heat-maps_ relative to the location of a given object in a larger image. 
+In this article, we apply this technique to automatically crop images at their actual point of interest, fine tuning them with the final aim to improve the quality of a dataset.
+The use of an _ensemble_ of fully convolutional nets sensibly reduce the risk of overfitting, resulting in reasonably accurate croppings. The methodology has been tested on a well known dataset, particularly renowned for containing badly centered and noisy images: the [Food-101](https://www.vision.ee.ethz.ch/datasets_extra/food-101/) dataset, composed of 101K images spread over 101 food categories. The quality of croppings can be testified
+by a sensible and uniform improvement (3-5%) in the classification accuracy of classifiers, even external to the ensemble.
+
 ## Setup instructions
 
-Download Food dataset from https://www.vision.ee.ethz.ch/datasets_extra/food-101/ unzip and place it in a folder named `dataset-ethz101food`.
+1. Clone this repository
 
-Download and install Python 3.5 from https://www.python.org/downloads/release/python-350/
+2. Download the Food-101 dataset [here](https://www.vision.ee.ethz.ch/datasets_extra/food-101/), uncompress it and place it in `ensembled_convolutionalization/dataset-ethz101food`
 
-Clone this github repository in a folder that we will call `repo_home`
+3. Create a Python 3.x virtual environment and install the dependencies using the commands:
+  * (optional, recommended) `python3 -m pip install --upgrade pip`
+  * `pip install virtualenv`
+  * `virtualenv -p python3 venv`
+  * `source venv/bin/activate` on Linux or `venv\Scripts\activate.bat` on Windows
+  * `pip install -r requirements.txt`
 
-From a terminal run the commands
-* `pip install pipenv && pip install virtualenv`
-* `cd repo_home`
-* `virtualenv env` (Mac OS X -> `virtualenv -p python3 env`)
-* `./env/Scripts/activate` (or `source env/bin/activate` on Unix systems)
-* `pip install -r requirements.txt`
-
-Move the folder `dataset-ethz101food` inside `repo_home`
-
-Run the script `copy_splitdataset.py` to split the dataset in train/test folders (delete the `images` directory left if you want to save disk space)
-
-
-## Milestones
-* Trovare il modello pretrained migliore da usare come baseline 
-
-* Usare i parametri di trasformazione di ImageDataGenerator per ottenere qualcosa in più di accuracy
-
-* Localizazzione tramite Fully Convolutional Networks 
-
-###### Comando per aggiornare Keras e Theano
-pip install git+git://github.com/fchollet/keras.git --upgrade --no-deps
-pip install git+git://github.com/Theano/Theano.git --upgrade --no-deps
-
-###### Flag per usare GPU su Theano backend
-conda create -n env1 python python-dev numpy scipy mkl theano pygpu
-THEANO_FLAGS=device=cuda0 python <test_theanoGPU.py>
-os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=gpu,floatX=float32,lib.cnmem=0.7,dnn.enabled=True"
-
-##### Windows commands
-del models\* logs\* results\* /Q
-
-## TODO
-* Convolutionalize top5 models and validate them on test set (confusion matrices)
-* Ensemble them if possible
-* Mobile (django?) app
-* Relazione LaTeX in inglese in stile articolo 
-
-### Idee per la relazione
-* un immagine per categoria con label per descrizione iniziale
-* pre e post image augmentation
-* parlare delle callbacks e delle strategie di training 
-* confusion matrices
+4. Run the script `copy_splitdataset.py` to split the Food-101 dataset in the provided train/test folders (then delete the `images` directory if you want to save disk space)
