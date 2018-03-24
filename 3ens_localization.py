@@ -305,6 +305,7 @@ crops_vgg16 = []
 crops_xce = []
 crops_incrnv2 = []
 crops_incv3 = []
+crops_ensemble = []
 
 i_processed = 0
 for filename, class_folder in file_list:
@@ -315,7 +316,7 @@ for filename, class_folder in file_list:
 
     for ix, excluded_fcn in enumerate(FCNs):
 
-        ensemble = FCNs[:ix] + FCNs[ix+1:]
+        ensemble = FCNs[:ix] + FCNs[ix + 1:]
         kernels = kernel_sizes[:ix] + kernel_sizes[ix + 1:]
         preprocesses = preprocess_funcs[:ix] + preprocess_funcs[ix + 1:]
 
@@ -370,11 +371,36 @@ for filename, class_folder in file_list:
                           )
          )
 
+    res_list = process_image(FCNs, kernel_sizes, preprocess_funcs, filename, class_name_to_idx(class_folder), (imgh, imgw))
+    crop = select_best_crop(res_list)
+    coordh = traslation(crop["ix"][0], crop["factor"])
+    coordw = traslation(crop["ix"][1], crop["factor"])
+    rect_dim = int(295 / crop["factor"])
+    crops_ensemble.append(dict(filename=str(filename),
+                           label=str(class_folder),
+                           crop=dict(
+                               factor=float(crop["factor"]),
+                               heath=int(crop["heatmap_shape"][0]),
+                               heatw=int(crop["heatmap_shape"][1]),
+                               cropixh=int(crop["ix"][0]),
+                               cropixw=int(crop["ix"][1]),
+                               score=float(crop["score"]),
+                               nfcn=int(crop["nfcn_clf_ix"]),
+                               fcn=dict(fcn1=str(crop["fcn_clf_ix"][0]),
+                                        fcn2=str(crop["fcn_clf_ix"][1]),
+                                        fcn3=str(crop["fcn_clf_ix"][2]),
+                                        fcn4=str(crop["fcn_clf_ix"][3])
+                                        )
+                           ),
+                           rect=dict(lower_left=(int(coordh), int(coordw)), side=int(rect_dim))
+                           )
+    )
+
     i_processed += 1
     if i_processed % instances_per_folder == 0:
         print(time.strftime("%Y-%m-%d %H:%M:%S") + " started class " + str(i_processed // instances_per_folder) + " of " + str(folder_to_scan))
 
-
+pickle.dump(crops_ensemble, open("cropsdata.pickle", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
 pickle.dump(crops_xce, open("crops_xce.pickle", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
 pickle.dump(crops_vgg16, open("crops_vgg16.pickle", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
 pickle.dump(crops_incv3, open("crops_incv3.pickle", "wb"), protocol=pickle.HIGHEST_PROTOCOL)

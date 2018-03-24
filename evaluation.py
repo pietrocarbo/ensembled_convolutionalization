@@ -67,10 +67,9 @@ out = Dense(101, kernel_initializer='he_uniform', bias_initializer="he_uniform",
 incv3CLF = Model(inputs=incv3CLF.input, outputs=out)
 incv3CLF.load_weights("trained_models/top3_inceptionv3_acc79_2017-12-27/inceptionv3_ft_weights_acc0.79_e10_2017-12-25_22-10-02.hdf5")
 
-# cropfilename = "cropsdata.pickle"
-#
-# print("\nVGG19")
-# eval_on_orig_cropped_test_set(vgg19CLF, (224, 224), "input_2", keras.applications.vgg19.preprocess_input, cropfilename)
+print("\nVGG19")
+cropfilename = "cropsdata.pickle"
+eval_on_orig_cropped_test_set(vgg19CLF, (224, 224), "input_2", keras.applications.vgg19.preprocess_input, cropfilename)
 
 print("VGG16")
 cropfilename = "crops_vgg16.pickle"
