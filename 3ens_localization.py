@@ -251,8 +251,7 @@ def process_image(fcns, kernels, prep_funcs, input_fn, input_cix, img_shape, ups
                     res += map[x[0], x[1], input_cix]
                 return res
 
-            ordpositions = sorted(positions, key=sum_crop_score)
-            best_crop_ix = ordpositions[-1]
+            best_crop_ix = max(positions, key=sum_crop_score)
             best_crop_score = sum_crop_score(best_crop_ix) / len(fcns)
             correct_fcn = [bool_cix_map[best_crop_ix[0], best_crop_ix[1]] for bool_cix_map in
                            bool_cix_maps]  # array booleano
@@ -274,8 +273,7 @@ def process_image(fcns, kernels, prep_funcs, input_fn, input_cix, img_shape, ups
 
 # seleziona il best crop della return list
 def select_best_crop(res_list):
-    sort_list = sorted(res_list, key=lambda res: (res["nfcn_clf_ix"], res["score"]), reverse=True)
-    return (sort_list[0])
+    return max(res_list, key=lambda res: (res["nfcn_clf_ix"], res["score"]))
 
 
 def traslation(heat_coord, factor, fcn_stride=32):
