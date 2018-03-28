@@ -18,7 +18,6 @@ def eval_on_orig_cropped_test_set(model, input_size, input_name, preprocess_func
     (loss, top1acc, top5acc) = model.evaluate_generator(validation_generator, 25250)
     print("Original classification accuracy: loss {:.4f}, top1 {:.4f}%, top5 {:.4f}%".format(loss, top1acc * 100, top5acc * 100))
 
-    model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['categorical_accuracy', 'top_k_categorical_accuracy'])
     (loss, top1acc, top5acc) = model.evaluate_generator(yield_crops(cropfilename=cropfilename,
                                                           input_size=input_size,
                                                           preprocess_func=preprocess_func,
@@ -66,13 +65,13 @@ out = Dense(101, kernel_initializer='he_uniform', bias_initializer="he_uniform",
 incv3CLF = Model(inputs=incv3CLF.input, outputs=out)
 incv3CLF.load_weights("trained_models/top3_inceptionv3_acc79_2017-12-27/inceptionv3_ft_weights_acc0.79_e10_2017-12-25_22-10-02.hdf5")
 
-print("\nVGG19")
-cropfilename = "cropsdata.pickle"
-eval_on_orig_cropped_test_set(vgg19CLF, (224, 224), "input_1", keras.applications.vgg19.preprocess_input, cropfilename)
-
 print("VGG16")
 cropfilename = "crops_vgg16.pickle"
-eval_on_orig_cropped_test_set(vgg16CLF, (224, 224), "input_2", keras.applications.vgg16.preprocess_input, cropfilename)
+eval_on_orig_cropped_test_set(vgg16CLF, (224, 224), "input_1", keras.applications.vgg16.preprocess_input, cropfilename)
+
+print("\nVGG19")
+cropfilename = "cropsdata.pickle"
+eval_on_orig_cropped_test_set(vgg19CLF, (224, 224), "input_2", keras.applications.vgg19.preprocess_input, cropfilename)
 
 print("\nXCEPTION")
 cropfilename = "crops_xce.pickle"
