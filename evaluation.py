@@ -15,7 +15,7 @@ def eval_on_orig_cropped_test_set(model, input_size, input_name, preprocess_func
         batch_size=1,
         class_mode='categorical')
     model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['categorical_accuracy', 'top_k_categorical_accuracy'])
-    (loss, acc) = model.evaluate_generator(validation_generator)
+    (loss, acc) = model.evaluate_generator(validation_generator, 25250)
     print("Original classification accuracy: {:.4f}%".format(acc * 100))
 
     model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['categorical_accuracy', 'top_k_categorical_accuracy'])

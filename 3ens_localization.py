@@ -1,30 +1,23 @@
+import keras
+# matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 from keras.layers import Conv2D, AveragePooling2D, Dense, BatchNormalization, LeakyReLU, GlobalAveragePooling2D, \
     Dropout
 from keras.models import Model
 from keras.models import model_from_json
 from keras.regularizers import l2
-import keras
-import keras.backend as K
-
-import matplotlib
-# matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 
 plt.style.use('seaborn-bright')
-import matplotlib.ticker as plticker
 
 import time
 import json
 import pickle
-from random import shuffle
 import os
 import numpy as np
-import matplotlib.patches as patches
 
 import PIL
 from PIL import Image
 from keras.preprocessing import image
-from keras.preprocessing.image import ImageDataGenerator
 
 from utils.labels_ix_mapping import ix_to_class_name, class_name_to_idx
 dataset_path = "dataset-ethz101food"
