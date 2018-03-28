@@ -1,4 +1,3 @@
-import os
 import keras
 from keras.models import Model
 from keras.regularizers import l2
@@ -69,11 +68,11 @@ incv3CLF.load_weights("trained_models/top3_inceptionv3_acc79_2017-12-27/inceptio
 
 print("\nVGG19")
 cropfilename = "cropsdata.pickle"
-eval_on_orig_cropped_test_set(vgg19CLF, (224, 224), "input_2", keras.applications.vgg19.preprocess_input, cropfilename)
+eval_on_orig_cropped_test_set(vgg19CLF, (224, 224), "input_1", keras.applications.vgg19.preprocess_input, cropfilename)
 
 print("VGG16")
 cropfilename = "crops_vgg16.pickle"
-eval_on_orig_cropped_test_set(vgg16CLF, (224, 224), "input_1", keras.applications.vgg16.preprocess_input, cropfilename)
+eval_on_orig_cropped_test_set(vgg16CLF, (224, 224), "input_2", keras.applications.vgg16.preprocess_input, cropfilename)
 
 print("\nXCEPTION")
 cropfilename = "crops_xce.pickle"
