@@ -17,7 +17,7 @@ from utils.callbacks import checkpointer, early_stopper, lr_reducer, csv_logger
 from utils.memory_management import memory_growth_config
 from utils.outputs_directories import create_empty_directories
 
-create_empty_directories(['results','logs', 'models'], empty_dirs=True)
+create_empty_directories(['results','logs', 'models'], empty_dirs=False)
 lower_randomization_effects()
 memory_growth_config()
 

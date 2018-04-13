@@ -65,28 +65,25 @@ out = Dense(101, kernel_initializer='he_uniform', bias_initializer="he_uniform",
 incv3CLF = Model(inputs=incv3CLF.input, outputs=out)
 incv3CLF.load_weights("trained_models/top3_inceptionv3_acc79_2017-12-27/inceptionv3_ft_weights_acc0.79_e10_2017-12-25_22-10-02.hdf5")
 
+cropfilename = "results/cropping_eval/cropsdata.pickle"
+
 print("VGG16")
-cropfilename = "crops_vgg16.pickle"
 eval_on_orig_cropped_test_set(vgg16CLF, (224, 224), vgg16CLF.get_config()['layers'][0]['config']['name'],
                               keras.applications.vgg16.preprocess_input, cropfilename)
 
 print("\nVGG19")
-cropfilename = "cropsdata.pickle"
 eval_on_orig_cropped_test_set(vgg19CLF, (224, 224), vgg19CLF.get_config()['layers'][0]['config']['name'],
                               keras.applications.vgg19.preprocess_input, cropfilename)
 
 print("\nXCEPTION")
-cropfilename = "crops_xce.pickle"
 eval_on_orig_cropped_test_set(xceptionCLF, (299, 299), xceptionCLF.get_config()['layers'][0]['config']['name'],
                               keras.applications.xception.preprocess_input, cropfilename)
 
 print("\nINCEPTION_RESNET_V2")
-cropfilename = "crops_incrnv2.pickle"
 eval_on_orig_cropped_test_set(incresv2CLF, (299, 299), incresv2CLF.get_config()['layers'][0]['config']['name'],
                               keras.applications.inception_resnet_v2.preprocess_input, cropfilename)
 
 print("\nINCEPTION_V3")
-cropfilename = "crops_incv3.pickle"
 eval_on_orig_cropped_test_set(incv3CLF, (299, 299), incv3CLF.get_config()['layers'][0]['config']['name'],
                               keras.applications.inception_v3.preprocess_input, cropfilename)
 

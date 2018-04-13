@@ -1,84 +1,92 @@
+from keras.preprocessing import image
 import keras
 from keras.models import Model
 from keras.regularizers import l2
-from keras.preprocessing import image
-from keras.models import model_from_json
 from keras.layers import Conv2D, AveragePooling2D, Dense, BatchNormalization, LeakyReLU, GlobalAveragePooling2D, Dropout
-
 # non-graphical plot backend
 # import matplotlib
 # matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 plt.style.use('seaborn-bright')
 import matplotlib.patches as patches
-
 import time
-import json
 import pickle
 import os
 import numpy as np
-
 import PIL
 from PIL import Image
-
 from utils.labels_ix_mapping import ix_to_class_name, class_name_to_idx
 dataset_path = "dataset-ethz101food"
 
-# Function that lightly preprocess the Keras-exported model architecture .json file to be machine-readable
-def prepare_architecture_file(filepath):
-    model_str = str(json.load(open(filepath, "r")))
-    model_str = model_str.replace("'", '"')
-    model_str = model_str.replace("True", "true")
-    model_str = model_str.replace("False", "false")
-    model_str = model_str.replace("None", "null")
-    return model_str
 
-# Function used to convolutionalize a generic CNN
-def convolutionalize_architecture(architecture_path, weigths_path, last_layer_name, pool_size, debug=False):
-    model = model_from_json(prepare_architecture_file(architecture_path))
-    model.load_weights(weigths_path)
-    if debug:
-        print("IMPORTED MODEL")
-        model.summary()
+# Function used to convolutionalize the VGG16 architecture
+def convolutionalize_vgg16():
+    vgg16 = keras.applications.vgg16.VGG16(include_top=False, weights='imagenet', input_shape=(None, None, 3))
 
-    p_dim = model.get_layer("global_average_pooling2d_1").input_shape
-    out_dim = model.get_layer("output_layer").get_weights()[1].shape[0]
-    W, b = model.get_layer("output_layer").get_weights()
+    x = GlobalAveragePooling2D(name="global_average_pooling2d_1")(vgg16.output)
+    out = Dense(101, activation='softmax', name='output_layer')(x)
+    vgg16 = Model(inputs=vgg16.input, outputs=out)
+
+    vgg16.load_weights("trained_models/top5_vgg16_acc77_2017-12-24/vgg16_ft_weights_acc0.78_e15_2017-12-23_22-53-03.hdf5")
+
+    p_dim = vgg16.get_layer("global_average_pooling2d_1").input_shape
+    out_dim = vgg16.get_layer("output_layer").get_weights()[1].shape[0]
+    W, b = vgg16.get_layer("output_layer").get_weights()
 
     weights_shape = (1, 1, p_dim[3], out_dim)
 
-    if debug:
-        print("weights old shape", W.shape, "values", W)
-        print("biases old shape", b.shape, "values", b)
-        print("weights new shape", weights_shape)
+    W = W.reshape(weights_shape)
+
+    last_layer = vgg16.get_layer("block5_pool")   # name of last VGG16 Keras layer
+    last_layer.outbound_nodes = []
+    vgg16.layers.pop()
+    vgg16.layers.pop()
+
+    x = AveragePooling2D(pool_size=(9, 9), strides=(1, 1))(last_layer.output)
+    x = Conv2D(101, (1, 1), strides=(1, 1), activation='softmax', padding='valid', weights=[W, b], name="conv2d_fcn")(x)
+    vgg16 = Model(inputs=vgg16.input, outputs=x)
+
+    return vgg16
+
+
+# Function used to convolutionalize the Xception architecture
+def convolutionalize_xception():
+    xce = keras.applications.xception.Xception(include_top=False, weights='imagenet', input_shape=(None, None, 3))
+
+    x = GlobalAveragePooling2D(name="global_average_pooling2d_1")(xce.output)
+    out = Dense(101, activation='softmax', name='output_layer')(x)
+    xce = Model(inputs=xce.input, outputs=out)
+
+    xce.load_weights("trained_models/top1_xception_acc80_2017-12-25/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5")
+
+    p_dim = xce.get_layer("global_average_pooling2d_1").input_shape
+    out_dim = xce.get_layer("output_layer").get_weights()[1].shape[0]
+    W, b = xce.get_layer("output_layer").get_weights()
+
+    weights_shape = (1, 1, p_dim[3], out_dim)
 
     W = W.reshape(weights_shape)
 
-    last_layer = model.get_layer(last_layer_name)
+    last_layer = xce.get_layer("block14_sepconv2_act")
     last_layer.outbound_nodes = []
-    model.layers.pop()
-    model.layers.pop()
+    xce.layers.pop()
+    xce.layers.pop()
 
-    x = AveragePooling2D(pool_size=(pool_size, pool_size), strides=(1, 1))(last_layer.output)
+    x = AveragePooling2D(pool_size=(10, 10), strides=(1, 1))(last_layer.output)
     x = Conv2D(101, (1, 1), strides=(1, 1), activation='softmax', padding='valid', weights=[W, b], name="conv2d_fcn")(x)
-    model = Model(inputs=model.input, outputs=x)
+    xce = Model(inputs=xce.input, outputs=x)
 
-    if debug:
-        print("CONVOLUTIONALIZED MODEL")
-        model.summary()
+    return xce
 
-    return model
 
 # Function used to convolutionalize the InceptionResNetV2 architecture
 def convolutionalize_incresv2():
     incresv2 = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=False, weights='imagenet',
                                                                         input_shape=(None, None, 3))
-    x = GlobalAveragePooling2D()(incresv2.output)
+    x = GlobalAveragePooling2D(name="global_average_pooling2d_1")(incresv2.output)
     out = Dense(101, activation='softmax', name='output_layer')(x)
     incresv2 = Model(inputs=incresv2.input, outputs=out)
-    incresv2.load_weights(
-        "trained_models/top2_incresnetv2_acc79_2017-12-22/incv2resnet_ft_weights_acc0.79_e4_2017-12-21_09-02-16.hdf5")
-    # incresv2.summary()
+    incresv2.load_weights("trained_models/top2_incresnetv2_acc79_2017-12-22/incv2resnet_ft_weights_acc0.79_e4_2017-12-21_09-02-16.hdf5")
 
     out_dim = incresv2.get_layer("output_layer").get_weights()[1].shape[0]
     p_dim = incresv2.get_layer("global_average_pooling2d_1").input_shape
@@ -100,28 +108,26 @@ def convolutionalize_incv3():
                                                         input_shape=(None, None, 3))
     x = GlobalAveragePooling2D()(incv3.output)
     x = Dense(1024, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005),
-              bias_regularizer=l2(.0005))(x)
+              bias_regularizer=l2(.0005), name="fully-connected1")(x)
     x = LeakyReLU()(x)
-    x = BatchNormalization()(x)
+    x = BatchNormalization(name="batch-normalization-1")(x)
     x = Dropout(0.5)(x)
     x = Dense(512, kernel_initializer='he_uniform', bias_initializer="he_uniform", kernel_regularizer=l2(.0005),
-              bias_regularizer=l2(.0005))(x)
+              bias_regularizer=l2(.0005), name="fully-connected2")(x)
     x = LeakyReLU()(x)
-    x = BatchNormalization()(x)
+    x = BatchNormalization(name="batch-normalization-2")(x)
     x = Dropout(0.5)(x)
     out = Dense(101, kernel_initializer='he_uniform', bias_initializer="he_uniform", activation='softmax',
                 name='output_layer')(x)
-    incv3 = Model(inputs=incv3.input, outputs=out)
-    incv3.load_weights(
-        "trained_models/top3_inceptionv3_acc79_2017-12-27/inceptionv3_ft_weights_acc0.79_e10_2017-12-25_22-10-02.hdf5")
-    # incv3.summary()
+    incv3 = Model(inputs=incv3.input, outputs=out, name="output_layer")
+    incv3.load_weights("trained_models/top3_inceptionv3_acc79_2017-12-27/inceptionv3_ft_weights_acc0.79_e10_2017-12-25_22-10-02.hdf5")
 
-    W1, b1 = incv3.get_layer("dense_1").get_weights()
-    W2, b2 = incv3.get_layer("dense_2").get_weights()
+    W1, b1 = incv3.get_layer("fully-connected1").get_weights()
+    W2, b2 = incv3.get_layer("fully-connected2").get_weights()
     W3, b3 = incv3.get_layer("output_layer").get_weights()
 
-    BN1 = incv3.get_layer("batch_normalization_298").get_weights()
-    BN2 = incv3.get_layer("batch_normalization_299").get_weights()
+    BN1 = incv3.get_layer("batch-normalization-1").get_weights()
+    BN2 = incv3.get_layer("batch-normalization-2").get_weights()
 
     W1 = W1.reshape((1, 1, 2048, 1024))
     W2 = W2.reshape((1, 1, 1024, 512))
@@ -151,27 +157,16 @@ def convolutionalize_incv3():
     incv3 = Model(inputs=incv3.input, outputs=x)
     return incv3
 
-# -----------------------------------
 # FCNs declarations
+vgg16FCN = convolutionalize_vgg16()
 
-vgg16FCN = convolutionalize_architecture(architecture_path="trained_models/top5_vgg16_acc77_2017-12-24/vgg16_architecture_2017-12-23_22-53-03.json",
-                                         weigths_path="trained_models/top5_vgg16_acc77_2017-12-24/vgg16_ft_weights_acc0.78_e15_2017-12-23_22-53-03.hdf5",
-                                         last_layer_name="block5_pool",
-                                         pool_size=9)
-
-xceptionFCN = convolutionalize_architecture(architecture_path="trained_models/top1_xception_acc80_2017-12-25/xception_architecture_2017-12-24_13-00-22.json",
-                                            weigths_path="trained_models/top1_xception_acc80_2017-12-25/xception_ft_weights_acc0.81_e9_2017-12-24_13-00-22.hdf5",
-                                            last_layer_name="block14_sepconv2_act",
-                                            pool_size=10)
+xceptionFCN = convolutionalize_xception()
 
 incresv2FCN = convolutionalize_incresv2()
 
 incv3FCN = convolutionalize_incv3()
 
-
-# -----------------------------------
 # CLFs (classifiers) declarations
-
 vgg16CLF = keras.applications.vgg16.VGG16(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
 x = GlobalAveragePooling2D()(vgg16CLF.output)
 out = Dense(101, activation='softmax', name='output_layer')(x)
@@ -320,26 +315,13 @@ for i_folder, class_folder in enumerate(class_folders[0:folder_to_scan]):
         filename = os.path.join(dataset_path, set, class_folder, instance)
         file_list.append((filename, class_folder))
 
+# for statics
 factors = np.empty(len(file_list))
 scores = np.empty(len(file_list))
 nfcns = np.empty(len(file_list), dtype=int)
 
-crop_data = []
-
-vgg16_orig_data = []
-vgg16_crop_data = []
-
-vgg19_orig_data = []
-vgg19_crop_data = []
-
-xce_orig_data = []
-xce_crop_data = []
-
-incv3_orig_data = []
-incv3_crop_data = []
-
-incrv2_orig_data = []
-incrv2_crop_data = []
+# for exporting crops coordinates
+crops_list = []
 
 i_processed = 0
 for filename, class_folder in file_list:
@@ -359,10 +341,10 @@ for filename, class_folder in file_list:
     nfcns[i_processed] = crop["nfcn_clf_ix"]
 
     # debug-purpose
-    # print("Max confidence", crop["score"], "at scale", crop["factor"],
-    #       "heatmap crop", (crop["ix"][0], crop["ix"][1]),
-    #       "in range [" + str(crop["heatmap_shape"][0]) + ", " + str(crop["heatmap_shape"][1]) + "] ->",
-    #       "relative img point", (coordh, coordw), "in range [" + str(imgh) + ", " + str(imgw) + "]")
+    print("Max confidence", crop["score"], "at scale", crop["factor"],
+          "heatmap crop", (crop["ix"][0], crop["ix"][1]),
+          "in range [" + str(crop["heatmap_shape"][0]) + ", " + str(crop["heatmap_shape"][1]) + "] ->",
+          "relative img point", (coordh, coordw), "in range [" + str(imgh) + ", " + str(imgw) + "]")
     # fig, ax = plt.subplots(1)
     # ax.imshow(img / 255.)
     # ax.set_title(class_folder)
@@ -372,38 +354,9 @@ for filename, class_folder in file_list:
 
     ix_label = class_name_to_idx(class_folder)
 
-    # classification on the original and the cropped image
-    def append_predictions(modelCLF, filename, croparray, input_size, preprocess, orig_export_list, crop_export_list):
-        preds_original = predict_from_filename(modelCLF, filename, input_size, preprocess).flatten()
-        porig_maxix, porig_maxname, porig_maxscore, porigin_labelscore = get_top1data(preds_original, class_folder)
-        orig_export_list.append(dict(ix_label=int(ix_label), pr_label=float(porigin_labelscore), ix_predicted=int(porig_maxix), pr_predicted=float(porig_maxscore)))
-
-        preds_crop = predict_from_imgarray(modelCLF, croparray, input_size, preprocess).flatten()
-        pcrop_maxix, pcrop_maxname, pcrop_maxscore, pcrop_labelscore = get_top1data(preds_crop, class_folder)
-        crop_export_list.append(dict(ix_label=int(ix_label), pr_label=float(pcrop_labelscore), ix_predicted=int(pcrop_maxix), pr_predicted=float(pcrop_maxscore)))
-
-    # VGG16
-    append_predictions(vgg16CLF, filename, img[coordh:coordh + rect_dim, coordw:coordw + rect_dim], (224, 224),
-                       keras.applications.vgg16.preprocess_input, vgg16_orig_data, vgg16_crop_data)
-
-    # VGG19
-    append_predictions(vgg19CLF, filename, img[coordh:coordh + rect_dim, coordw:coordw + rect_dim], (224, 224),
-                       keras.applications.vgg19.preprocess_input, vgg19_orig_data, vgg19_crop_data)
-    # INCV3
-    append_predictions(incv3CLF, filename, img[coordh:coordh + rect_dim, coordw:coordw + rect_dim], (299, 299),
-                       keras.applications.inception_v3.preprocess_input, incv3_orig_data, incv3_crop_data)
-
-    # INCRESNETV2
-    append_predictions(incresv2CLF, filename, img[coordh:coordh + rect_dim, coordw:coordw + rect_dim], (299, 299),
-                       keras.applications.inception_resnet_v2.preprocess_input, incrv2_orig_data, incrv2_crop_data)
-
-    # XCEPTION
-    append_predictions(xceptionCLF, filename, img[coordh:coordh + rect_dim, coordw:coordw + rect_dim], (299, 299),
-                       keras.applications.xception.preprocess_input, xce_orig_data, xce_crop_data)
-
-    crop_data.append(dict(filename=str(filename),
-                label=str(class_folder),
-                crop=dict(
+    crops_list.append(dict(filename=str(filename),
+                           label=str(class_folder),
+                           crop=dict(
                     factor=float(crop["factor"]),
                     heath=int(crop["heatmap_shape"][0]),
                     heatw=int(crop["heatmap_shape"][1]),
@@ -417,30 +370,13 @@ for filename, class_folder in file_list:
                              incv3FCN=str(crop["fcn_clf_ix"][3])
                     )
                 ),
-                rect=dict(lower_left=(int(coordh), int(coordw)), side=int(rect_dim))
-        )
-    )
+                           rect=dict(lower_left=(int(coordh), int(coordw)), side=int(rect_dim))
+                           )
+                      )
 
     i_processed += 1
     if i_processed % instances_per_folder == 0:
         print(time.strftime("%Y-%m-%d %H:%M:%S") + " started class " + str(i_processed//instances_per_folder) + " of " + str(folder_to_scan))
 
 print("Averages: score", np.mean(scores), "nfcn", np.mean(nfcns), "factor", np.mean(factors))
-
-# classifications results exports
-pickle.dump(vgg16_orig_data, open("vgg16_orig_data.pickle", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
-pickle.dump(vgg16_crop_data, open("vgg16_crop_data.pickle", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
-
-pickle.dump(vgg19_orig_data, open("vgg19_orig_data.pickle", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
-pickle.dump(vgg19_crop_data, open("vgg19_crop_data.pickle", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
-
-pickle.dump(incv3_orig_data, open("incv3_orig_data.pickle", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
-pickle.dump(incv3_crop_data, open("incv3_crop_data.pickle", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
-
-pickle.dump(incrv2_orig_data, open("incrv2_orig_data.pickle", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
-pickle.dump(incrv2_crop_data, open("incrv2_crop_data.pickle", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
-
-pickle.dump(xce_orig_data, open("xce_orig_data.pickle", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
-pickle.dump(xce_crop_data, open("xce_crop_data.pickle", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
-
-pickle.dump(crop_data, open("cropsdata.pickle", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
+pickle.dump(crops_list, open("cropsdata.pickle", "wb"), protocol=pickle.HIGHEST_PROTOCOL)
